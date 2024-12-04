@@ -64,6 +64,6 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'IntelligenceHub'
+          app-name: 'IntelligenceHub-${{ github.event.inputs.environment || "Production" }}'
           slot-name: ${{ github.event.inputs.environment || 'Production' }}  # Use selected environment or default to 'Production'
           package: .
