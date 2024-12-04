@@ -39,7 +39,7 @@ jobs:
           path: ${{env.DOTNET_ROOT}}/IntelligenceHub
 
   deploy:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     needs: build
     environment:
       name: ${{ github.event.inputs.environment || 'Production' }}  # Use selected environment or default to 'Production'
