@@ -8,60 +8,62 @@ on:
         description: Select the environment
         required: true
         options:
-          - dev
-          - prod
-  push:
-    branches:
-      - main
-      - dev
+          - Development
+          - Production
+  #push:
+  #  branches:
+  #    - master
 
 jobs:
-  pipeline:
+  build:
     runs-on: windows-latest
-    environment: ${{ github.event.inputs.environment }}
-    
+
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - uses: azure/login@v2
-      with:
-        creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.x'
 
-    - name: Azure CLI script
-      uses: azure/cli@v2
-      with:
-        azcliversion: latest
-        inlineScript: |
-          az account show
+      - name: Build with dotnet and test
+        run: dotnet build && dotnet test --configuration Release
 
-    # Build and Test
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0'
+      - name: dotnet publish
+        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
 
-    - name: Restore Dependencies
-      run: dotnet restore
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: .net-app
+          path: ${{env.DOTNET_ROOT}}/myapp
 
-    - name: Build and Test
-      run: dotnet build && dotnet test
+  deploy:
+    runs-on: windows-latest
+    needs: build
+    environment:
+      name: ${{ github.event.inputs.environment || 'Production' }}  # Use selected environment or default to 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    permissions:
+      id-token: write #This is required for requesting the JWT
 
-    # Deploy Infrastructure
-    - name: Deploy Bicep
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
-          az deployment group create \
-            --resource-group ${{ secrets.RESOURCE_GROUP }} \
-            --template-file infrastructure/main.bicep \
-            --parameters environment=${{ github.event.inputs.environment }}
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: .net-app
+      
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_CLIENT_SECRET }}
+          subscription-id: ${{ secrets.AZURE_CLIENT_SECRET }}
 
-    # Deploy Application
-    - name: Deploy App
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: IntelligenceHub-${{ github.event.inputs.environment }}
-        publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-
-   
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'IntelligenceHub'
+          slot-name: ${{ github.event.inputs.environment || 'Production' }}  # Use selected environment or default to 'Production'
+          package: .
