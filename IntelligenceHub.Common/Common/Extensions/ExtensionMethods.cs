@@ -1,4 +1,5 @@
 ﻿using OpenAI.Chat;
+using System.Reflection.Metadata;
 using System.Text;
 using static IntelligenceHub.Common.GlobalVariables;
 
@@ -39,6 +40,8 @@ namespace IntelligenceHub.Common.Extensions
         public static string[] ToStringArray(this string commaSeparatedString)
         {
             if (commaSeparatedString is null) throw new ArgumentNullException(nameof(commaSeparatedString));
+            if (commaSeparatedString == "") return []; // return an empty collection for 0 entries
+
             string[] result = commaSeparatedString.Split(',');
             for (int i = 0; i < result.Length; i++) result[i] = result[i].Trim(); // Trim each element to remove leading and trailing whitespaces
             return result;
