@@ -7,6 +7,6 @@ namespace IntelligenceHub.DAL.Interfaces
         Task<DbIndexMetadata?> GetByNameAsync(string name);
         Task<DbIndexMetadata> AddAsync(DbIndexMetadata entity);
         Task<IEnumerable<DbIndexMetadata>> GetAllAsync(int? count = null, int? page = null);
-        Task<int> DeleteAsync(DbIndexMetadata entity, string name);
+        Task<int> DeleteAsync(DbIndexMetadata entity);
     }
 }

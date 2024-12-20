@@ -1,9 +1,4 @@
-﻿using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
-using IntelligenceHub.Common.Config;
-
-namespace IntelligenceHub.Host.Policies
+﻿namespace IntelligenceHub.Host.Policies
 {
     public class LoadBalancingSelector
     {

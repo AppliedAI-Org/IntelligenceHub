@@ -1,11 +1,10 @@
 ﻿using Newtonsoft.Json;
-using IntelligenceHub.Common.Attributes;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace IntelligenceHub.DAL.Models
 {
-    [TableName("Tools")]
+    [Table("Tools")]
     public class DbTool
     {
         [Key]
@@ -18,5 +17,6 @@ namespace IntelligenceHub.DAL.Models
         public string? ExecutionUrl { get; set; }  
         public string? ExecutionMethod { get; set; }
         public string? ExecutionBase64Key { get; set; }
+        public ICollection<DbProfileTool> ProfileTools { get; set; }
     }
 }

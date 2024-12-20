@@ -1,5 +1,4 @@
 ﻿using OpenAI.Chat;
-using System.Reflection.Metadata;
 using System.Text;
 using static IntelligenceHub.Common.GlobalVariables;
 

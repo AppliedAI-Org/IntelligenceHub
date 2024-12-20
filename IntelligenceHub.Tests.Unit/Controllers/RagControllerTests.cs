@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Moq;
-using IntelligenceHub.Controllers;
-using IntelligenceHub.API.DTOs.RAG;
+﻿using IntelligenceHub.API.DTOs.RAG;
 using IntelligenceHub.Business.Interfaces;
+using IntelligenceHub.Controllers;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
 
 namespace IntelligenceHub.Tests.Unit.Controllers
 {

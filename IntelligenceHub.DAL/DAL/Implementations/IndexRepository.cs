@@ -1,96 +1,50 @@
-﻿using IntelligenceHub.API.DTOs.RAG;
-using IntelligenceHub.Common.Config;
-using IntelligenceHub.DAL.Interfaces;
+﻿using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
 
 namespace IntelligenceHub.DAL.Implementations
 {
     public class IndexRepository : GenericRepository<DbIndexDocument>, IIndexRepository
     {
-        public IndexRepository(IOptionsMonitor<Settings> settings) : base(settings.CurrentValue.DbConnectionString)
+        public IndexRepository(IntelligenceHubDbContext context) : base(context)
         {
         }
 
         public async Task<int> GetRagIndexLengthAsync(string tableName)
         {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                await connection.OpenAsync();
-
-                var query = $@"SELECT COUNT(*) FROM [{tableName}]";
-
-                using (var command = new SqlCommand(query, connection))
-                {
-                    var result = await command.ExecuteScalarAsync();
-                    return (int)result;
-                }
-            }
+            var query = $@"SELECT COUNT(*) FROM [{tableName}]";
+            return await _context.Database.ExecuteSqlRawAsync(query);
         }
 
         public async Task<DbIndexDocument?> GetDocumentAsync(string tableName, string title)
         {
-            using (var conn = new SqlConnection(_connectionString))
-            {
-                conn.Open();
-
-                var sql = $@"SELECT * FROM [{tableName}] WHERE Title = @Title;";
-
-                using (var cmd = new SqlCommand(sql, conn))
-                {
-                    cmd.Parameters.AddWithValue("@Title", title);
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                    {
-                        if (await reader.ReadAsync())
-                        {
-                            return MapFromReader<DbIndexDocument>(reader);
-                        }
-                    }
-                }
-            }
-            return null;
+            var query = $@"SELECT * FROM [{tableName}] WHERE Title = @Title";
+            var parameters = new[] { new SqlParameter("@Title", title) };
+            return await _dbSet.FromSqlRaw(query, parameters).FirstOrDefaultAsync();
         }
 
-        public async Task<bool> CreateIndexAsync(string indexName)
+        public async Task<bool> CreateIndexAsync(string tableName)
         {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                await connection.OpenAsync();
-
-                var query = $@"CREATE TABLE [{indexName}] (
-                                   Id INT IDENTITY(1,1) PRIMARY KEY,
-                                   Title NVARCHAR(255) NOT NULL,
-                                   Content NVARCHAR(MAX) NOT NULL,
-                                   Topic NVARCHAR(255),
-                                   Keywords NVARCHAR(255),
-                                   Source NVARCHAR(510) NOT NULL,
-                                   Created DATETIMEOFFSET NOT NULL,
-                                   Modified DATETIMEOFFSET NOT NULL
-                               );";
-
-                using (var command = new SqlCommand(query, connection))
-                {
-                    await command.ExecuteNonQueryAsync();
-                    return true;
-                }
-            }
+            var query = $@"CREATE TABLE [{tableName}] (
+                                Id INT IDENTITY(1,1) PRIMARY KEY,
+                                Title NVARCHAR(255) NOT NULL,
+                                Content NVARCHAR(MAX) NOT NULL,
+                                Topic NVARCHAR(255),
+                                Keywords NVARCHAR(255),
+                                Source NVARCHAR(510) NOT NULL,
+                                Created DATETIMEOFFSET NOT NULL,
+                                Modified DATETIMEOFFSET NOT NULL
+                            );";
+            await _context.Database.ExecuteSqlRawAsync(query);
+            return true;
         }
 
-        public async Task<bool> DeleteIndexAsync(string table)
+        public async Task<bool> DeleteIndexAsync(string tableName)
         {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                await connection.OpenAsync();
-
-                var query = $@"DROP TABLE IF EXISTS [{table}]";
-
-                using (var command = new SqlCommand(query, connection))
-                {
-                    await command.ExecuteNonQueryAsync();
-                    return true;
-                }
-            }
+            var query = $@"DROP TABLE IF EXISTS [{tableName}]";
+            await _context.Database.ExecuteSqlRawAsync(query);
+            return true;
         }
 
         public async Task<IEnumerable<DbIndexDocument>> GetAllAsync(int count, int page)
@@ -100,12 +54,56 @@ namespace IntelligenceHub.DAL.Implementations
 
         public async Task<DbIndexDocument> AddAsync(DbIndexDocument document, string tableName)
         {
-            return await base.AddAsync(document, tableName);
+            var query = $@"INSERT INTO [{tableName}] (Title, Content, Topic, Keywords, Source, Created, Modified)
+                               VALUES (@Title, @Content, @Topic, @Keywords, @Source, @Created, @Modified);
+                               SELECT CAST(SCOPE_IDENTITY() as int)";
+            var parameters = new[]
+            {
+                    new SqlParameter("@Title", document.Title),
+                    new SqlParameter("@Content", document.Content),
+                    new SqlParameter("@Topic", document.Topic ?? (object)DBNull.Value),
+                    new SqlParameter("@Keywords", document.Keywords ?? (object)DBNull.Value),
+                    new SqlParameter("@Source", document.Source),
+                    new SqlParameter("@Created", document.Created),
+                    new SqlParameter("@Modified", document.Modified)
+                };
+            document.Id = await _context.Database.ExecuteSqlRawAsync(query, parameters);
+            return document;
         }
 
-        public async Task<int> DeleteAsync(DbIndexDocument entity, string name)
+        public async Task<int> UpdateAsync(DbIndexDocument existing, DbIndexDocument document, string tableName)
         {
-            return await base.DeleteAsync(entity, name);
+            var query = $@"UPDATE [{tableName}] SET 
+                               Title = @Title, 
+                               Content = @Content, 
+                               Topic = @Topic, 
+                               Keywords = @Keywords, 
+                               Source = @Source, 
+                               Created = @Created, 
+                               Modified = @Modified 
+                               WHERE Id = @Id";
+            var parameters = new[]
+            {
+                    new SqlParameter("@Id", existing.Id),
+                    new SqlParameter("@Title", document.Title),
+                    new SqlParameter("@Content", document.Content),
+                    new SqlParameter("@Topic", document.Topic ?? (object)DBNull.Value),
+                    new SqlParameter("@Keywords", document.Keywords ?? (object)DBNull.Value),
+                    new SqlParameter("@Source", document.Source),
+                    new SqlParameter("@Created", document.Created),
+                    new SqlParameter("@Modified", document.Modified)
+                };
+            return await _context.Database.ExecuteSqlRawAsync(query, parameters);
+        }
+
+        public async Task<int> DeleteAsync(DbIndexDocument document, string tableName)
+        {
+            var query = $@"DELETE FROM [{tableName}] WHERE Id = @Id";
+            var parameters = new[]
+            {
+                    new SqlParameter("@Id", document.Id)
+                };
+            return await _context.Database.ExecuteSqlRawAsync(query, parameters);
         }
     }
 }

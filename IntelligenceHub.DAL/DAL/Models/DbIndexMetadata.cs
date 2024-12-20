@@ -1,12 +1,10 @@
-﻿using IntelligenceHub.API.DTOs.RAG;
-using IntelligenceHub.Common.Attributes;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace IntelligenceHub.DAL.Models
 {
     // map both the ScoringProfile and the IndexMetadata here
-    [TableName("IndexMetadata")]
+    [Table("IndexMetadata")]
     public class DbIndexMetadata
     {
         [Key]

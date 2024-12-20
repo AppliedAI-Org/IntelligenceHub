@@ -1,7 +1,4 @@
-﻿
-using IntelligenceHub.Tests.Common.Config;
-
-namespace IntelligenceHub.Tests.Competency.Config
+﻿namespace IntelligenceHub.Tests.Competency.Config
 {
     public class CompetencyTestingSettings
     {

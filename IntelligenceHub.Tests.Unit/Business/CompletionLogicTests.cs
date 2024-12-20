@@ -1,14 +1,10 @@
-using Moq;
-using System.Linq;
-using System.Collections.Generic;
 using IntelligenceHub.API.DTOs;
-using IntelligenceHub.API.DTOs.RAG;
-using IntelligenceHub.DAL.Models;
-using static IntelligenceHub.Common.GlobalVariables;
-using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.DAL.Interfaces;
+using IntelligenceHub.DAL.Models;
+using Moq;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Tests.Unit.Business
 {
@@ -54,8 +50,8 @@ namespace IntelligenceHub.Tests.Unit.Business
                 Messages = new List<Message> { new Message { Content = "Test message", Role = Role.User, TimeStamp = DateTime.UtcNow } }
             };
 
-            var profile = new Profile { Name = "TestProfile" };
-            _mockProfileRepository.Setup(repo => repo.GetByNameWithToolsAsync(It.IsAny<string>())).ReturnsAsync(profile);
+            var profile = new DbProfile { Name = "TestProfile" };
+            _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
 
             var completionStreamChunks = new List<CompletionStreamChunk>
             {
@@ -99,10 +95,10 @@ namespace IntelligenceHub.Tests.Unit.Business
                 ProfileOptions = new Profile { Name = "TestProfile" }
             };
 
-            var profile = new Profile { Name = "TestProfile" };
+            var profile = new DbProfile { Name = "TestProfile" };
             var completionResponse = new CompletionResponse { FinishReason = FinishReason.Stop };
 
-            _mockProfileRepository.Setup(repo => repo.GetByNameWithToolsAsync(It.IsAny<string>())).ReturnsAsync(profile);
+            _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
             _mockAIClient.Setup(client => client.PostCompletion(It.IsAny<CompletionRequest>())).ReturnsAsync(completionResponse);
 
             // Act
@@ -134,8 +130,9 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Arrange
             var profile = new Profile();
             var profileOptions = new Profile();
-            _mockProfileRepository.Setup(repo => repo.GetByNameWithToolsAsync(It.IsAny<string>()))
-                .ReturnsAsync(profile);
+            var dbProfile = new DbProfile();
+            _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>()))
+                .ReturnsAsync(dbProfile);
 
             // Act
             var result = await _completionLogic.BuildCompletionOptions(profile, profileOptions);

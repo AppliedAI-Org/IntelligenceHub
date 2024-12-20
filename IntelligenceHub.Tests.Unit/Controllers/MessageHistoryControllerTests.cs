@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using IntelligenceHub.API.DTOs;
+﻿using IntelligenceHub.API.DTOs;
+using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Controllers;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using Xunit;
-using IntelligenceHub.Common.Config;
-using IntelligenceHub.Business.Interfaces;
 
 namespace IntelligenceHub.Tests.Unit.Controllers
 {

@@ -3,13 +3,9 @@ using IntelligenceHub.API.DTOs;
 using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Client.Interfaces;
-using IntelligenceHub.Common;
-using IntelligenceHub.Common.Config;
 using IntelligenceHub.Common.Extensions;
 using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Interfaces;
-using System.ClientModel;
-using System.Net;
 using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Business.Implementations
@@ -52,9 +48,9 @@ namespace IntelligenceHub.Business.Implementations
         {
             if (completionRequest.ProfileOptions == null || string.IsNullOrEmpty(completionRequest.ProfileOptions.Name)) yield break;
 
-            var profile = await _profileDb.GetByNameWithToolsAsync(completionRequest.ProfileOptions.Name);
-            if (profile == null) profile = DbMappingHandler.MapFromDbProfile(await _profileDb.GetByNameAsync(completionRequest.ProfileOptions.Name));
-            completionRequest.ProfileOptions = await BuildCompletionOptions(profile, completionRequest.ProfileOptions);
+            var profile = await _profileDb.GetByNameAsync(completionRequest.ProfileOptions.Name);
+            var mappedProfile = DbMappingHandler.MapFromDbProfile(profile);
+            completionRequest.ProfileOptions = await BuildCompletionOptions(mappedProfile, completionRequest.ProfileOptions);
 
             // Get and attach message history if a conversation id exists
             if (completionRequest.ConversationId is Guid conversationId)
@@ -131,9 +127,9 @@ namespace IntelligenceHub.Business.Implementations
             if (!completionRequest.Messages.Any() || string.IsNullOrEmpty(completionRequest.ProfileOptions.Name)) return null;
 
             // Get and set profile details, overriding the database with any parameters that aren't null in the request
-            var profile = await _profileDb.GetByNameWithToolsAsync(completionRequest.ProfileOptions.Name);
-            if (profile == null) profile = DbMappingHandler.MapFromDbProfile(await _profileDb.GetByNameAsync(completionRequest.ProfileOptions.Name));
-            completionRequest.ProfileOptions = await BuildCompletionOptions(profile, completionRequest.ProfileOptions);
+            var profile = await _profileDb.GetByNameAsync(completionRequest.ProfileOptions.Name);
+            var mappedProfile = DbMappingHandler.MapFromDbProfile(profile);
+            completionRequest.ProfileOptions = await BuildCompletionOptions(mappedProfile, completionRequest.ProfileOptions);
 
             // Get and attach message history if a conversation id exists
             if (completionRequest.ConversationId is Guid conversationId)
@@ -180,8 +176,11 @@ namespace IntelligenceHub.Business.Implementations
             var messageHistory = await _messageHistoryRepository.GetConversationAsync(conversationId, maxMessageHistory ?? _defaultMessageHistory);
             if (messageHistory == null || messageHistory.Count < 1) return requestMessages; // no conversation found, return original data and create conversation entry later
 
+            var mappedMessageHistory = new List<Message>();
+            foreach (var message in messageHistory) mappedMessageHistory.Add(DbMappingHandler.MapFromDbMessage(message)); 
+
             // ensure the messages are properly arranged, with the user completion appearing very last
-            allMessages.AddRange(messageHistory);
+            allMessages.AddRange(mappedMessageHistory);
             allMessages.AddRange(requestMessages);
 
             return allMessages;

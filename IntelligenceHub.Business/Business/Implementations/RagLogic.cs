@@ -1,12 +1,11 @@
-﻿using IntelligenceHub.Common;
-using IntelligenceHub.DAL;
-using IntelligenceHub.API.DTOs;
+﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.API.DTOs.RAG;
-using System.Text.RegularExpressions;
-using IntelligenceHub.Common.Config;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Client.Interfaces;
+using IntelligenceHub.Common;
+using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Interfaces;
+using System.Text.RegularExpressions;
 
 namespace IntelligenceHub.Business.Implementations
 {
@@ -98,7 +97,7 @@ namespace IntelligenceHub.Business.Implementations
                 success = await _searchClient.DeleteIndex(index);
                 if (!success) return false;
 
-                var rowsAffected = await _metaRepository.DeleteAsync(indexMetadata, indexMetadata.Name);
+                var rowsAffected = await _metaRepository.DeleteAsync(indexMetadata);
                 if (rowsAffected > 0) return true;
             }
             return false;

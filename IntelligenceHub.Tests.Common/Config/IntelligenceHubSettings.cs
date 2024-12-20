@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace IntelligenceHub.Tests.Common.Config
+﻿namespace IntelligenceHub.Tests.Common.Config
 {
     public class IntelligenceHubSettings
     {

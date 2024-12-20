@@ -1,6 +1,5 @@
-﻿using Newtonsoft.Json;
-using System.ComponentModel.DataAnnotations;
-using IntelligenceHub.API.DTOs.Tools;
+﻿using IntelligenceHub.API.DTOs.Tools;
+using Newtonsoft.Json;
 
 namespace IntelligenceHub.API.DTOs
 {

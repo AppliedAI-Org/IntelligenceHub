@@ -1,17 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using global::IntelligenceHub.API.DTOs.RAG;
-using global::IntelligenceHub.Business;
-using global::IntelligenceHub.Client;
+﻿using global::IntelligenceHub.API.DTOs.RAG;
 using global::IntelligenceHub.DAL.Models;
-using global::IntelligenceHub.DAL;
-using Moq;
-using Xunit;
-using IntelligenceHub.Common.Config;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.DAL.Interfaces;
+using Moq;
 
 namespace IntelligenceHub.Tests.Unit.Business
 {
@@ -122,7 +114,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockSearchClient.Setup(client => client.DeleteIndexer(indexName, It.IsAny<string>())).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.DeleteDatasource(indexName)).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.DeleteIndex(indexName)).ReturnsAsync(true);
-            _mockMetaRepository.Setup(repo => repo.DeleteAsync(dbIndexMetadata, indexName)).ReturnsAsync(1);
+            _mockMetaRepository.Setup(repo => repo.DeleteAsync(dbIndexMetadata)).ReturnsAsync(1);
 
             // Act
             var result = await _ragLogic.DeleteIndex(indexName);

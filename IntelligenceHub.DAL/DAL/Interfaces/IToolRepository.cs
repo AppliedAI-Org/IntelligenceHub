@@ -5,14 +5,13 @@ namespace IntelligenceHub.DAL.Interfaces
 {
     public interface IToolRepository
     {
-        Task<Tool> GetToolByNameAsync(string name);
-        Task<Tool> GetToolByIdAsync(int id);
+        Task<DbTool?> GetByIdAsync(int id);
         Task<List<string>> GetProfileToolsAsync(string name);
         Task<List<string>> GetToolProfilesAsync(string name);
-        Task<DbTool> GetByNameAsync(string name);
-        Task<IEnumerable<DbTool>> GetAllAsync();
-        Task UpdateAsync(DbTool existingTool, DbTool updateToolDto);
-        Task<DbTool?> AddAsync(DbTool tool);
+        Task<DbTool?> GetByNameAsync(string name);
+        Task<IEnumerable<DbTool>> GetAllAsync(int? count = null, int? page = null);
+        Task<int> UpdateAsync(DbTool existingTool, DbTool updateToolDto);
+        Task<DbTool> AddAsync(DbTool tool);
         Task<int> DeleteAsync(DbTool tool);
     }
 }

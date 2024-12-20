@@ -1,12 +1,11 @@
 ﻿using IntelligenceHub.API.DTOs;
+using IntelligenceHub.Common;
 using IntelligenceHub.Tests.Common.Auth;
 using IntelligenceHub.Tests.Common.Config;
 using IntelligenceHub.Tests.Competency.Config;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Text;
-using System.IO;
-using IntelligenceHub.Common;
 
 namespace IntelligenceHub.Tests.Competency
 {

@@ -1,9 +1,4 @@
-﻿using IntelligenceHub.Client;
-using IntelligenceHub.Common;
-using IntelligenceHub.DAL;
-using IntelligenceHub.API.DTOs;
-using IntelligenceHub.API.DTOs.RAG;
-using System.Text.RegularExpressions;
+﻿using IntelligenceHub.API.DTOs.RAG;
 
 namespace IntelligenceHub.Business.Interfaces
 {

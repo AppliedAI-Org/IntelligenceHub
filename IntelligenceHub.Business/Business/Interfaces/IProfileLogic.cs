@@ -1,13 +1,11 @@
-﻿using IntelligenceHub.API.DTOs.Tools;
-using IntelligenceHub.API.DTOs;
-using IntelligenceHub.DAL.Models;
-using IntelligenceHub.DAL;
+﻿using IntelligenceHub.API.DTOs;
+using IntelligenceHub.API.DTOs.Tools;
 
 namespace IntelligenceHub.Business.Interfaces
 {
     public interface IProfileLogic
     {
-        Task<Profile> GetProfile(string name);
+        Task<Profile?> GetProfile(string name);
         Task<IEnumerable<Profile>> GetAllProfiles();
         Task<string?> CreateOrUpdateProfile(Profile profileDto);
         Task<string> DeleteProfile(string name);

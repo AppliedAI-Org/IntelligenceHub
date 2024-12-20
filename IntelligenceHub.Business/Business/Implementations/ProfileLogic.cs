@@ -1,11 +1,10 @@
-﻿using IntelligenceHub.DAL;
-using IntelligenceHub.DAL.Models;
-using IntelligenceHub.API.DTOs;
+﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.API.DTOs.Tools;
-using IntelligenceHub.Common.Config;
-using IntelligenceHub.Business.Interfaces;
-using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.Business.Handlers;
+using IntelligenceHub.Business.Interfaces;
+using IntelligenceHub.DAL;
+using IntelligenceHub.DAL.Interfaces;
+using IntelligenceHub.DAL.Models;
 
 namespace IntelligenceHub.Business.Implementations
 {
@@ -31,16 +30,23 @@ namespace IntelligenceHub.Business.Implementations
         }
 
         // else shouldn't be required here
-        public async Task<Profile> GetProfile(string name)
+        public async Task<Profile?> GetProfile(string name)
         {
-            var dbProfile = await _profileDb.GetByNameWithToolsAsync(name);
+            var dbProfile = await _profileDb.GetByNameAsync(name);
             if (dbProfile != null)
             {
+                var profile = DbMappingHandler.MapFromDbProfile(dbProfile);
                 // package this into a seperate method (same one as in GetAllProfiles())
                 var profileToolDTOs = await _profileToolsDb.GetToolAssociationsAsync(dbProfile.Id);
-                dbProfile.Tools = new List<Tool>();
-                foreach (var association in profileToolDTOs) dbProfile.Tools.Add(await _toolDb.GetToolByIdAsync(association.ToolID));
-                return dbProfile;
+                profile.Tools = new List<Tool>();
+                foreach (var association in profileToolDTOs)
+                {
+                    var dbTool = await _toolDb.GetByIdAsync(association.ToolID);
+                    if (dbTool == null) continue;
+                    var mappedTool = DbMappingHandler.MapFromDbTool(dbTool);
+                    profile.Tools.Add(mappedTool);
+                }
+                return profile;
             }
             else
             {
@@ -64,8 +70,10 @@ namespace IntelligenceHub.Business.Implementations
                     apiProfileDto.Tools = new List<Tool>();
                     foreach (var association in profileToolDTOs)
                     {
-                        var tool = await _toolDb.GetToolByIdAsync(association.ToolID);
-                        apiProfileDto.Tools.Add(tool);
+                        var tool = await _toolDb.GetByIdAsync(association.ToolID);
+                        if (tool == null) continue;
+                        var mappedTool = DbMappingHandler.MapFromDbTool(tool);
+                        apiProfileDto.Tools.Add(mappedTool);
                     }
                     apiResponseList.Add(apiProfileDto);
                 }
@@ -95,11 +103,9 @@ namespace IntelligenceHub.Business.Implementations
 
             if (profileDto.Tools != null && profileDto.Tools.Count > 0)
             {
-                if (existingProfile == null) await AddOrUpdateProfileTools(profileDto, null);
-                else await AddOrUpdateProfileTools(profileDto, DbMappingHandler.MapFromDbProfile(existingProfile));
+                if (existingProfile == null) success = await AddOrUpdateProfileTools(profileDto, null);
+                else success = await AddOrUpdateProfileTools(profileDto, DbMappingHandler.MapFromDbProfile(existingProfile));
             }
-            var existingProfileWithTools = await _profileDb.GetByNameWithToolsAsync(profileDto.Name);
-            if (success && existingProfileWithTools != null) success = await AddOrUpdateProfileTools(profileDto, existingProfileWithTools);
             if (!success) return _unknownErroMessage;
             return null;
         }
@@ -107,17 +113,18 @@ namespace IntelligenceHub.Business.Implementations
         // could also use some refactoring
         public async Task<string> DeleteProfile(string name)
         {
-            var profileDto = await _profileDb.GetByNameWithToolsAsync(name);
+            var dbProfile = await _profileDb.GetByNameAsync(name);
             int rows;
-            if (profileDto != null)
+            if (dbProfile != null)
             {
-                if (profileDto.Tools != null && profileDto.Tools.Count > 0) await _profileToolsDb.DeleteAllProfileAssociationsAsync(profileDto.Id);
-                var dbProfileDTO = new DbProfile()
-                {
-                    Id = profileDto.Id,
-                    Name = profileDto.Name
-                };
-                rows = await _profileDb.DeleteAsync(dbProfileDTO);
+                var tools = new List<Tool>();
+                var dbTools = dbProfile.ProfileTools.Select(pt => pt.Tool).ToList();
+                foreach (var tool in dbTools) tools.Add(DbMappingHandler.MapFromDbTool(tool));
+                var profile = DbMappingHandler.MapFromDbProfile(dbProfile, tools);
+
+                if (profile.Tools != null && profile.Tools.Count > 0) await _profileToolsDb.DeleteAllProfileAssociationsAsync(dbProfile.Id);
+
+                rows = await _profileDb.DeleteAsync(dbProfile);
             }
             else
             {
@@ -139,7 +146,7 @@ namespace IntelligenceHub.Business.Implementations
                 await CreateOrUpdateTools(profileDto.Tools);
                 foreach (var tool in profileDto.Tools)
                 {
-                    var dbTool = await _toolDb.GetToolByNameAsync(tool.Function.Name);
+                    var dbTool = await _toolDb.GetByNameAsync(tool.Function.Name);
                     toolIds.Add(dbTool.Id);
                 }
                 await _profileToolsDb.AddAssociationsByProfileIdAsync(existingProfile.Id, toolIds);
@@ -149,7 +156,8 @@ namespace IntelligenceHub.Business.Implementations
 
         public async Task<Tool> GetTool(string name)
         {
-            return await _toolDb.GetToolByNameAsync(name);
+            var dbTool = await _toolDb.GetByNameAsync(name);
+            return DbMappingHandler.MapFromDbTool(dbTool);
         }
 
         public async Task<IEnumerable<Tool>> GetAllTools()
@@ -190,7 +198,8 @@ namespace IntelligenceHub.Business.Implementations
             foreach (var tool in toolList)
             {
                 var dbToolDTO = DbMappingHandler.MapToDbTool(tool);
-                var existingToolDTO = await _toolDb.GetToolByNameAsync(tool.Function.Name);
+                var existingDbTool = await _toolDb.GetByNameAsync(tool.Function.Name);
+                var existingToolDTO = DbMappingHandler.MapFromDbTool(existingDbTool);
                 if (existingToolDTO != null)
                 {
                     var existingTool = DbMappingHandler.MapToDbTool(existingToolDTO);
@@ -261,7 +270,9 @@ namespace IntelligenceHub.Business.Implementations
 
         public async Task<bool> DeleteTool(string name)
         {
-            var existingTool = await _toolDb.GetToolByNameAsync(name);
+            var existingDbTool = await _toolDb.GetByNameAsync(name);
+            var dbProperites = await _propertyDb.GetToolProperties(existingDbTool.Id);
+            var existingTool = DbMappingHandler.MapFromDbTool(existingDbTool, dbProperites.ToList());
             if (existingTool != null)
             {
                 foreach (var property in existingTool.Function.Parameters.Properties)

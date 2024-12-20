@@ -1,11 +1,10 @@
-﻿using Newtonsoft.Json;
+﻿using IntelligenceHub.API.DTOs.Tools;
+using IntelligenceHub.Client.Interfaces;
+using IntelligenceHub.Common;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Net.Http.Headers;
 using System.Text;
-using IntelligenceHub.API.DTOs.Tools;
-using IntelligenceHub.Common;
-using IntelligenceHub.Client.Interfaces;
-using System.Net.Http;
 
 namespace IntelligenceHub.Client.Implementations
 {

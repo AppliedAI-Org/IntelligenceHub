@@ -1,6 +1,6 @@
-﻿using System.Net.Http.Headers;
-using Polly;
+﻿using Polly;
 using Polly.Retry;
+using System.Net.Http.Headers;
 
 namespace IntelligenceHub.Tests.Common.Auth
 {

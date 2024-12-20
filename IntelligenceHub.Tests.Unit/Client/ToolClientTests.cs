@@ -1,12 +1,7 @@
-﻿using System;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
-using IntelligenceHub.Client.Implementations;
+﻿using IntelligenceHub.Client.Implementations;
 using Moq;
 using Moq.Protected;
-using Newtonsoft.Json;
-using Xunit;
+using System.Net;
 
 namespace IntelligenceHub.Tests.Unit.Client
 {

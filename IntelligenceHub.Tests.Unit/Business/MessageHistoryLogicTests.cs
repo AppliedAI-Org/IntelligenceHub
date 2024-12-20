@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using IntelligenceHub.DAL.Models;
-using IntelligenceHub.API.DTOs;
-using Moq;
-using Xunit;
+﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.DAL.Interfaces;
+using IntelligenceHub.DAL.Models;
+using Moq;
 
 namespace IntelligenceHub.Tests.Unit.Business
 {
@@ -26,14 +22,22 @@ namespace IntelligenceHub.Tests.Unit.Business
         {
             // Arrange
             var conversationId = Guid.NewGuid();
-            var messages = new List<Message> { new Message { Content = "Test message" } };
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10)).ReturnsAsync(messages);
+            var timeStamp = DateTime.UtcNow;
+            var messages = new List<Message> { new Message { Content = "Test message", TimeStamp = timeStamp } };
+            var dbMessages = new List<DbMessage> { new DbMessage { Content = "Test message", TimeStamp = timeStamp } };
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10)).ReturnsAsync(dbMessages);
 
             // Act
             var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10);
 
             // Assert
-            Assert.Equal(messages, result);
+            Assert.Collection(result, message =>
+            {
+                Assert.Equal("Test message", message.Content);
+                Assert.Equal(timeStamp, message.TimeStamp);
+                Assert.Null(message.Base64Image);
+                Assert.Null(message.Role);
+            });
         }
 
         [Fact]
@@ -41,7 +45,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         {
             // Arrange
             var conversationId = Guid.NewGuid();
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10)).ReturnsAsync(new List<Message>());
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10)).ReturnsAsync(new List<DbMessage>());
 
             // Act
             var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10);
@@ -57,7 +61,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var conversationId = Guid.NewGuid();
             var messages = new List<Message> { new Message { Content = "Test message" } };
             var dbMessage = new DbMessage { Content = "Test message" };
-            _messageHistoryRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<DbMessage>(), null)).ReturnsAsync(dbMessage);
+            _messageHistoryRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<DbMessage>())).ReturnsAsync(dbMessage);
 
             // Act
             var result = await _messageHistoryLogic.UpdateOrCreateConversation(conversationId, messages);
@@ -73,7 +77,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Arrange
             var conversationId = Guid.NewGuid();
             var messages = new List<Message> { new Message { Content = "Test message" } };
-            _messageHistoryRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<DbMessage>(), null)).ReturnsAsync((DbMessage?)null);
+            _messageHistoryRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<DbMessage>())).ReturnsAsync((DbMessage?)null);
 
             // Act
             var result = await _messageHistoryLogic.UpdateOrCreateConversation(conversationId, messages);
@@ -117,8 +121,8 @@ namespace IntelligenceHub.Tests.Unit.Business
             var conversationId = Guid.NewGuid();
             var message = new Message { Content = "Test message" };
             var dbMessage = new DbMessage { Content = "Test message" };
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1)).ReturnsAsync(new List<Message> { message });
-            _messageHistoryRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<DbMessage>(), null)).ReturnsAsync(dbMessage);
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1)).ReturnsAsync(new List<DbMessage> { dbMessage });
+            _messageHistoryRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<DbMessage>())).ReturnsAsync(dbMessage);
 
             // Act
             var result = await _messageHistoryLogic.AddMessage(conversationId, message);
@@ -134,7 +138,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Arrange
             var conversationId = Guid.NewGuid();
             var message = new Message { Content = "Test message" };
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1)).ReturnsAsync((List<Message>?)null);
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1)).ReturnsAsync((List<DbMessage>?)null);
 
             // Act
             var result = await _messageHistoryLogic.AddMessage(conversationId, message);
@@ -149,7 +153,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Arrange
             var conversationId = Guid.NewGuid();
             var messageId = 1;
-            _messageHistoryRepositoryMock.Setup(repo => repo.DeleteMessageAsync(conversationId, messageId)).ReturnsAsync(true);
+            _messageHistoryRepositoryMock.Setup(repo => repo.DeleteAsync(conversationId, messageId)).ReturnsAsync(true);
 
             // Act
             var result = await _messageHistoryLogic.DeleteMessage(conversationId, messageId);
@@ -164,7 +168,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Arrange
             var conversationId = Guid.NewGuid();
             var messageId = 1;
-            _messageHistoryRepositoryMock.Setup(repo => repo.DeleteMessageAsync(conversationId, messageId)).ReturnsAsync(false);
+            _messageHistoryRepositoryMock.Setup(repo => repo.DeleteAsync(conversationId, messageId)).ReturnsAsync(false);
 
             // Act
             var result = await _messageHistoryLogic.DeleteMessage(conversationId, messageId);

@@ -1,10 +1,9 @@
-﻿using IntelligenceHub.Common.Attributes;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace IntelligenceHub.DAL.Models
 {
-    [TableName("MessageHistory")]
+    [Table("MessageHistory")]
     public class DbMessage
     {
         [Key]

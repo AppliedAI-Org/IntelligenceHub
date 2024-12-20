@@ -1,263 +1,95 @@
-﻿using IntelligenceHub.API.DTOs;
-using IntelligenceHub.Common.Config;
+﻿using IntelligenceHub.Common.Config;
 using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace IntelligenceHub.DAL.Implementations
 {
-    //make this more generic
-    public class ProfileToolsAssociativeRepository : IAssociativeRepository<DbProfileTool>, IProfileToolsAssociativeRepository
+    // Technically this repository shoul
+    public class ProfileToolsAssociativeRepository : GenericRepository<DbProfileTool>, IProfileToolsAssociativeRepository
     {
-        private readonly string _connectionString;
-
-        public ProfileToolsAssociativeRepository(IOptionsMonitor<Settings> settings)
+        public ProfileToolsAssociativeRepository(IntelligenceHubDbContext context) : base(context)
         {
-            _connectionString = settings.CurrentValue.DbConnectionString;
         }
 
         public async Task<List<DbProfileTool>> GetToolAssociationsAsync(int profileId)
         {
-            try
-            {
-                using (var connection = new SqlConnection(_connectionString))
-                {
-                    await connection.OpenAsync();
-
-                    var query = $@"SELECT * FROM profileTools WHERE ProfileId = @ProfileId";
-
-                    using (var command = new SqlCommand(query, connection))
-                    {
-                        // Assuming there is an Id property for the WHERE clause
-                        command.Parameters.AddWithValue("@ProfileId", profileId);
-                        using (var reader = await command.ExecuteReaderAsync())
-                        {
-                            var associations = new List<DbProfileTool>();
-                            while (await reader.ReadAsync())
-                            {
-                                associations.Add(MapAssociationsFromReader(reader));
-                            }
-                            return associations;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            return await _context.ProfileTools
+                .Where(pt => pt.ProfileID == profileId)
+                .ToListAsync();
         }
 
-        public async Task<bool> AddAssociationsByProfileIdAsync(int profileId, List<int> toolList)
+        public async Task<bool> AddAssociationsByProfileIdAsync(int profileId, List<int> toolIds)
         {
-            try
+            foreach (var toolId in toolIds)
             {
-                using (var connection = new SqlConnection(_connectionString))
+                if (!await _context.ProfileTools.AnyAsync(pt => pt.ProfileID == profileId && pt.ToolID == toolId))
                 {
-                    await connection.OpenAsync();
-                    foreach (var toolId in toolList)
-                    {
-                        var query = @"
-                            IF @ProfileID IS NOT NULL AND NOT EXISTS (
-                                SELECT 1
-                                FROM profileTools
-                                WHERE ProfileID = @ProfileID
-                                AND ToolID = @ToolID
-                            )
-                            BEGIN
-                                INSERT INTO profileTools (ProfileID, ToolID) 
-                                VALUES (@ProfileID, @ToolID)
-                            END";
-
-                        using (var command = new SqlCommand(query, connection))
-                        {
-
-                            command.Parameters.AddWithValue("@ToolID", toolId);
-                            command.Parameters.AddWithValue("@ProfileID", profileId);
-
-                            await command.ExecuteNonQueryAsync();
-                        }
-                    }
-                    return true;
+                    _context.ProfileTools.Add(new DbProfileTool { ProfileID = profileId, ToolID = toolId });
                 }
             }
-            catch (Exception)
-            {
-                throw;
-            }
+            await _context.SaveChangesAsync();
+            return true;
         }
 
-        public async Task<bool> AddAssociationsByToolIdAsync(int toolId, List<string> profileList)
+        public async Task<bool> AddAssociationsByToolIdAsync(int toolId, List<string> profileNames)
         {
-            try
+            foreach (var name in profileNames)
             {
-                using (var connection = new SqlConnection(_connectionString))
+                var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.Name == name);
+                if (profile != null && !await _context.ProfileTools.AnyAsync(pt => pt.ProfileID == profile.Id && pt.ToolID == toolId))
                 {
-                    await connection.OpenAsync();
-
-                    // move this foreach out for increased versatility
-                    foreach (var name in profileList)
-                    {
-                        // check if association exists, then checks if profile exists
-                        var queryCheckExistence = @"
-                            DECLARE @ProfileID int
-                            SET @ProfileID = (SELECT Id FROM profiles WHERE [Name] = @Name)
-
-                            -- If profile exists, check if association does not exist
-                            IF @ProfileID IS NOT NULL AND NOT EXISTS (
-                                SELECT 1
-                                FROM profileTools
-                                WHERE ProfileID = @ProfileID
-                                AND ToolID = @ToolID
-                            )
-                            BEGIN
-                                INSERT INTO profileTools (ProfileID, ToolID) 
-                                VALUES (@ProfileID, @ToolID)
-                            END";
-
-                        using (var commandCheckExistence = new SqlCommand(queryCheckExistence, connection))
-                        {
-                            commandCheckExistence.Parameters.AddWithValue("@Name", name);
-                            commandCheckExistence.Parameters.AddWithValue("@ToolID", toolId);
-
-                            await commandCheckExistence.ExecuteNonQueryAsync();
-                        }
-                    }
-                    return true;
+                    _context.ProfileTools.Add(new DbProfileTool { ProfileID = profile.Id, ToolID = toolId });
                 }
             }
-            catch (Exception)
-            {
-                throw;
-            }
+            await _context.SaveChangesAsync();
+            return true;
         }
 
-        public async Task<int> DeleteToolAssociationAsync(int toolId, string name) // change to delete all associations by tool
+        public async Task<int> DeleteToolAssociationAsync(int toolId, string profileName)
         {
-            try
+            var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.Name == profileName);
+            if (profile != null)
             {
-                using (var connection = new SqlConnection(_connectionString))
+                var association = await _context.ProfileTools.FirstOrDefaultAsync(pt => pt.ToolID == toolId && pt.ProfileID == profile.Id);
+                if (association != null)
                 {
-                    await connection.OpenAsync();
-
-                    var query = $@"     
-                        DECLARE @ProfileID int;
-                        SET @ProfileID = (SELECT Id FROM profiles WHERE [Name] = @Name);
-                        IF @ProfileID IS NOT NULL
-                        BEGIN
-                            DELETE FROM profileTools
-                            WHERE ToolID = @ToolID
-                            AND ProfileID = @ProfileID;
-                        END";
-
-                    using (var command = new SqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@ToolID", toolId);
-                        command.Parameters.AddWithValue("@Name", name);
-                        return await command.ExecuteNonQueryAsync();
-                    }
+                    _context.ProfileTools.Remove(association);
+                    return await _context.SaveChangesAsync();
                 }
             }
-            catch (Exception)
-            {
-                throw;
-            }
+            return 0;
         }
 
-        public async Task<int> DeleteProfileAssociationAsync(int profileID, string name) // change to delete all associations by tool
+        public async Task<int> DeleteProfileAssociationAsync(int profileId, string toolName)
         {
-            try
+            var tool = await _context.Tools.FirstOrDefaultAsync(t => t.Name == toolName);
+            if (tool != null)
             {
-                using (var connection = new SqlConnection(_connectionString))
+                var association = await _context.ProfileTools.FirstOrDefaultAsync(pt => pt.ProfileID == profileId && pt.ToolID == tool.Id);
+                if (association != null)
                 {
-                    await connection.OpenAsync();
-
-                    var query = $@"     
-                        DECLARE @ToolID int;
-                        SET @ToolID = (SELECT Id FROM tools WHERE [Name] = @Name);
-                        IF @ToolID IS NOT NULL
-                        BEGIN
-                            DELETE FROM profileTools
-                            WHERE ProfileID = @ProfileID
-                            AND ToolID = @ToolID;
-                        END";
-
-                    using (var command = new SqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@ProfileID", profileID);
-                        command.Parameters.AddWithValue("@Name", name);
-                        return await command.ExecuteNonQueryAsync();
-                    }
+                    _context.ProfileTools.Remove(association);
+                    return await _context.SaveChangesAsync();
                 }
             }
-            catch (Exception)
-            {
-                throw;
-            }
+            return 0;
         }
 
-        public async Task<int> DeleteAllProfileAssociationsAsync(int profileId) // change to delete all associations by profile
+        public async Task<int> DeleteAllProfileAssociationsAsync(int profileId)
         {
-            try
-            {
-                using (var connection = new SqlConnection(_connectionString))
-                {
-                    await connection.OpenAsync();
-
-                    var query = $@"DELETE FROM profileTools WHERE ProfileId = @ProfileId";
-
-                    using (var command = new SqlCommand(query, connection))
-                    {
-                        // Assuming there is an Id property for the WHERE clause
-                        command.Parameters.AddWithValue("@ProfileId", profileId);
-                        return await command.ExecuteNonQueryAsync();
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                throw;
-            }
+            var associations = _context.ProfileTools.Where(pt => pt.ProfileID == profileId);
+            _context.ProfileTools.RemoveRange(associations);
+            return await _context.SaveChangesAsync();
         }
 
-        public async Task<int> DeleteAllToolAssociationsAsync(int toolId) // change to delete all associations by profile
+        public async Task<int> DeleteAllToolAssociationsAsync(int toolId)
         {
-            try
-            {
-                using (var connection = new SqlConnection(_connectionString))
-                {
-                    await connection.OpenAsync();
-
-                    var query = $@"DELETE FROM profileTools WHERE ToolID = @ToolID";
-
-                    using (var command = new SqlCommand(query, connection))
-                    {
-                        // Assuming there is an Id property for the WHERE clause
-                        command.Parameters.AddWithValue("@ToolID", toolId);
-                        return await command.ExecuteNonQueryAsync();
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-        }
-
-        private DbProfileTool MapAssociationsFromReader(SqlDataReader reader)
-        {
-            var entity = new DbProfileTool();
-            foreach (var property in typeof(DbProfileTool).GetProperties())
-            {
-                var columnName = property.Name;
-                var value = reader[columnName];
-                if (value != DBNull.Value)
-                {
-                    property.SetValue(entity, value);
-                }
-            }
-            return entity;
+            var associations = _context.ProfileTools.Where(pt => pt.ToolID == toolId);
+            _context.ProfileTools.RemoveRange(associations);
+            return await _context.SaveChangesAsync();
         }
     }
 }

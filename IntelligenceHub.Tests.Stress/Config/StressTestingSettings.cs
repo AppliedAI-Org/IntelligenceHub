@@ -1,7 +1,4 @@
-﻿
-using IntelligenceHub.Tests.Common.Config;
-
-namespace IntelligenceHub.Tests.Stress.Config
+﻿namespace IntelligenceHub.Tests.Stress.Config
 {
     public class StressTestingSettings
     {

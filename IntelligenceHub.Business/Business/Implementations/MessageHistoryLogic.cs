@@ -18,7 +18,10 @@ namespace IntelligenceHub.Business.Implementations
 
         public async Task<List<Message>> GetConversationHistory(Guid id, int count)
         {
-            return await _messageHistoryRepository.GetConversationAsync(id, count);
+            var messages = new List<Message>();
+            var dbMessages = await _messageHistoryRepository.GetConversationAsync(id, count);
+            foreach (var dbMessage in dbMessages) messages.Add(DbMappingHandler.MapFromDbMessage(dbMessage));
+            return messages;
         }
 
         public async Task<List<Message>> UpdateOrCreateConversation(Guid conversationId, List<Message> messages)
@@ -49,7 +52,7 @@ namespace IntelligenceHub.Business.Implementations
 
         public async Task<bool> DeleteMessage(Guid conversationId, int messageId)
         {
-            return await _messageHistoryRepository.DeleteMessageAsync(conversationId, messageId);
+            return await _messageHistoryRepository.DeleteAsync(conversationId, messageId);
         }
     }
 }

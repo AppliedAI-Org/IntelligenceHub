@@ -1,15 +1,9 @@
-using Xunit;
-using Moq;
-using IntelligenceHub.Business;
-using IntelligenceHub.DAL;
-using IntelligenceHub.DAL.Models;
 using IntelligenceHub.API.DTOs;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using IntelligenceHub.API.DTOs.Tools;
+using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.DAL.Interfaces;
-using IntelligenceHub.Business.Handlers;
+using IntelligenceHub.DAL.Models;
+using Moq;
 
 namespace IntelligenceHub.Tests.Unit.Business
 {
@@ -42,7 +36,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task GetProfile_ReturnsNull_WhenProfileDoesNotExist()
         {
             // Arrange
-            _mockProfileRepository.Setup(repo => repo.GetByNameWithToolsAsync(It.IsAny<string>())).ReturnsAsync((Profile)null);
+            _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync((DbProfile)null);
 
             // Act
             var result = await _profileLogic.GetProfile("NonExistentProfile");
@@ -55,8 +49,8 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task GetProfile_ReturnsProfile_WhenProfileExists()
         {
             // Arrange
-            var profile = new Profile { Id = 1, Name = "ExistingProfile" };
-            _mockProfileRepository.Setup(repo => repo.GetByNameWithToolsAsync(It.IsAny<string>())).ReturnsAsync(profile);
+            var profile = new DbProfile { Id = 1, Name = "ExistingProfile" };
+            _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
             _mockProfileToolsRepository.Setup(repo => repo.GetToolAssociationsAsync(It.IsAny<int>())).ReturnsAsync(new List<DbProfileTool>());
 
             // Act
@@ -101,7 +95,6 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task DeleteProfile_ReturnsErrorMessage_WhenProfileDoesNotExist()
         {
             // Arrange
-            _mockProfileRepository.Setup(repo => repo.GetByNameWithToolsAsync(It.IsAny<string>())).ReturnsAsync((Profile)null);
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync((DbProfile)null);
 
             // Act
@@ -115,8 +108,8 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task DeleteProfile_DeletesProfile_WhenProfileExists()
         {
             // Arrange
-            var profile = new Profile { Id = 1, Name = "ExistingProfile" };
-            _mockProfileRepository.Setup(repo => repo.GetByNameWithToolsAsync(It.IsAny<string>())).ReturnsAsync(profile);
+            var profile = new DbProfile { Id = 1, Name = "ExistingProfile" };
+            _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
             _mockProfileRepository.Setup(repo => repo.DeleteAsync(It.IsAny<DbProfile>())).ReturnsAsync(1);
 
             // Act
@@ -131,7 +124,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task GetAllProfiles_ReturnsEmptyList_WhenNoProfilesExist()
         {
             // Arrange
-            _mockProfileRepository.Setup(repo => repo.GetAllAsync()).ReturnsAsync(new List<DbProfile>());
+            _mockProfileRepository.Setup(repo => repo.GetAllAsync(null, null)).ReturnsAsync(new List<DbProfile>());
 
             // Act
             var result = await _profileLogic.GetAllProfiles();
@@ -145,7 +138,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         {
             // Arrange
             var profiles = new List<DbProfile> { new DbProfile { Id = 1, Name = "Profile1" } };
-            _mockProfileRepository.Setup(repo => repo.GetAllAsync()).ReturnsAsync(profiles);
+            _mockProfileRepository.Setup(repo => repo.GetAllAsync(null, null)).ReturnsAsync(profiles);
             _mockProfileToolsRepository.Setup(repo => repo.GetToolAssociationsAsync(It.IsAny<int>())).ReturnsAsync(new List<DbProfileTool>());
 
             // Act

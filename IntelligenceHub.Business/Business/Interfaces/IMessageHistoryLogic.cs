@@ -1,5 +1,4 @@
-﻿using IntelligenceHub.DAL;
-using IntelligenceHub.API.DTOs;
+﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.DAL.Models;
 
 namespace IntelligenceHub.Business.Interfaces

@@ -1,10 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using IntelligenceHub.API.DTOs.Tools;
-using IntelligenceHub.Common.Config;
-using Microsoft.AspNetCore.Authorization;
-using IntelligenceHub.Common;
+﻿using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Business.Interfaces;
+using IntelligenceHub.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace IntelligenceHub.Controllers
 {

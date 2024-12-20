@@ -1,13 +1,12 @@
-using Microsoft.AspNetCore.Mvc;
-using System.Text;
-using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.API.DTOs;
-using Newtonsoft.Json;
-using IntelligenceHub.Common.Config;
+using IntelligenceHub.Business.Handlers;
+using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
 using Microsoft.AspNetCore.Authorization;
-using IntelligenceHub.Business.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using System.Text;
 
 
 namespace IntelligenceHub.Controllers

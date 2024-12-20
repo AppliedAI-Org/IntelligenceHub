@@ -1,12 +1,11 @@
 ﻿using Newtonsoft.Json;
-using IntelligenceHub.Common.Attributes; 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace IntelligenceHub.DAL.Models
 {
     // extend this from a common DTO?
-    [TableName("Profiles")]
+    [Table("Profiles")]
     public class DbProfile
     {
         [Key]
@@ -15,10 +14,10 @@ namespace IntelligenceHub.DAL.Models
         [Required]
         public string Name { get; set; }
         public string Model { get; set; }
-        public float? FrequencyPenalty { get; set; }
-        public float? PresencePenalty { get; set; }
-        public float? Temperature { get; set; }
-        public float? TopP { get; set; }
+        public double? FrequencyPenalty { get; set; }
+        public double? PresencePenalty { get; set; }
+        public double? Temperature { get; set; }
+        public double? TopP { get; set; }
         public int? TopLogprobs { get; set; }
         public int? MaxTokens { get; set; }
         public int? MaxMessageHistory { get; set; }
@@ -29,5 +28,6 @@ namespace IntelligenceHub.DAL.Models
         public string? ReferenceProfiles { get; set; }
         public string? ReferenceDescription { get; set; }
         public bool? ReturnRecursion { get; set; }
+        public ICollection<DbProfileTool> ProfileTools { get; set; } = new List<DbProfileTool>();
     }
 }

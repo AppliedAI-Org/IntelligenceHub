@@ -1,115 +1,45 @@
-﻿using IntelligenceHub.API.DTOs;
-using IntelligenceHub.Common.Config;
-using IntelligenceHub.DAL.Interfaces;
+﻿using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
 
 namespace IntelligenceHub.DAL.Implementations
 {
     public class MessageHistoryRepository : GenericRepository<DbMessage>, IMessageHistoryRepository
     {
-        public MessageHistoryRepository(IOptionsMonitor<Settings> settings) : base(settings.CurrentValue.DbConnectionString)
+        public MessageHistoryRepository(IntelligenceHubDbContext context) : base(context)
         {
         }
 
-        public async Task<List<Message>> GetConversationAsync(Guid conversationId, int maxMessages)
+        public async Task<List<DbMessage>> GetConversationAsync(Guid conversationId, int maxMessages)
         {
-            try
-            {
-                using (var connection = new SqlConnection(_connectionString))
-                {
-                    await connection.OpenAsync();
-                    var query = $@"
-                        SELECT TOP(@MaxMessages) *
-                        FROM MessageHistory
-                        WHERE [ConversationId] = @ConversationId
-                        ORDER BY timestamp ASC;";
-                    using (var command = new SqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@MaxMessages", maxMessages);
-                        command.Parameters.AddWithValue("@ConversationId", conversationId);
-                        using (var reader = await command.ExecuteReaderAsync())
-                        {
-                            var conversationHistory = new List<Message>();
-                            while (await reader.ReadAsync())
-                            {
-                                var dbMessage = MapFromReader<DbMessage>(reader);
-                                var mappedMessage = DbMappingHandler.MapFromDbMessage(dbMessage);
-                                conversationHistory.Add(mappedMessage);
-                            }
-
-                            // Reorder the messages in ascending order by timestamp
-                            return conversationHistory.OrderBy(m => m.TimeStamp).ToList();
-                        }
-                    }
-                }
-            }
-            catch (Exception)
-            {
-
-                throw;
-            }
+            return await _dbSet.Where(m => m.ConversationId == conversationId)
+                .OrderBy(m => m.TimeStamp)
+                .Take(maxMessages)
+                .ToListAsync();
         }
 
         public async Task<bool> DeleteConversationAsync(Guid conversationId)
         {
-            try
+            var messages = await _dbSet.Where(m => m.ConversationId == conversationId).ToListAsync();
+            if (messages.Any())
             {
-                using (var connection = new SqlConnection(_connectionString))
-                {
-                    await connection.OpenAsync();
-                    var query = @"
-                        DELETE FROM MessageHistory 
-                        WHERE [ConversationId] = @ConversationId;";
-
-                    using (var command = new SqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@ConversationId", conversationId);
-                        var response = await command.ExecuteNonQueryAsync();
-                        if (response > 0) return true;
-                    }
-                }
-                return false;
+                _dbSet.RemoveRange(messages);
+                await _context.SaveChangesAsync();
+                return true;
             }
-            catch (Exception)
-            {
-
-                throw;
-            }
+            return false;
         }
 
-        public async Task<bool> DeleteMessageAsync(Guid conversationId, int messageId)
+        public async Task<bool> DeleteAsync(Guid conversationId, int messageId)
         {
-            try
+            var message = await _dbSet.FirstOrDefaultAsync(m => m.ConversationId == conversationId && m.Id == messageId);
+            if (message != null)
             {
-                using (var connection = new SqlConnection(_connectionString))
-                {
-                    await connection.OpenAsync();
-                    var query = $@"
-                        DELETE FROM MessageHistory 
-                        WHERE [ConversationId] = @ConversationId AND [Id] = @MessageId;";
-
-                    using (var command = new SqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@ConversationId", conversationId);
-                        command.Parameters.AddWithValue(@"MessageId", messageId);
-                        var response = await command.ExecuteNonQueryAsync();
-                        if (response > 0) return true;
-                    }
-                }
-                return false;
+                _dbSet.Remove(message);
+                await _context.SaveChangesAsync();
+                return true;
             }
-            catch (Exception)
-            {
-
-                throw;
-            }
-        }
-
-        public async Task<DbMessage> AddAsync(DbMessage document, string tableName = null)
-        {
-            return await base.AddAsync(document, tableName);
+            return false;
         }
     }
 }

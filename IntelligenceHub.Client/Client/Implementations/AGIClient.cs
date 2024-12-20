@@ -1,13 +1,13 @@
 ﻿using Azure.AI.OpenAI;
-using OpenAI.Chat;
 using IntelligenceHub.API.DTOs;
-using System.ClientModel;
-using static IntelligenceHub.Common.GlobalVariables;
+using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Config;
 using IntelligenceHub.Common.Extensions;
-using System.ClientModel.Primitives;
-using IntelligenceHub.Client.Interfaces;
 using Microsoft.Extensions.Options;
+using OpenAI.Chat;
+using System.ClientModel;
+using System.ClientModel.Primitives;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Client.Implementations
 {

@@ -1,6 +1,4 @@
-﻿using IntelligenceHub.Common.Attributes;
-
-namespace IntelligenceHub.API.DTOs.RAG
+﻿namespace IntelligenceHub.API.DTOs.RAG
 {
     public class IndexDocument
     {

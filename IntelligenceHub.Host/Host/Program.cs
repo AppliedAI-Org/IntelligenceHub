@@ -1,24 +1,26 @@
-using IntelligenceHub.Common.Config;
-using IntelligenceHub.Hubs;
-using Polly;
-using Polly.Extensions.Http;
-using System.Text.Json.Serialization;
-using System.Text.Json;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using IntelligenceHub.Host.Config;
-using Microsoft.OpenApi.Models;
-using IntelligenceHub.Host.Policies;
-using static IntelligenceHub.Common.GlobalVariables;
-using IntelligenceHub.Host.Logging;
-using Microsoft.IdentityModel.Tokens;
-using IntelligenceHub.Business.Interfaces;
+using DotNetEnv;
+using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Implementations;
-using IntelligenceHub.Client.Interfaces;
+using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Client.Implementations;
+using IntelligenceHub.Client.Interfaces;
+using IntelligenceHub.Common.Config;
+using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Implementations;
 using IntelligenceHub.DAL.Interfaces;
-using IntelligenceHub.Business.Handlers;
-using DotNetEnv;
+using IntelligenceHub.Host.Config;
+using IntelligenceHub.Host.Logging;
+using IntelligenceHub.Host.Policies;
+using IntelligenceHub.Hubs;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using Polly;
+using Polly.Extensions.Http;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Host
 {
@@ -34,25 +36,40 @@ namespace IntelligenceHub.Host
 
             #region Add Services and Settings
 
+            var settingsSection = builder.Configuration.GetRequiredSection(nameof(Settings));
+            var settings = settingsSection.Get<Settings>();
+
             var insightSettingsSection = builder.Configuration.GetRequiredSection(nameof(AppInsightSettings));
             var insightSettings = insightSettingsSection.Get<AppInsightSettings>();
 
             var agiClientSettingsSection = builder.Configuration.GetRequiredSection(nameof(AGIClientSettings));
             var agiClientSettings = agiClientSettingsSection.Get<AGIClientSettings>();
 
+            builder.Services.Configure<Settings>(settingsSection);
             builder.Services.Configure<AppInsightSettings>(insightSettingsSection);
             builder.Services.Configure<AGIClientSettings>(agiClientSettingsSection);
-            builder.Services.Configure<Settings>(builder.Configuration.GetRequiredSection(nameof(Settings)));
             builder.Services.Configure<SearchServiceClientSettings>(builder.Configuration.GetRequiredSection(nameof(SearchServiceClientSettings)));
 
             // Add Services
+
+            // Add EF Core DbContext with Basic Retry Policy
+            builder.Services.AddDbContext<IntelligenceHubDbContext>(options =>
+                options.UseSqlServer(settings.DbConnectionString, sqlOptions =>
+                {
+                    sqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        errorNumbersToAdd: null // Provide specific codes here if desired
+                    );
+                })
+            );
 
             // Logic
             builder.Services.AddScoped<ICompletionLogic, CompletionLogic>();
             builder.Services.AddScoped<IMessageHistoryLogic, MessageHistoryLogic>();
             builder.Services.AddScoped<IProfileLogic, ProfileLogic>();
             builder.Services.AddScoped<IRagLogic, RagLogic>();
-            
+
             // Clients
             builder.Services.AddSingleton<IAGIClient, AGIClient>();
             builder.Services.AddSingleton<IToolClient, ToolClient>();
@@ -91,7 +108,7 @@ namespace IntelligenceHub.Host
                 .WaitAndRetryAsync(5, _ =>
                 {
                     // Random jitter up to 5 seconds
-                    var jitter = TimeSpan.FromMilliseconds(new Random().Next(0, 5000)); 
+                    var jitter = TimeSpan.FromMilliseconds(new Random().Next(0, 5000));
                     return TimeSpan.FromSeconds(10) + jitter;
                 });
 
@@ -133,7 +150,7 @@ namespace IntelligenceHub.Host
             #region Json Serialization Settings
 
             // Configure json serialization for controllers and hubs
-            builder.Services.AddSignalR().AddJsonProtocol(options => 
+            builder.Services.AddSignalR().AddJsonProtocol(options =>
             {
                 // Set serialization for global enums utilized in DTOs
                 options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -184,7 +201,7 @@ namespace IntelligenceHub.Host
             // Add role-based authorization policies
             builder.Services.AddAuthorization(options =>
             {
-                options.AddPolicy("AdminPolicy", policy => 
+                options.AddPolicy("AdminPolicy", policy =>
                     policy.RequireAssertion(context =>
                         context.User.HasClaim(c => (c.Type == "scope" || c.Type == "permissions") && c.Value.Split(' ').Contains("all:admin"))));
             });
@@ -214,17 +231,17 @@ namespace IntelligenceHub.Host
                 // Apply the security scheme globally
                 options.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
-                    {
-                        new OpenApiSecurityScheme
                         {
-                            Reference = new OpenApiReference
+                            new OpenApiSecurityScheme
                             {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        Array.Empty<string>()
-                    }
+                                Reference = new OpenApiReference
+                                {
+                                    Type = ReferenceType.SecurityScheme,
+                                    Id = "Bearer"
+                                }
+                            },
+                            Array.Empty<string>()
+                        }
                 });
             });
             #endregion
