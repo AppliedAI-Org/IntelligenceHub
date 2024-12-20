@@ -1,5 +1,4 @@
-﻿using IntelligenceHub.Business;
-using IntelligenceHub.Controllers;
+﻿using IntelligenceHub.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
@@ -7,6 +6,7 @@ using IntelligenceHub.API.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using IntelligenceHub.Business.Interfaces;
 
 namespace IntelligenceHub.Tests.Unit.Controllers
 {
@@ -109,7 +109,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal("Invalid request.Please check the route parameter for the profile name: .", badRequestResult.Value);
+            Assert.Equal("Invalid request. Please check the route parameter for the profile name: ''.", badRequestResult.Value);
         }
 
         [Fact]
@@ -124,7 +124,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal("Invalid request.'Profiles' property cannot be null or empty: .", badRequestResult.Value);
+            Assert.Equal("Invalid request. The 'Tools' property cannot be null or empty: ''.", badRequestResult.Value);
         }
 
         [Fact]

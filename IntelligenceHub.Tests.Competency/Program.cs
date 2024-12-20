@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Text;
 using System.IO;
+using IntelligenceHub.Common;
 
 namespace IntelligenceHub.Tests.Competency
 {
@@ -76,7 +77,7 @@ namespace IntelligenceHub.Tests.Competency
 
             for (int i = 0; i < totalTestRounds; i++)
             {
-                var request = new CompletionRequest { Messages = new List<Message> { new Message { Content = "Generate a new test completion.", Role = IntelligenceHub.Common.GlobalVariables.Role.User } } };
+                var request = new CompletionRequest { Messages = new List<Message> { new Message { Content = "Generate a new test completion.", Role = GlobalVariables.Role.User } } };
 
                 var responseString = await PostCompletion(generativeProfile, request);
                 var completionData = JsonConvert.DeserializeObject<CompletionResponse>(responseString);

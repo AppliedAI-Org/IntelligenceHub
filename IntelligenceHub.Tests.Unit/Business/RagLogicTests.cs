@@ -9,10 +9,13 @@ using global::IntelligenceHub.DAL;
 using Moq;
 using Xunit;
 using IntelligenceHub.Common.Config;
+using IntelligenceHub.Business.Implementations;
+using IntelligenceHub.Client.Interfaces;
+using IntelligenceHub.DAL.Interfaces;
 
 namespace IntelligenceHub.Tests.Unit.Business
 {
-    
+
     public class RagLogicTests
     {
         private readonly Mock<IIndexMetaRepository> _mockMetaRepository;

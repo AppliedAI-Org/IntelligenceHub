@@ -5,10 +5,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
 using IntelligenceHub.Controllers;
-using IntelligenceHub.Business;
 using IntelligenceHub.API.DTOs.Tools;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using IntelligenceHub.Business.Interfaces;
 
 namespace IntelligenceHub.Tests.Unit.Controllers
 {

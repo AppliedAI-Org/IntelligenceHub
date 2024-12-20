@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="IntelligenceHub.API\API\DTOs\Message.cs" />
+    <Compile Remove="IntelligenceHub.API\API\DTOs\Profile.cs" />
+    <Compile Remove="IntelligenceHub.API\API\DTOs\RAG\IndexDocument.cs" />
+    <Compile Remove="IntelligenceHub.API\API\DTOs\Tools\Function.cs" />
+    <Compile Remove="IntelligenceHub.API\API\DTOs\Tools\Parameters.cs" />
+    <Compile Remove="IntelligenceHub.API\API\DTOs\Tools\ProfileReferenceTool.cs" />
+    <Compile Remove="IntelligenceHub.API\API\DTOs\Tools\Property.cs" />
+    <Compile Remove="IntelligenceHub.API\API\DTOs\Tools\Tool.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="IntelligenceHub.API\API\DTOs\Message.cs" />
+    <Content Include="IntelligenceHub.API\API\DTOs\Profile.cs" />
+    <Content Include="IntelligenceHub.API\API\DTOs\RAG\IndexDocument.cs" />
+    <Content Include="IntelligenceHub.API\API\DTOs\Tools\Function.cs" />
+    <Content Include="IntelligenceHub.API\API\DTOs\Tools\Parameters.cs" />
+    <Content Include="IntelligenceHub.API\API\DTOs\Tools\ProfileReferenceTool.cs" />
+    <Content Include="IntelligenceHub.API\API\DTOs\Tools\Property.cs" />
+    <Content Include="IntelligenceHub.API\API\DTOs\Tools\Tool.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Search.Documents" Version="11.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IntelligenceHub.Common\IntelligenceHub.Common.csproj" />
+  </ItemGroup>
+
+</Project>

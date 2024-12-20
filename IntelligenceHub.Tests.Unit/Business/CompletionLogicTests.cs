@@ -1,14 +1,14 @@
 using Moq;
 using System.Linq;
 using System.Collections.Generic;
-using IntelligenceHub.Business;
 using IntelligenceHub.API.DTOs;
-using IntelligenceHub.Client;
-using IntelligenceHub.DAL;
 using IntelligenceHub.API.DTOs.RAG;
 using IntelligenceHub.DAL.Models;
 using static IntelligenceHub.Common.GlobalVariables;
 using IntelligenceHub.API.DTOs.Tools;
+using IntelligenceHub.Business.Implementations;
+using IntelligenceHub.Client.Interfaces;
+using IntelligenceHub.DAL.Interfaces;
 
 namespace IntelligenceHub.Tests.Unit.Business
 {

@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using IntelligenceHub.Business;
-using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Models;
 using IntelligenceHub.API.DTOs;
 using Moq;
 using Xunit;
+using IntelligenceHub.Business.Implementations;
+using IntelligenceHub.DAL.Interfaces;
 
 namespace IntelligenceHub.Tests.Unit.Business
 {

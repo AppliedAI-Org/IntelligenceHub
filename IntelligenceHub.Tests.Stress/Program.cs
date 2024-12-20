@@ -1,4 +1,5 @@
 ﻿using IntelligenceHub.API.DTOs;
+using IntelligenceHub.Common;
 using IntelligenceHub.Tests.Common.Auth;
 using IntelligenceHub.Tests.Common.Config;
 using IntelligenceHub.Tests.Stress.Config;
@@ -123,7 +124,7 @@ namespace IntelligenceHub.Tests.Stress
 
             return new CompletionRequest()
             {
-                Messages = new List<Message>() { new Message() { Role = IntelligenceHub.Common.GlobalVariables.Role.User, Content = randomCompletion } }
+                Messages = new List<Message>() { new Message() { Role = GlobalVariables.Role.User, Content = randomCompletion } }
             };
         }
 
