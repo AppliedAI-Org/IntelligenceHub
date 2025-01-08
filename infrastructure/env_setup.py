@@ -1,78 +1,112 @@
 import os
+import json
+import sys
 
-# Define the path to the IntelligenceHub.Host folder
-file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'IntelligenceHub.Host', '.env')
+# This is a python script designed to generate a development appsettings file for the IntelligenceHub.Host project.
+#
+# Note: This script is designed to first check for the presence of environment variables and use them to populate 
+# the appsettings file. If no environment variables are found, the script will prompt the user to enter these
+# values. It can also be ran in a production setting to gaurentee that all required environment variables are set,
+# although additional CI\CD configurations is required to push these variables to a production environment.
 
-# Ensure the directory exists
-directory = os.path.dirname(file_path)
-if not os.path.exists(directory):
-    raise FileNotFoundError(f"The directory {directory} does not exist.")
+template_path = os.path.join(base_dir, '..', 'IntelligenceHub.Host', 'appsettings.Template.json')
+output_path = os.path.join(base_dir, '..', 'IntelligenceHub.Host', 'appsettings.Development.json')
 
-# Initialize a dictionary to store the environment variables
-env_variables = {}
+# Ensure the template file exists
+if not os.path.exists(template_path):
+    raise FileNotFoundError(f"The template file {template_path} does not exist.")
 
-# Hardcoded values for logging and allowed hosts
-env_variables['Logging__LogLevel__Default'] = 'Information'
-env_variables['Logging__LogLevel__Microsoft.AspNetCore'] = 'Warning'
-env_variables['Logging__LogLevel__Microsoft.AspNetCore.SignalR'] = 'Information'
-env_variables['AllowedHosts'] = '*'
-env_variables['Azure__SignalR__Enabled'] = 'true'
+# Load the template JSON
+with open(template_path, 'r') as template_file:
+    appsettings_template = json.load(template_file)
 
-# Prompt for user input for each setting
-env_variables['Settings__DbConnectionString'] = input("Enter the database connection string: ")
-env_variables['AuthSettings__Domain'] = input("Enter the auth domain: ")
-env_variables['AuthSettings__Audience'] = input("Enter the auth audience: ")
-env_variables['AppInsightSettings__ConnectionString'] = input("Enter the Application Insights connection string: ")
-
-# Initialize lists for AGIClientSettings
-agi_client_endpoints = []
-agi_client_keys = []
-
-# Prompt for the first AGI client service endpoint and key
-agi_client_endpoints.append(input("Enter the AGI client service endpoint: "))
-agi_client_keys.append(input("Enter the AGI client service key: "))
-
-# Ask if the user wants to add more AGI client services
-while True:
-    add_more = input("Would you like to add another AGI client service? (y/n): ").strip().lower()
-    if add_more == 'y':
-        agi_client_endpoints.append(input("Enter the AGI client service endpoint: "))
-        agi_client_keys.append(input("Enter the AGI client service key: "))
-    elif add_more == 'n':
-        break
+# Function to recursively replace tokens in the template
+def replace_tokens(obj, replacements):
+    if isinstance(obj, dict):
+        return {key: replace_tokens(value, replacements) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [replace_tokens(item, replacements) for item in obj]
+    elif isinstance(obj, str) and obj.startswith("__") and obj.endswith("__"):
+        token = obj[2:-2]  # Extract token name without braces
+        return replacements.get(token, obj)  # Replace if found, else keep token
     else:
-        print("Please enter 'y' for yes or 'n' for no.")
+        return obj
 
-# Add AGI client services to the dictionary
-for index, (endpoint, key) in enumerate(zip(agi_client_endpoints, agi_client_keys)):
-    env_variables[f'AGIClientSettings__Services__{index}__Endpoint'] = endpoint
-    env_variables[f'AGIClientSettings__Services__{index}__Key'] = key
+# List of required environment variables
+required_env_vars = [
+    "Logging_LogLevel_Default",
+    "Logging_LogLevel_Microsoft_AspNetCore",
+    "Logging_LogLevel_Microsoft_AspNetCore_SignalR",
+    "AllowedHosts",
+    "Azure_SignalR_Enabled",
+    "Settings_DbConnectionString",
+    "AuthSettings_Domain",
+    "AuthSettings_Audience",
+    "AppInsightSettings_ConnectionString",
+    "AGIClientSettings_Services_0_Endpoint",
+    "AGIClientSettings_Services_0_Key",
+    "AGIClientSettings_SearchServiceCompletionServiceEndpoint",
+    "AGIClientSettings_SearchServiceCompletionServiceKey",
+    "SearchServiceClientSettings_Endpoint",
+    "SearchServiceClientSettings_Key"
+]
 
-# Continue prompting for other settings
-env_variables['AGIClientSettings__SearchServiceCompletionServiceEndpoint'] = input(
-    "Enter the search service completion service endpoint: "
-)
-env_variables['AGIClientSettings__SearchServiceCompletionServiceKey'] = input(
-    "Enter the search service completion service key: "
-)
-env_variables['SearchServiceClientSettings__Endpoint'] = input("Enter the search service client endpoint: ")
-env_variables['SearchServiceClientSettings__Key'] = input("Enter the search service client key: ")
+# Check the current environment
+current_environment = os.getenv("ASPNETCORE_ENVIRONMENT", "Development")
 
-print("NOTE: These values may not be required for all environments. Enter blank values to skip.")
-env_variables['AzureAd__Instance'] = input("Enter the Azure AD instance: ")
-env_variables['AzureAd__Domain'] = input("Enter the Azure AD domain: ")
-env_variables['AzureAd__TenantId'] = input("Enter the Azure AD tenant ID: ")
-env_variables['AzureAd__ClientId'] = input("Enter the Azure AD client ID: ")
-env_variables['AzureAd__CallbackPath'] = input("Enter the Azure AD callback path: ")
-env_variables['AzureAd__Scopes'] = input("Enter the Azure AD scopes: ")
+if current_environment.lower() == "production":
+    missing_vars = [var for var in required_env_vars if var not in os.environ]
+    if missing_vars:
+        print(f"Production environment detected but the following environment variables are missing: {', '.join(missing_vars)}. Exiting with failure.")
+        sys.exit(1)
+    else:
+        print("Production environment detected with all required environment variables. Exiting without changes.")
+        sys.exit(0)
 
-# Define the path up one level and then down into the IntelligenceHub.Host folder
-file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'IntelligenceHub.Host', '.env')
+# If not production, try to use environment variables
+replacements = {}
+if os.environ:
+    print("Environment variables detected. Using them to populate the appsettings file.")
+    for key, value in os.environ.items():
+        # Convert environment variables to tokens by replacing `__` with `_` and using the template format
+        token = key.replace("__", "_")
+        if token in required_env_vars:
+            replacements[token] = value
+    print("Replacements dictionary populated with environment variables:", replacements)
+else:
+    print("No environment variables detected. Proceeding with manual input.")
 
-# Write the environment variables to a .env file
-with open(file_path, 'w') as env_file:
-    for key, value in env_variables.items():
-        if value.strip():  # Skip empty values
-            env_file.write(f"{key}={value}\n")
+# Prompt the user for tokens if environment variables are not available
+if len(replacements) != len(required_env_vars):
+    print("Enter the values for the following tokens. Leave blank to skip.")
+    for token in required_env_vars:
+        replacements[token] = input(f"{token}: ").strip()
 
-print("Environment variables have been saved to .env file.")
+    # Add support for multiple AGIClientSettings__Services
+    additional_services = []
+    while True:
+        add_more = input("Would you like to add another AGI client service? (y/n): ").strip().lower()
+        if add_more == 'y':
+            endpoint = input("Enter the AGI client service endpoint: ").strip()
+            key = input("Enter the AGI client service key: ").strip()
+            if endpoint and key:
+                additional_services.append({"Endpoint": endpoint, "Key": key})
+        elif add_more == 'n':
+            break
+        else:
+            print("Please enter 'y' for yes or 'n' for no.")
+
+    if additional_services:
+        replacements["AGIClientSettings_Services"] = additional_services
+
+# Replace tokens in the template
+updated_appsettings = replace_tokens(appsettings_template, replacements)
+
+# Print the updated appsettings for debugging
+print("Updated appsettings JSON:", json.dumps(updated_appsettings, indent=4))
+
+# Write the updated JSON to a new file
+with open(output_path, 'w') as output_file:
+    json.dump(updated_appsettings, output_file, indent=4)
+
+print(f"Development appsettings file has been created at {output_path}.")

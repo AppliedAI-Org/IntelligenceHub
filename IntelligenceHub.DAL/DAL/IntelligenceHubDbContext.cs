@@ -132,8 +132,7 @@ namespace IntelligenceHub.DAL
                 // Define foreign key relationship with Tools table
                 entity.HasOne<DbTool>()
                       .WithMany()
-                      .HasForeignKey(e => e.ToolId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                      .HasForeignKey(e => e.ToolId);
             });
 
             modelBuilder.Entity<DbProfileTool>(entity =>
@@ -142,13 +141,11 @@ namespace IntelligenceHub.DAL
 
                 entity.HasOne(e => e.Profile)
                     .WithMany(p => p.ProfileTools)
-                    .HasForeignKey(e => e.ProfileID)
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .HasForeignKey(e => e.ProfileID);
 
                 entity.HasOne(e => e.Tool)
                     .WithMany(t => t.ProfileTools)
-                    .HasForeignKey(e => e.ToolID)
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .HasForeignKey(e => e.ToolID);
             });
         }
     }

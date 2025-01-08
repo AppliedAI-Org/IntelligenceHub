@@ -30,10 +30,6 @@ namespace IntelligenceHub.Host
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Load environment variables
-            Env.Load();
-            builder.Configuration.AddEnvironmentVariables();
-
             #region Add Services and Settings
 
             var settingsSection = builder.Configuration.GetRequiredSection(nameof(Settings));
