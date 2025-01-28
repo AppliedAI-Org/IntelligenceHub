@@ -204,13 +204,13 @@ namespace IntelligenceHub.Business.Implementations
                 {
                     var existingTool = DbMappingHandler.MapToDbTool(existingToolDTO);
                     await _toolDb.UpdateAsync(existingTool, dbToolDTO);
-                    await AddOrUpdateToolProperties(existingToolDTO, tool.Function.Parameters.Properties);
+                    await AddOrUpdateToolProperties(existingToolDTO, tool.Function.Parameters.properties);
                 }
                 else
                 {
                     var newDbTool = await _toolDb.AddAsync(dbToolDTO);
                     var newTool = DbMappingHandler.MapFromDbTool(newDbTool);
-                    await AddOrUpdateToolProperties(newTool, tool.Function.Parameters.Properties);
+                    await AddOrUpdateToolProperties(newTool, tool.Function.Parameters.properties);
                 }
             }
             return null;
@@ -275,7 +275,7 @@ namespace IntelligenceHub.Business.Implementations
             var existingTool = DbMappingHandler.MapFromDbTool(existingDbTool, dbProperites.ToList());
             if (existingTool != null)
             {
-                foreach (var property in existingTool.Function.Parameters.Properties)
+                foreach (var property in existingTool.Function.Parameters.properties)
                 {
                     var propertyDTO = DbMappingHandler.MapToDbProperty(property.Key, property.Value);
                     await _propertyDb.DeleteAsync(propertyDTO);

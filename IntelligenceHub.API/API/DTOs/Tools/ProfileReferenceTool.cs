@@ -11,14 +11,14 @@ namespace IntelligenceHub.API.DTOs.Tools
             var referenceModelsString = referenceModels.ToCommaSeparatedString() ?? string.Empty;
             var dialogueHistoryProperty = new Property()
             {
-                Type = "string",
-                Description = $"Your response to the original prompt completion in the conversation thread. Valid model names include {referenceModelsString}",
+                type = "string",
+                description = $"Your response to the original prompt completion in the conversation thread. Valid model names include {referenceModelsString}",
             };
 
             var recursionProfileNameProperty = new Property()
             {
-                Type = "string",
-                Description = "The name of the AI model that you want to respond to your addition to this conversation thread.",
+                type = "string",
+                description = "The name of the AI model that you want to respond to your addition to this conversation thread.",
             };
 
             Function = new Function()
@@ -30,13 +30,13 @@ namespace IntelligenceHub.API.DTOs.Tools
                               $"of tools that exist in the below list, otherwise an error will occur.\n\n",
                 Parameters = new Parameters()
                 {
-                    Type = "object",
-                    Properties = new Dictionary<string, Property>()
+                    type = "object",
+                    properties = new Dictionary<string, Property>()
                     {
                         { "prompt_response", dialogueHistoryProperty },
                         { "responding_ai_model", recursionProfileNameProperty },
                     },
-                    Required = new string[] { "prompt_response", "responding_ai_model" },
+                    required = new string[] { "prompt_response", "responding_ai_model" },
                 }
             };
 

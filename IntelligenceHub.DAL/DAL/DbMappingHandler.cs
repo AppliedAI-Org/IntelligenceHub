@@ -100,11 +100,11 @@ namespace IntelligenceHub.DAL
                 var convertedProp = new Property()
                 {
                     Id = property.Id,
-                    Type = property.Type,
-                    Description = property.Description,
+                    type = property.Type,
+                    description = property.Description,
                 };
-                tool.Function.Parameters.Properties.Add(property.Name, convertedProp);
-                tool.Function.Parameters.Required = dbTool.Required.ToStringArray();
+                tool.Function.Parameters.properties.Add(property.Name, convertedProp);
+                tool.Function.Parameters.required = dbTool.Required.ToStringArray();
             }
             return tool;
         }
@@ -116,7 +116,7 @@ namespace IntelligenceHub.DAL
                 Id = tool.Id,
                 Name = tool.Function.Name,
                 Description = tool.Function.Description ?? string.Empty,
-                Required = tool.Function.Parameters.Required?.ToCommaSeparatedString() ?? string.Empty,
+                Required = tool.Function.Parameters.required?.ToCommaSeparatedString() ?? string.Empty,
                 ExecutionUrl = tool.ExecutionUrl,
                 ExecutionMethod = tool.ExecutionMethod,
                 ExecutionBase64Key = tool.ExecutionBase64Key,
@@ -130,8 +130,8 @@ namespace IntelligenceHub.DAL
                 Id = property.Id ?? 0,
                 ToolId = property.Id ?? 0,
                 Name = name,
-                Type = property.Type,
-                Description = property.Description ?? string.Empty,
+                Type = property.type,
+                Description = property.description ?? string.Empty,
             };
         }
         #endregion

@@ -116,20 +116,20 @@ namespace IntelligenceHub.Business.Handlers
             {
                 return "The function name 'recurse_ai_dialogue' is reserved.";
             }
-            if (tool.Function.Parameters.Required != null && tool.Function.Parameters.Required.Length > 0)
+            if (tool.Function.Parameters.required != null && tool.Function.Parameters.required.Length > 0)
             {
-                foreach (var str in tool.Function.Parameters.Required)
+                foreach (var str in tool.Function.Parameters.required)
                 {
-                    if (!tool.Function.Parameters.Properties.ContainsKey(str))
+                    if (!tool.Function.Parameters.properties.ContainsKey(str))
                     {
                         return $"Required property {str} does not exist in the tool {tool.Function.Name}'s properties list.";
                     }
                 }
             }
 
-            if (tool.Function.Parameters.Properties != null && tool.Function.Parameters.Properties.Count > 0)
+            if (tool.Function.Parameters.properties != null && tool.Function.Parameters.properties.Count > 0)
             {
-                var errorMessage = ValidateProperties(tool.Function.Parameters.Properties);
+                var errorMessage = ValidateProperties(tool.Function.Parameters.properties);
                 if (errorMessage != null) return errorMessage;
             }
             return null;
@@ -139,8 +139,8 @@ namespace IntelligenceHub.Business.Handlers
         {
             foreach (var prop in properties)
             {
-                if (prop.Value.Type == null) return $"The field 'type' for property {prop.Key} is required";
-                else if (!_validToolArgTypes.Contains(prop.Value.Type)) return $"The 'type' field '{prop.Value.Type}' for property {prop.Key} is invalid. Please ensure one of the following types is selected: '{_validToolArgTypes}'";
+                if (prop.Value.type == null) return $"The field 'type' for property {prop.Key} is required";
+                else if (!_validToolArgTypes.Contains(prop.Value.type)) return $"The 'type' field '{prop.Value.type}' for property {prop.Key} is invalid. Please ensure one of the following types is selected: '{_validToolArgTypes}'";
             }
             return null;
         }

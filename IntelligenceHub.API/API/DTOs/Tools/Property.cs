@@ -6,7 +6,7 @@ namespace IntelligenceHub.API.DTOs.Tools
     {
         [JsonIgnore]
         public int? Id { get; set; }
-        public string Type { get; set; }
-        public string? Description { get; set; }
+        public string type { get; set; }
+        public string? description { get; set; }
     }
 }
