@@ -1,4 +1,5 @@
 ﻿using Azure.Search.Documents.Models;
+using IntelligenceHub.API.API.DTOs.Tools;
 using IntelligenceHub.API.DTOs;
 using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Business.Interfaces;
@@ -6,6 +7,7 @@ using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Extensions;
 using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Interfaces;
+using System.Text.Json;
 using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Business.Implementations
@@ -14,6 +16,8 @@ namespace IntelligenceHub.Business.Implementations
     {
         // move to GlobalVariables class
         private const int _defaultMessageHistory = 5;
+        private const int _defaultMaxRecursionMessageHistory = 20;
+        private const string _defaultUser = "User";
 
         private readonly IAGIClient _AIClient;
         private readonly IAISearchServiceClient _searchClient;
@@ -55,7 +59,7 @@ namespace IntelligenceHub.Business.Implementations
             // Get and attach message history if a conversation id exists
             if (completionRequest.ConversationId is Guid conversationId)
             {
-                completionRequest.Messages = await BuildAndUpdateMessageHistory(
+                completionRequest.Messages = await BuildMessageHistory(
                     conversationId,
                     completionRequest.Messages,
                     completionRequest.ProfileOptions.MaxMessageHistory);
@@ -96,10 +100,14 @@ namespace IntelligenceHub.Business.Implementations
 
             if (toolCallDictionary.Any())
             {
-                if (!string.IsNullOrEmpty(allCompletionChunks)) completionRequest.Messages.Add(new Message() { Content = allCompletionChunks, Role = Role.Assistant, TimeStamp = DateTime.UtcNow });
-                var toolExecutionResponses = await ExecuteTools(toolCallDictionary, completionRequest.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, streaming: true);
-                yield return new CompletionStreamChunk()
+                if (!string.IsNullOrEmpty(allCompletionChunks)) completionRequest.Messages.Add(new Message() { Content = allCompletionChunks, Role = Role.Assistant, User = _defaultUser, TimeStamp = DateTime.UtcNow });
+                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(toolCallDictionary, completionRequest.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, streaming: true);
+
+                var completionString = string.Empty;
+                if (recursiveMessages.Any()) foreach (var message in recursiveMessages) completionString += $"{message.User}: {message.Content}\n;";
+                if (toolExecutionResponses.Any()) yield return new CompletionStreamChunk()
                 {
+                    CompletionUpdate = completionString,
                     ToolCalls = toolCallDictionary,
                     ToolExecutionResponses = toolExecutionResponses,
                     FinishReason = FinishReason.ToolCalls,
@@ -110,10 +118,10 @@ namespace IntelligenceHub.Business.Implementations
             if (completionRequest.ConversationId is Guid id)
             {
                 var lastUserMessage = completionRequest.Messages.Last(m => m.Role == Role.User);
-                var dbUserMessage = DbMappingHandler.MapToDbMessage(new Message() { Role = Role.User, Content = lastUserMessage.Content, TimeStamp = lastUserMessage.TimeStamp }, id, null);
+                var dbUserMessage = DbMappingHandler.MapToDbMessage(new Message() { Role = Role.User, Content = lastUserMessage.Content, TimeStamp = lastUserMessage.TimeStamp, User = _defaultUser }, id);
                 await _messageHistoryRepository.AddAsync(dbUserMessage);
 
-                var dbMessage = DbMappingHandler.MapToDbMessage(new Message() { Role = Role.Assistant, Content = allCompletionChunks, TimeStamp = DateTime.UtcNow }, id, toolCallDictionary.Keys.ToArray());
+                var dbMessage = DbMappingHandler.MapToDbMessage(new Message() { Role = Role.Assistant, Content = allCompletionChunks, TimeStamp = DateTime.UtcNow, User = completionRequest.ProfileOptions.Name ?? string.Empty }, id);
                 await _messageHistoryRepository.AddAsync(dbMessage);
             }
         }
@@ -134,7 +142,7 @@ namespace IntelligenceHub.Business.Implementations
             // Get and attach message history if a conversation id exists
             if (completionRequest.ConversationId is Guid conversationId)
             {
-                completionRequest.Messages = await BuildAndUpdateMessageHistory(
+                completionRequest.Messages = await BuildMessageHistory(
                     conversationId,
                     completionRequest.Messages,
                     completionRequest.ProfileOptions.MaxMessageHistory);
@@ -149,35 +157,39 @@ namespace IntelligenceHub.Business.Implementations
                 completionRequest.Messages.Add(completionMessageWithRagData);
             }
 
-
             var completion = await _AIClient.PostCompletion(completionRequest);
             if (completion.FinishReason == FinishReason.Error) return completion;
 
             if (completionRequest.ConversationId is Guid id)
             {
-                var dbUserMessage = DbMappingHandler.MapToDbMessage(completion.Messages.Last(m => m.Role == Role.User), id, null);
+                var compUserMessage = completion.Messages.Last(m => m.Role == Role.User);
+                compUserMessage.User = _defaultUser;
+                var dbUserMessage = DbMappingHandler.MapToDbMessage(compUserMessage, id);
                 await _messageHistoryRepository.AddAsync(dbUserMessage);
 
-                var dbMessage = DbMappingHandler.MapToDbMessage(completion.Messages.Last(m => m.Role == Role.Assistant || m.Role == Role.Tool), id, completion.ToolCalls.Keys.ToArray());
+                var compMessage = completion.Messages.Last(m => m.Role == Role.Assistant || m.Role == Role.Tool);
+                compMessage.User = completionRequest.ProfileOptions.Name;
+                var dbMessage = DbMappingHandler.MapToDbMessage(compMessage, id);
                 await _messageHistoryRepository.AddAsync(dbMessage);
             }
 
             if (completion.FinishReason == FinishReason.ToolCalls)
             {
-                var toolExecutionResponses = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, streaming: false);
-                completion.ToolExecutionResponses.AddRange(toolExecutionResponses);
+                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, streaming: false);
+                if (toolExecutionResponses.Any()) completion.ToolExecutionResponses.AddRange(toolExecutionResponses);
+                if (recursiveMessages.Any()) completion.Messages = recursiveMessages;
             }
             return completion;
         }
 
-        private async Task<List<Message>> BuildAndUpdateMessageHistory(Guid conversationId, List<Message> requestMessages, int? maxMessageHistory = null)
+        private async Task<List<Message>> BuildMessageHistory(Guid conversationId, List<Message> requestMessages, int? maxMessageHistory = null)
         {
             var allMessages = new List<Message>();
             var messageHistory = await _messageHistoryRepository.GetConversationAsync(conversationId, maxMessageHistory ?? _defaultMessageHistory);
             if (messageHistory == null || messageHistory.Count < 1) return requestMessages; // no conversation found, return original data and create conversation entry later
 
             var mappedMessageHistory = new List<Message>();
-            foreach (var message in messageHistory) mappedMessageHistory.Add(DbMappingHandler.MapFromDbMessage(message)); 
+            foreach (var message in messageHistory) mappedMessageHistory.Add(DbMappingHandler.MapFromDbMessage(message));
 
             // ensure the messages are properly arranged, with the user completion appearing very last
             allMessages.AddRange(mappedMessageHistory);
@@ -186,95 +198,167 @@ namespace IntelligenceHub.Business.Implementations
             return allMessages;
         }
 
-        public async Task<Profile> BuildCompletionOptions(Profile profile, Profile profileOptions)
+        public async Task<Profile> BuildCompletionOptions(Profile profile, Profile? profileOptions = null)
         {
             // adds the profile references to the tools
-            if (profileOptions.Tools == null) profileOptions.Tools = new List<Tool>();
-            if (profileOptions.Reference_Profiles != null) profileOptions.Tools.AddRange(await BuildProfileReferenceTool(profileOptions.Reference_Profiles));
+            var profileReferences = profileOptions?.Reference_Profiles ?? profile.Reference_Profiles ?? Array.Empty<string>();
+            if (profile.Tools == null) profile.Tools = new List<Tool>();
+            if (profileReferences != null && profileReferences.Any())
+            {
+                // add to both tool sets to ensure no overwrites occur
+                var recursionTool = await BuildProfileReferenceTool(profileReferences);
+                profileOptions?.Tools?.Add(recursionTool);
+                profile.Tools.Add(recursionTool);
+            }
 
+            // overwrite defaults if ProfileOptions contains values
             return new Profile()
             {
                 Id = profile.Id,
                 Name = profile.Name,
-                Model = profileOptions.Model ?? profile.Model,
-                RagDatabase = profileOptions.RagDatabase ?? profile.RagDatabase,
-                MaxMessageHistory = profileOptions.MaxMessageHistory ?? profile.MaxMessageHistory,
-                Max_Tokens = profileOptions.Max_Tokens ?? profile.Max_Tokens,
-                Temperature = profileOptions.Temperature ?? profile.Temperature,
-                Top_P = profileOptions.Top_P ?? profile.Top_P,
-                Frequency_Penalty = profileOptions.Frequency_Penalty ?? profile.Frequency_Penalty,
-                Presence_Penalty = profileOptions.Presence_Penalty ?? profile.Presence_Penalty,
-                Stop = profileOptions.Stop ?? profile.Stop,
-                Logprobs = profileOptions.Logprobs ?? profile.Logprobs,
-                Top_Logprobs = profileOptions.Top_Logprobs ?? profile.Top_Logprobs,
-                Response_Format = profileOptions.Response_Format ?? profile.Response_Format,
-                User = profileOptions.User ?? profile.User,
-                Tools = profileOptions.Tools ?? profile.Tools,
-                System_Message = profileOptions.System_Message ?? profile.System_Message,
-                Return_Recursion = profileOptions.Return_Recursion ?? profile.Return_Recursion,
-                Reference_Profiles = profileOptions.Reference_Profiles ?? profile.Reference_Profiles,
+                Model = profileOptions?.Model ?? profile.Model,
+                RagDatabase = profileOptions?.RagDatabase ?? profile.RagDatabase,
+                MaxMessageHistory = profileOptions?.MaxMessageHistory ?? profile.MaxMessageHistory,
+                Max_Tokens = profileOptions?.Max_Tokens ?? profile.Max_Tokens,
+                Temperature = profileOptions?.Temperature ?? profile.Temperature,
+                Top_P = profileOptions?.Top_P ?? profile.Top_P,
+                Frequency_Penalty = profileOptions?.Frequency_Penalty ?? profile.Frequency_Penalty,
+                Presence_Penalty = profileOptions?.Presence_Penalty ?? profile.Presence_Penalty,
+                Stop = profileOptions?.Stop ?? profile.Stop,
+                Logprobs = profileOptions?.Logprobs ?? profile.Logprobs,
+                Top_Logprobs = profileOptions?.Top_Logprobs ?? profile.Top_Logprobs,
+                Response_Format = profileOptions?.Response_Format ?? profile.Response_Format,
+                User = profileOptions?.User ?? profile.User,
+                Tools = profileOptions?.Tools ?? profile.Tools,
+                System_Message = profileOptions?.System_Message ?? profile.System_Message,
+                Reference_Profiles = profileReferences,
             };
         }
         #endregion
 
         #region Shared
 
-        private async Task<List<Tool>> BuildProfileReferenceTool(string[] profileNames)
+        private async Task<ProfileReferenceTool> BuildProfileReferenceTool(string[] profileNames)
         {
-            var tools = new List<Tool>();
+            var referenceProfiles = new List<Profile>();
             foreach (var name in profileNames)
             {
                 var profile = await _profileDb.GetByNameAsync(name);
-                if (profile == null) return null;
-                tools.Add(new ProfileReferenceTools(profile.Name, profile.ReferenceDescription));
+                if (profile == null) continue;
+                referenceProfiles.Add(DbMappingHandler.MapFromDbProfile(profile));
             }
-            return tools;
+            return new ProfileReferenceTool(referenceProfiles);
         }
 
-        // seperate this into two functions probably
-        public async Task<List<HttpResponseMessage>> ExecuteTools(Dictionary<string, string> toolCalls, List<Message> messages, Profile? options = null, Guid? conversationId = null, bool streaming = false)// ChatCompletion
+        public async Task<(List<HttpResponseMessage>, List<Message>)> ExecuteTools(Dictionary<string, string> toolCalls, List<Message> messages, Profile? options = null, Guid? conversationId = null, bool streaming = false, int currentRecursionDepth = 0)
         {
-            var modelRecursionTools = new Dictionary<string, string>();
             var functionResults = new List<HttpResponseMessage>();
-
-            // Handle standard tool calls and collect recursive calls
+            var maxDepth = options?.MaxMessageHistory ?? _defaultMaxRecursionMessageHistory;
             foreach (var tool in toolCalls)
             {
-                var toolName = tool.Key.Replace("_Reference_AI_Model", "");
-                if (tool.Key.Contains("_Reference_AI_Model"))
-                {
-                    modelRecursionTools.Add(toolName, tool.Value);
-                }
+                if (tool.Key.Equals(SystemTools.Recurse_ai_dialogue.ToString().ToLower()) || currentRecursionDepth > maxDepth) messages = await HandleRecursiveDialogue(tool.Value, messages, options, conversationId, currentRecursionDepth + 1);
                 else
                 {
-                    var dbTool = await _toolDb.GetByNameAsync(toolName);
-
-                    if (!string.IsNullOrEmpty(dbTool.ExecutionUrl))
-                    {
-                        functionResults.Add(await _ToolClient.CallFunction(tool.Key, tool.Value, dbTool.ExecutionUrl, dbTool.ExecutionMethod, dbTool.ExecutionBase64Key));
-                    }
+                    var dbTool = await _toolDb.GetByNameAsync(tool.Key);
+                    if (dbTool != null && !string.IsNullOrEmpty(dbTool.ExecutionUrl)) functionResults.Add(await _ToolClient.CallFunction(tool.Key, tool.Value, dbTool.ExecutionUrl, dbTool.ExecutionMethod, dbTool.ExecutionBase64Key));
                 }
             }
+            return (functionResults, messages);
+        }
 
-            // Handle recursive completions - i.e. have other models add a message before responding
-            foreach (var tool in modelRecursionTools)
+        private async Task<List<Message>> HandleRecursiveDialogue(string toolCall, List<Message> messages, Profile? options = null, Guid? conversationId = null, int currentRecursionDepth = 0)
+        {
+            var toolExecutionCall = JsonSerializer.Deserialize<ProfileReferenceToolExecutionCall>(toolCall);
+            if (toolExecutionCall == null) return messages;
+
+            var profileName = toolExecutionCall.responding_ai_model;
+            if (string.IsNullOrEmpty(profileName)) return messages;
+
+            var recursionProfile = await _profileDb.GetByNameAsync(profileName);
+            if (recursionProfile == null) return messages;
+
+            var completionRequest = new CompletionRequest()
             {
-                var completionRequest = new CompletionRequest()
-                {
-                    ConversationId = conversationId,
-                    Messages = messages,
-                    ProfileOptions = options ?? new Profile() { Name = tool.Key }
-                };
+                ConversationId = conversationId,
+                Messages = messages,
+                ProfileOptions = DbMappingHandler.MapFromDbProfile(recursionProfile)
+            };
 
-                // add anything the previous model wanted to forward
-                if (!string.IsNullOrEmpty(tool.Value)) completionRequest.Messages.Add(new Message() { Role = Role.Assistant, Content = tool.Value });
-                if (streaming)
-                {
-                    await foreach (var _ in StreamCompletion(completionRequest)) ;
-                }
-                else await ProcessCompletion(completionRequest);
+            var maxMessageHistory = completionRequest.ProfileOptions.MaxMessageHistory ?? _defaultMaxRecursionMessageHistory;
+            if (currentRecursionDepth < maxMessageHistory)
+            {
+                var recursionCompletion = await ProcessRecursiveCompletion(completionRequest, currentRecursionDepth);
+                if (recursionCompletion != null) messages = recursionCompletion.Messages;
             }
-            return functionResults;
+            return messages;
+        }
+
+        private async Task<CompletionResponse?> ProcessRecursiveCompletion(CompletionRequest completionRequest, int currentRecursionDepth)
+        {
+            if (!completionRequest.Messages.Any() || string.IsNullOrEmpty(completionRequest.ProfileOptions.Name)) return null;
+
+            // reorganize and combine messages of same role in order to reduce model performance deprecation
+            var MessagesAfterRoleDistribution = new List<Message>();
+            var messages = completionRequest.Messages;
+
+            // copy the list, creating a seperate ref
+            var originalMessageDistribution = new List<Message>(completionRequest.Messages.Select(m => new Message 
+            {
+                Role = m.Role,
+                User = m.User,
+                Content = m.Content,
+                Base64Image = m.Base64Image,
+                TimeStamp = m.TimeStamp
+            }));
+            
+            for (var i = 0; i < messages.Count; i++)
+            {
+                // Determine the role of the current message
+                if (i == messages.Count - 1) messages[i].Role = Role.User; // Set the last message as User
+                else if (messages[i].User.ToLower() == completionRequest.ProfileOptions.Name.ToLower()) messages[i].Role = Role.Assistant; // Set as Assistant
+                else messages[i].Role = Role.User; // Set as User
+
+                // Combine consecutive messages with the same role or add the message to the list if the role is different
+                if (MessagesAfterRoleDistribution.Count > 0 && MessagesAfterRoleDistribution[^1].Role == messages[i].Role) MessagesAfterRoleDistribution[^1].Content += "\n\n" + messages[i].Content;
+                else MessagesAfterRoleDistribution.Add(messages[i]);
+            }
+
+            completionRequest.Messages = MessagesAfterRoleDistribution;
+
+            // Build Options
+            completionRequest.ProfileOptions = await BuildCompletionOptions(completionRequest.ProfileOptions);
+
+            // Add data retrieved from RAG indexing
+            if (!string.IsNullOrEmpty(completionRequest.ProfileOptions.RagDatabase) && completionRequest.Messages.Any())
+            {
+                var completionMessage = completionRequest.Messages.LastOrDefault() ?? new Message() { Role = Role.User, User = _defaultUser, Content = string.Empty, TimeStamp = DateTime.UtcNow };
+                var completionMessageWithRagData = await RetrieveRagData(completionRequest.ProfileOptions.RagDatabase, completionMessage);
+                completionRequest.Messages.Remove(completionMessage);
+                completionRequest.Messages.Add(completionMessageWithRagData);
+            }
+
+            var completion = await _AIClient.PostCompletion(completionRequest);
+            if (completion.FinishReason == FinishReason.Error) return completion;
+
+            if (completionRequest.ConversationId is Guid id)
+            {
+                var dbMessage = DbMappingHandler.MapToDbMessage(completion.Messages.Last(m => m.Role == Role.Assistant || m.Role == Role.Tool), id);
+                dbMessage.User = completionRequest.ProfileOptions.Name ?? string.Empty;
+                await _messageHistoryRepository.AddAsync(dbMessage);
+            }
+
+            // restore original message distribution with the latest data appended
+            originalMessageDistribution.Add(completion.Messages.Last(m => m.Role == Role.Assistant || m.Role == Role.Tool));
+            completion.Messages = originalMessageDistribution;
+            completion.Messages.Last().User = completionRequest.ProfileOptions.Name;
+            
+            if (completion.FinishReason == FinishReason.ToolCalls)
+            {
+                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, streaming: false, currentRecursionDepth: currentRecursionDepth);
+                if (toolExecutionResponses.Any()) completion.ToolExecutionResponses.AddRange(toolExecutionResponses);
+                if (recursiveMessages.Any()) completion.Messages = recursiveMessages;
+            }
+            return completion;
         }
 
         private async Task<Message> RetrieveRagData(string indexName, Message completion)
@@ -311,13 +395,13 @@ namespace IntelligenceHub.Business.Implementations
                 }
             }
 
-            completion.Content = $"\n\nIf pertinent, use the below documents, each of which is delimited with triple backticks, " +
-                $"to respond to assist with your response to the following prompt, and provide their sources in your response if you use them: " +
-                $"{completion.Content}\n\n"
+            completion.Content = $"\n\nBelow is a list of documents, each of which is delimited with triple backticks. If relevant, " +
+                $"please cite these documents in markdown plain in-text citation (i.e. '(Title)[Source]') when responding to the " +
+                $"following prompt: {completion.Content}\n\n"
                 + ragDataString;
 
             return completion;
         }
-        #endregion
+#endregion
     }
 }

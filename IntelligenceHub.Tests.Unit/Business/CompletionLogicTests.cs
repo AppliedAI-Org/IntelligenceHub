@@ -157,12 +157,47 @@ namespace IntelligenceHub.Tests.Unit.Business
                 .ReturnsAsync(httpResponse);
 
             // Act
-            var result = await _completionLogic.ExecuteTools(toolCalls, messages);
+            var (httpResults, messageResults) = await _completionLogic.ExecuteTools(toolCalls, messages);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Single(result);
-            Assert.Equal(httpResponse, result.First());
+            Assert.NotNull(httpResults);
+            Assert.Single(httpResults);
+            Assert.Equal(httpResponse, httpResults.First());
+            Assert.NotNull(messageResults);
+            Assert.Single(messageResults);
+        }
+
+        [Fact]
+        public async Task ExecuteTools_ReturnsResponses_WhenRecursionIsExecuted()
+        {
+            // Arrange
+            var toolCalls = new Dictionary<string, string> { { "recurse_ai_dialogue", "{\"responding_ai_model\":\"TestProfile\"}" } };
+            var messages = new List<Message> { new Message { Content = "Initial message", Role = Role.User, TimeStamp = DateTime.UtcNow } };
+            var httpResponse = new HttpResponseMessage();
+            var dbTool = new DbTool { Name = "Tool1", ExecutionUrl = "http://example.com", ExecutionMethod = "POST" };
+
+            var profile = new DbProfile { Name = "TestProfile" };
+            var completionResponse = new CompletionResponse
+            {
+                Messages = new List<Message> { new Message { Content = "Recursive response", Role = Role.Assistant, TimeStamp = DateTime.UtcNow } },
+                FinishReason = FinishReason.Stop
+            };
+
+            _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
+            _mockAIClient.Setup(client => client.PostCompletion(It.IsAny<CompletionRequest>())).ReturnsAsync(completionResponse);
+            _mockToolRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(dbTool);
+            _mockToolClient.Setup(client => client.CallFunction(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(httpResponse);
+
+            // Act
+            var (httpResults, messageResults) = await _completionLogic.ExecuteTools(toolCalls, messages, null, null, false, 1);
+
+            // Assert
+            Assert.NotNull(httpResults);
+            Assert.Empty(httpResults); // No HTTP results expected for recursion
+            Assert.NotNull(messageResults);
+            Assert.Equal(2, messageResults.Count); // Initial message + recursive response
+            Assert.Equal("Initial message", messageResults[0].Content);
+            Assert.Equal("Recursive response", messageResults[1].Content);
         }
     }
 }

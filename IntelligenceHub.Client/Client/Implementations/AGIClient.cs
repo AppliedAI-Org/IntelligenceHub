@@ -1,5 +1,7 @@
 ﻿using Azure.AI.OpenAI;
+using IntelligenceHub.API.API.DTOs.Tools;
 using IntelligenceHub.API.DTOs;
+using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Config;
 using IntelligenceHub.Common.Extensions;
@@ -7,6 +9,7 @@ using Microsoft.Extensions.Options;
 using OpenAI.Chat;
 using System.ClientModel;
 using System.ClientModel.Primitives;
+using System.Text.Json;
 using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Client.Implementations
@@ -33,45 +36,43 @@ namespace IntelligenceHub.Client.Implementations
 
         public async Task<CompletionResponse> PostCompletion(CompletionRequest completionRequest)
         {
-            try
+            if (string.IsNullOrEmpty(completionRequest.ProfileOptions.Name) || completionRequest.Messages.Count < 1) return new CompletionResponse() { FinishReason = FinishReason.Error };
+            var options = BuildCompletionOptions(completionRequest);
+            var messages = BuildCompletionMessages(completionRequest);
+            var chatClient = _azureOpenAIClient.GetChatClient(completionRequest.ProfileOptions.Model);
+            var completionResult = await chatClient.CompleteChatAsync(messages, options);
+
+            var toolCalls = new Dictionary<string, string>();
+            foreach (var tool in completionResult.Value.ToolCalls)
             {
-                if (string.IsNullOrEmpty(completionRequest.ProfileOptions.Name) || completionRequest.Messages.Count < 1) return new CompletionResponse() { FinishReason = FinishReason.Error };
-                var options = BuildCompletionOptions(completionRequest);
-                var messages = BuildCompletionMessages(completionRequest);
-                var chatClient = _azureOpenAIClient.GetChatClient(completionRequest.ProfileOptions.Model);
-                var completionResult = await chatClient.CompleteChatAsync(messages, options);
-
-                var toolCalls = new Dictionary<string, string>();
-                foreach (var tool in completionResult.Value.ToolCalls) toolCalls.Add(tool.FunctionName, tool.FunctionArguments.ToString());
-
-                // build the response object
-                var responseMessage = new Message()
-                {
-                    Content = completionResult.Value.Content[0].Text ?? string.Empty,
-                    Role = completionResult.Value.Role.ToString().ConvertStringToRole(),
-                    TimeStamp = DateTime.UtcNow
-                };
-
-                foreach (var content in completionResult.Value.Content)
-                {
-                    if (responseMessage.Base64Image == null && content.Kind == ChatMessageContentPartKind.Image) responseMessage.Base64Image = Convert.ToBase64String(content.ImageBytes);
-                    else if (string.IsNullOrEmpty(responseMessage.Content) && content.Kind == ChatMessageContentPartKind.Text) responseMessage.Content = content.Text;
-                }
-
-                var response = new CompletionResponse()
-                {
-                    FinishReason = completionResult.Value.FinishReason.ToString().ConvertStringToFinishReason(),
-                    Messages = completionRequest.Messages,
-                    ToolCalls = toolCalls
-                };
-                response.Messages.Add(responseMessage);
-                return response ?? new CompletionResponse() { FinishReason = FinishReason.Error };
-            }
-            catch (Exception)
-            {
-                return new CompletionResponse() { FinishReason = FinishReason.Error };
+                if (tool.FunctionName.ToLower() != SystemTools.Recurse_ai_dialogue.ToString().ToLower()) toolCalls.Add(tool.FunctionName, tool.FunctionArguments.ToString());
+                else toolCalls.Add(SystemTools.Recurse_ai_dialogue.ToString().ToLower(), string.Empty);
             }
 
+            var contentString = GetMessageContent(completionResult.Value.Content.FirstOrDefault()?.Text, toolCalls);
+
+            // build the response object
+            var responseMessage = new Message()
+            {
+                Content = contentString,
+                Role = completionResult.Value.Role.ToString().ConvertStringToRole() ?? Role.Assistant,
+                TimeStamp = DateTime.UtcNow
+            };
+
+            foreach (var content in completionResult.Value.Content)
+            {
+                if (responseMessage.Base64Image == null && content.Kind == ChatMessageContentPartKind.Image) responseMessage.Base64Image = Convert.ToBase64String(content.ImageBytes);
+                else if (string.IsNullOrEmpty(responseMessage.Content) && content.Kind == ChatMessageContentPartKind.Text) responseMessage.Content = content.Text;
+            }
+
+            var response = new CompletionResponse()
+            {
+                FinishReason = completionResult.Value.FinishReason.ToString().ConvertStringToFinishReason(),
+                Messages = completionRequest.Messages,
+                ToolCalls = toolCalls
+            };
+            response.Messages.Add(responseMessage);
+            return response ?? new CompletionResponse() { FinishReason = FinishReason.Error };
         }
 
         public async IAsyncEnumerable<CompletionStreamChunk> StreamCompletion(CompletionRequest completionRequest)
@@ -116,11 +117,13 @@ namespace IntelligenceHub.Client.Implementations
                     else toolCalls.Add(currentTool, currentToolArgs);
                 }
 
+                var finalContentString = GetMessageContent(content, toolCalls);
+
                 yield return new CompletionStreamChunk()
                 {
                     Id = chunkId++,
                     Role = role?.ConvertStringToRole(),
-                    CompletionUpdate = content,
+                    CompletionUpdate = finalContentString,
                     Base64Image = base64Image,
                     FinishReason = finishReason?.ConvertStringToFinishReason(),
                     ToolCalls = toolCalls
@@ -157,7 +160,7 @@ namespace IntelligenceHub.Client.Implementations
         {
             var options = new ChatCompletionOptions()
             {
-                MaxOutputTokenCount = completion.ProfileOptions.Max_Tokens,
+                MaxOutputTokenCount = completion.ProfileOptions.Max_Tokens ?? null,
                 Temperature = completion.ProfileOptions.Temperature,
                 TopP = completion.ProfileOptions.Top_P,
                 FrequencyPenalty = completion.ProfileOptions.Frequency_Penalty,
@@ -183,12 +186,12 @@ namespace IntelligenceHub.Client.Implementations
             }
 
             // set tools
-            if (completion.ProfileOptions.Tools != null) foreach (var tool in completion.ProfileOptions.Tools)
+            if (completion.ProfileOptions.Tools != null) 
+                foreach (var tool in completion.ProfileOptions.Tools)
                 {
-                    options.Tools.Add(ChatTool.CreateFunctionTool(
-                        tool.Function.Name,
-                        tool.Function.Description,
-                        new BinaryData(tool.Function.Parameters)));
+                    var thing = JsonSerializer.Serialize(tool.Function.Parameters);
+                    var newTool = ChatTool.CreateFunctionTool(tool.Function.Name, tool.Function.Description, BinaryData.FromString(thing));
+                    options.Tools.Add(newTool);
                 };
 
             // Set tool choice
@@ -256,7 +259,17 @@ namespace IntelligenceHub.Client.Implementations
             //    //Filter = // seems very useful
             //});
 
-            return options;
+            //return options;
+        }
+            
+        private string GetMessageContent(string? messageContent, Dictionary<string, string> toolCalls)
+        {
+            var content = messageContent ?? string.Empty;
+            foreach (var tool in toolCalls) 
+            {
+                if (tool.Key.Equals(SystemTools.Recurse_ai_dialogue.ToString().ToLower())) return JsonSerializer.Deserialize<ProfileReferenceToolExecutionCall>(tool.Value)?.prompt_response ?? content;
+            }
+            return content;
         }
     }
 }

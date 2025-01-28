@@ -27,7 +27,6 @@ namespace IntelligenceHub.DAL.Models
         public string? Stop { get; set; }
         public string? ReferenceProfiles { get; set; }
         public string? ReferenceDescription { get; set; }
-        public bool? ReturnRecursion { get; set; }
         public ICollection<DbProfileTool> ProfileTools { get; set; } = new List<DbProfileTool>();
     }
 }

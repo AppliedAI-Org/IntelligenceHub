@@ -33,6 +33,7 @@ namespace IntelligenceHub.DAL
                 entity.Property(e => e.Base64Image).HasColumnType("nvarchar(max)");
                 entity.Property(e => e.TimeStamp).IsRequired();
                 entity.Property(e => e.Content).IsRequired().HasColumnType("nvarchar(max)");
+                entity.Property(e => e.TimeStamp).IsRequired().HasDefaultValueSql("GETDATE()");
             });
 
             modelBuilder.Entity<DbIndexMetadata>(entity =>
@@ -96,7 +97,6 @@ namespace IntelligenceHub.DAL
                 entity.Property(e => e.Stop).HasMaxLength(255);
                 entity.Property(e => e.ReferenceProfiles).HasMaxLength(2040);
                 entity.Property(e => e.ReferenceDescription).HasMaxLength(2040);
-                entity.Property(e => e.ReturnRecursion);
             });
 
             modelBuilder.Entity<DbTool>(entity =>

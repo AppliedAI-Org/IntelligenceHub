@@ -12,6 +12,7 @@ namespace IntelligenceHub.DAL.Models
         [Required]
         public Guid ConversationId {  get; set; }
         public string Role { get; set; } = string.Empty;
+        public string User { get; set; } = string.Empty;
         public string? Base64Image { get; set; }
         public DateTime TimeStamp { get; set; }
         public string Content { get; set; } = string.Empty;

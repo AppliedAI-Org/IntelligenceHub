@@ -14,6 +14,5 @@
     SystemMessage NVARCHAR(Max),
     [Stop] NVARCHAR(255),
     ReferenceProfiles NVARCHAR(2040),
-    ReferenceDescription NVARCHAR(2040),
-    ReturnRecursion BIT
+    ReferenceDescription NVARCHAR(2040)
 );

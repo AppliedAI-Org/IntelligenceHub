@@ -6,6 +6,6 @@ namespace IntelligenceHub.Business.Interfaces
     {
         IAsyncEnumerable<CompletionStreamChunk> StreamCompletion(CompletionRequest completionRequest);
         Task<CompletionResponse?> ProcessCompletion(CompletionRequest completionRequest);
-        Task<List<HttpResponseMessage>> ExecuteTools(Dictionary<string, string> toolCalls, List<Message> messages, Profile? options = null, Guid? conversationId = null, bool streaming = false);
+        Task<(List<HttpResponseMessage>, List<Message>)> ExecuteTools(Dictionary<string, string> toolCalls, List<Message> messages, Profile? options = null, Guid? conversationId = null, bool streaming = false, int currentRecursionDepth = 0);
     }
 }

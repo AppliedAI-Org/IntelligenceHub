@@ -51,6 +51,11 @@
             Tool
         }
 
+        public enum SystemTools
+        {
+            Recurse_ai_dialogue,
+        }
+
         public const string DefaultAGIModel = "gpt-4o-mini";
         public const string DefaultEmbeddingModel = "text-embedding-3-large";
 
