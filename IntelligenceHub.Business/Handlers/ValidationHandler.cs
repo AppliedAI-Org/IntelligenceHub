@@ -11,6 +11,14 @@ namespace IntelligenceHub.Business.Handlers
         {
             "gpt-4o",
             "gpt-4o-mini",
+            "claude-3-5-sonnet-20241022",
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "llama-guard-3-8b",
+            "llama3-70b-8192",
+            "llama3-8b-8192",
+            "mixtral-8x7b-32768",
+            "gemma2-9b-it"
         };
 
         public List<string> _validToolArgTypes = new List<string>()
@@ -45,7 +53,8 @@ namespace IntelligenceHub.Business.Handlers
         public string? ValidateAPIProfile(Profile profile)
         {
             // validate reference profiles exist (same with any other values?)
-            if (string.IsNullOrWhiteSpace(profile.Name) || profile.Name == null) return "The 'Name' field is required";
+            if (string.IsNullOrWhiteSpace(profile.Name)) return "The 'Name' field is required";
+            if (profile.Host == null || string.IsNullOrEmpty(profile.Host.ToString())) return "the 'Host' field is required, and must be set to 'Azure', 'OpenAI', or 'Anthropic'";
             if (profile.Name.ToLower() == "all") return "Profile name 'all' conflicts with the profile/get/all route";
 
             var errorMessage = ValidateBaseDTO(profile);

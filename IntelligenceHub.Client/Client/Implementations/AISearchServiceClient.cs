@@ -14,6 +14,9 @@ namespace IntelligenceHub.Client.Implementations
 {
     public class AISearchServiceClient : IAISearchServiceClient
     {
+        private readonly int _defaultFreshnessBoostDuration = 365;
+        private readonly int _defaultFreshnessBoost = 2;
+
         private readonly SearchIndexClient _indexClient;
         private readonly SearchIndexerClient _indexerClient;
         private readonly string _sqlRagDbConnectionString;
@@ -122,10 +125,13 @@ namespace IntelligenceHub.Client.Implementations
                 else if (indexDefinition.ScoringProfile?.Interpolation == ScoringFunctionInterpolation.Logarithmic.ToString()) interpolation = ScoringFunctionInterpolation.Logarithmic;
 
                 // add scoring functions to the profile
-                if (indexDefinition.ScoringProfile?.FreshnessBoost > 1) scoringProfile.Functions.Add(new FreshnessScoringFunction("modified", indexDefinition.ScoringProfile.FreshnessBoost, new FreshnessScoringParameters(TimeSpan.FromDays(indexDefinition.ScoringProfile.BoostDurationDays)))
+                var freshnessBoostDuration = TimeSpan.FromDays(indexDefinition.ScoringProfile?.BoostDurationDays ?? _defaultFreshnessBoostDuration);
+                var freshnessFunction = new FreshnessScoringFunction("modified", indexDefinition.ScoringProfile?.FreshnessBoost ?? _defaultFreshnessBoostDuration, new FreshnessScoringParameters(freshnessBoostDuration))
                 {
                     Interpolation = interpolation,
-                });
+                };
+
+                if (indexDefinition.ScoringProfile?.FreshnessBoost > 1) scoringProfile.Functions.Add(freshnessFunction);
                 else if (indexDefinition.ScoringProfile?.TagBoost > 1)
                 {
                     scoringProfile.Functions.Add(new TagScoringFunction("title", indexDefinition.ScoringProfile.TagBoost, new TagScoringParameters("keywords"))

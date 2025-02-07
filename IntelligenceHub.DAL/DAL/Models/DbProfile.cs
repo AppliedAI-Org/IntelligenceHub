@@ -14,6 +14,7 @@ namespace IntelligenceHub.DAL.Models
         [Required]
         public string Name { get; set; }
         public string Model { get; set; }
+        public string Host { get; set; }
         public double? FrequencyPenalty { get; set; }
         public double? PresencePenalty { get; set; }
         public double? Temperature { get; set; }

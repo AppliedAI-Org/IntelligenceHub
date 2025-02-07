@@ -1,26 +1,43 @@
-﻿namespace IntelligenceHub.Host.Policies
+﻿using Polly;
+
+namespace IntelligenceHub.Host.Policies
 {
     public class LoadBalancingSelector
     {
-        private readonly Uri[] _backendUris;
-        private int _currentIndex = 0;
+        private readonly Dictionary<string, Uri[]> _serviceUris;
+        private readonly Dictionary<string, int> _currentIndices;
 
-        public LoadBalancingSelector(string[] backendUrls)
+        public LoadBalancingSelector(Dictionary<string, string[]> serviceUrls)
         {
-            // Store URLs as immutable Uri instances.
-            _backendUris = backendUrls.Select(url => new Uri(url)).ToArray();
+            _serviceUris = serviceUrls.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.Select(url => new Uri(url)).ToArray()
+            );
+            _currentIndices = serviceUrls.ToDictionary(kvp => kvp.Key, kvp => 0);
         }
 
-        public Uri GetNextBaseAddress()
+        public Uri GetNextBaseAddress(string serviceName)
         {
-            // Atomically get and increment the index, wrapping on overflow.
-            int nextIndex = Interlocked.Increment(ref _currentIndex) % _backendUris.Length;
+            if (!_serviceUris.ContainsKey(serviceName))
+                throw new ArgumentException($"Service name '{serviceName}' not found.");
 
-            // Ensure the index is non-negative (in case of overflow).
+            var uris = _serviceUris[serviceName];
+            int currentIndex = _currentIndices[serviceName];
+            int nextIndex = Interlocked.Increment(ref currentIndex) % uris.Length;
+            _currentIndices[serviceName] = nextIndex;
+
             if (nextIndex < 0) nextIndex = 0;
+            return uris[nextIndex];
+        }
 
-            return _backendUris[nextIndex];
+        public static void RegisterHttpClientWithPolicy(IServiceCollection services, string policyName, string serviceName, IAsyncPolicy<HttpResponseMessage> policyWrap)
+        {
+            services.AddHttpClient(policyName, (serviceProvider, client) =>
+            {
+                var baseAddressSelector = serviceProvider.GetRequiredService<LoadBalancingSelector>();
+                client.BaseAddress = baseAddressSelector.GetNextBaseAddress(serviceName);
+                Console.WriteLine($"Configured HttpClient with BaseAddress: {client.BaseAddress}");
+            }).AddPolicyHandler(policyWrap);
         }
     }
-
 }

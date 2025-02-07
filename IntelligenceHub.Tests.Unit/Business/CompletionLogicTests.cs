@@ -1,5 +1,6 @@
 using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Implementations;
+using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
@@ -10,6 +11,7 @@ namespace IntelligenceHub.Tests.Unit.Business
 {
     public class CompletionLogicTests
     {
+        private readonly Mock<IAGIClientFactory> _mockAgiClientFactory;
         private readonly Mock<IAGIClient> _mockAIClient;
         private readonly Mock<IAISearchServiceClient> _mockSearchClient;
         private readonly Mock<IToolClient> _mockToolClient;
@@ -21,6 +23,7 @@ namespace IntelligenceHub.Tests.Unit.Business
 
         public CompletionLogicTests()
         {
+            _mockAgiClientFactory = new Mock<IAGIClientFactory>();
             _mockAIClient = new Mock<IAGIClient>();
             _mockSearchClient = new Mock<IAISearchServiceClient>();
             _mockToolClient = new Mock<IToolClient>();
@@ -28,9 +31,12 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockToolRepository = new Mock<IToolRepository>();
             _mockMessageHistoryRepository = new Mock<IMessageHistoryRepository>();
             _mockRagMetaRepository = new Mock<IIndexMetaRepository>();
+            _mockAIClient = new Mock<IAGIClient>();
 
+            _mockAgiClientFactory.Setup(factory => factory.GetClient(It.IsAny<AGIServiceHosts>())).Returns(_mockAIClient.Object);
+            
             _completionLogic = new CompletionLogic(
-                _mockAIClient.Object,
+                _mockAgiClientFactory.Object,
                 _mockSearchClient.Object,
                 _mockToolClient.Object,
                 _mockToolRepository.Object,
@@ -50,7 +56,7 @@ namespace IntelligenceHub.Tests.Unit.Business
                 Messages = new List<Message> { new Message { Content = "Test message", Role = Role.User, TimeStamp = DateTime.UtcNow } }
             };
 
-            var profile = new DbProfile { Name = "TestProfile" };
+            var profile = new DbProfile { Name = "TestProfile", Host = AGIServiceHosts.Azure.ToString() };
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
 
             var completionStreamChunks = new List<CompletionStreamChunk>
@@ -61,7 +67,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockAIClient.Setup(client => client.StreamCompletion(It.IsAny<CompletionRequest>())).Returns(completionStreamChunks);
 
             var completionLogic = new CompletionLogic(
-                _mockAIClient.Object,
+                _mockAgiClientFactory.Object,
                 _mockSearchClient.Object,
                 _mockToolClient.Object,
                 _mockToolRepository.Object,
@@ -89,14 +95,25 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task ProcessCompletion_ReturnsCompletionResponse_WhenValidRequest()
         {
             // Arrange
+            var userMessage = new Message { Role = Role.User, Content = "Test message" };
+
             var completionRequest = new CompletionRequest
             {
-                Messages = new List<Message> { new Message { Content = "Test message" } },
-                ProfileOptions = new Profile { Name = "TestProfile" }
+                Messages = new List<Message> { userMessage },
+                ConversationId = Guid.NewGuid(),
+                ProfileOptions = new Profile { Name = "TestProfile", Host = AGIServiceHosts.Azure }
             };
 
-            var profile = new DbProfile { Name = "TestProfile" };
-            var completionResponse = new CompletionResponse { FinishReason = FinishReason.Stop };
+            var profile = new DbProfile { Name = "TestProfile", Host = AGIServiceHosts.Azure.ToString() };
+            var completionResponse = new CompletionResponse() 
+            { 
+                Messages = new List<Message>()
+                {
+                    userMessage,
+                    new Message() { Role = Role.Assistant, Content = "Response message" }
+                },
+                FinishReason = FinishReason.Stop 
+            };
 
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
             _mockAIClient.Setup(client => client.PostCompletion(It.IsAny<CompletionRequest>())).ReturnsAsync(completionResponse);
@@ -176,7 +193,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var httpResponse = new HttpResponseMessage();
             var dbTool = new DbTool { Name = "Tool1", ExecutionUrl = "http://example.com", ExecutionMethod = "POST" };
 
-            var profile = new DbProfile { Name = "TestProfile" };
+            var profile = new DbProfile { Name = "TestProfile", Host = AGIServiceHosts.Azure.ToString() };
             var completionResponse = new CompletionResponse
             {
                 Messages = new List<Message> { new Message { Content = "Recursive response", Role = Role.Assistant, TimeStamp = DateTime.UtcNow } },

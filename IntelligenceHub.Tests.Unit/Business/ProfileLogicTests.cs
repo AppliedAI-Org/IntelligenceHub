@@ -4,6 +4,7 @@ using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
 using Moq;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Tests.Unit.Business
 {
@@ -49,7 +50,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task GetProfile_ReturnsProfile_WhenProfileExists()
         {
             // Arrange
-            var profile = new DbProfile { Id = 1, Name = "ExistingProfile" };
+            var profile = new DbProfile { Id = 1, Name = "ExistingProfile", Host = AGIServiceHosts.Azure.ToString() };
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
             _mockProfileToolsRepository.Setup(repo => repo.GetToolAssociationsAsync(It.IsAny<int>())).ReturnsAsync(new List<DbProfileTool>());
 
@@ -108,7 +109,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task DeleteProfile_DeletesProfile_WhenProfileExists()
         {
             // Arrange
-            var profile = new DbProfile { Id = 1, Name = "ExistingProfile" };
+            var profile = new DbProfile { Id = 1, Name = "ExistingProfile", Host = AGIServiceHosts.Azure.ToString() };
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
             _mockProfileRepository.Setup(repo => repo.DeleteAsync(It.IsAny<DbProfile>())).ReturnsAsync(1);
 
@@ -137,7 +138,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task GetAllProfiles_ReturnsProfiles_WhenProfilesExist()
         {
             // Arrange
-            var profiles = new List<DbProfile> { new DbProfile { Id = 1, Name = "Profile1" } };
+            var profiles = new List<DbProfile> { new DbProfile { Id = 1, Name = "Profile1", Host = AGIServiceHosts.Azure.ToString() } };
             _mockProfileRepository.Setup(repo => repo.GetAllAsync(null, null)).ReturnsAsync(profiles);
             _mockProfileToolsRepository.Setup(repo => repo.GetToolAssociationsAsync(It.IsAny<int>())).ReturnsAsync(new List<DbProfileTool>());
 

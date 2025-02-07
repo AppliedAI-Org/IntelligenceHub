@@ -15,10 +15,12 @@
                 "If you use one of the sources, please reference it in your response using markdown like so: [SourceName](SourceLink)." +
                 "If no SourceLink is present, only provide the sourcename.\n\n";
 
-        public enum ClientPolicy
+        public enum ClientPolicies
         {
-            CompletionClient,
-            ToolClient
+            AzureAIClientPolicy,
+            OpenAIClientPolicy,
+            AnthropicAIClientPolicy,
+            ToolClientPolicy
         }
 
         public enum ResponseFormat
@@ -54,6 +56,13 @@
         public enum SystemTools
         {
             Recurse_ai_dialogue,
+        }
+
+        public enum AGIServiceHosts
+        {
+            Azure,
+            OpenAI,
+            Anthropic
         }
 
         public const string DefaultAGIModel = "gpt-4o-mini";

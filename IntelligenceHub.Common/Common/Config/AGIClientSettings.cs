@@ -2,7 +2,9 @@
 {
     public class AGIClientSettings
     {
-        public List<AGIServiceDetails> Services { get; set; }
+        public List<AGIServiceDetails> AzureServices { get; set; }
+        public List<AGIServiceDetails> OpenAIServices { get; set; }
+        public List<AGIServiceDetails> AnthropicServices { get; set; }
         public string SearchServiceCompletionServiceEndpoint { get; set; }
         public string SearchServiceCompletionServiceKey { get; set; }
     }

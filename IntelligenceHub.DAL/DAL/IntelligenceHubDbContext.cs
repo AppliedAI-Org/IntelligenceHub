@@ -97,6 +97,7 @@ namespace IntelligenceHub.DAL
                 entity.Property(e => e.Stop).HasMaxLength(255);
                 entity.Property(e => e.ReferenceProfiles).HasMaxLength(2040);
                 entity.Property(e => e.ReferenceDescription).HasMaxLength(2040);
+                entity.Property(e => e.Host).HasMaxLength(255);
             });
 
             modelBuilder.Entity<DbTool>(entity =>

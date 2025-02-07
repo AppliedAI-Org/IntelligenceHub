@@ -3,6 +3,7 @@ using IntelligenceHub.API.API.DTOs.Tools;
 using IntelligenceHub.API.DTOs;
 using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Business.Interfaces;
+using IntelligenceHub.Client.Implementations;
 using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Extensions;
 using IntelligenceHub.DAL;
@@ -19,7 +20,7 @@ namespace IntelligenceHub.Business.Implementations
         private const int _defaultMaxRecursionMessageHistory = 20;
         private const string _defaultUser = "User";
 
-        private readonly IAGIClient _AIClient;
+        private readonly IAGIClientFactory _agiClientFactory;
         private readonly IAISearchServiceClient _searchClient;
         private readonly IToolClient _ToolClient;
         private readonly IProfileRepository _profileDb;
@@ -28,7 +29,7 @@ namespace IntelligenceHub.Business.Implementations
         private readonly IIndexMetaRepository _ragMetaRepository;
 
         public CompletionLogic(
-            IAGIClient agiClient,
+            IAGIClientFactory agiClientFactory,
             IAISearchServiceClient searchClient,
             IToolClient ToolClient,
             IToolRepository toolRepository,
@@ -37,12 +38,12 @@ namespace IntelligenceHub.Business.Implementations
             IIndexMetaRepository indexMetaRepository)
         {
             _toolDb = toolRepository;
-            _AIClient = agiClient;
             _ToolClient = ToolClient;
             _profileDb = profileRepository;
             _messageHistoryRepository = messageHistoryRepository;
             _ragMetaRepository = indexMetaRepository;
             _searchClient = searchClient;
+            _agiClientFactory = agiClientFactory;
         }
 
         #region Streaming
@@ -76,7 +77,9 @@ namespace IntelligenceHub.Business.Implementations
                 completionRequest.Messages.Add(completionMessageWithRagData);
             }
 
-            var completionCollection = _AIClient.StreamCompletion(completionRequest);
+            if (completionRequest.ProfileOptions.Host == null) yield break;
+            var agiClient = _agiClientFactory.GetClient(completionRequest.ProfileOptions.Host);
+            var completionCollection = agiClient.StreamCompletion(completionRequest);
             if (completionCollection == null) yield break;
 
             Role? dbMessageRole;
@@ -134,12 +137,10 @@ namespace IntelligenceHub.Business.Implementations
         {
             if (!completionRequest.Messages.Any() || string.IsNullOrEmpty(completionRequest.ProfileOptions.Name)) return null;
 
-            // Get and set profile details, overriding the database with any parameters that aren't null in the request
             var profile = await _profileDb.GetByNameAsync(completionRequest.ProfileOptions.Name);
             var mappedProfile = DbMappingHandler.MapFromDbProfile(profile);
             completionRequest.ProfileOptions = await BuildCompletionOptions(mappedProfile, completionRequest.ProfileOptions);
 
-            // Get and attach message history if a conversation id exists
             if (completionRequest.ConversationId is Guid conversationId)
             {
                 completionRequest.Messages = await BuildMessageHistory(
@@ -148,7 +149,6 @@ namespace IntelligenceHub.Business.Implementations
                     completionRequest.ProfileOptions.MaxMessageHistory);
             }
 
-            // Add data retrieved from RAG indexing
             if (!string.IsNullOrEmpty(completionRequest.ProfileOptions.RagDatabase))
             {
                 var completionMessage = completionRequest.Messages.LastOrDefault();
@@ -157,7 +157,9 @@ namespace IntelligenceHub.Business.Implementations
                 completionRequest.Messages.Add(completionMessageWithRagData);
             }
 
-            var completion = await _AIClient.PostCompletion(completionRequest);
+            if (completionRequest.ProfileOptions.Host == null) return null;
+            var agiClient = _agiClientFactory.GetClient(completionRequest.ProfileOptions.Host);
+            var completion = await agiClient.PostCompletion(completionRequest);
             if (completion.FinishReason == FinishReason.Error) return completion;
 
             if (completionRequest.ConversationId is Guid id)
@@ -232,6 +234,9 @@ namespace IntelligenceHub.Business.Implementations
                 Tools = profileOptions?.Tools ?? profile.Tools,
                 System_Message = profileOptions?.System_Message ?? profile.System_Message,
                 Reference_Profiles = profileReferences,
+                Host = profileOptions?.Host ?? profile.Host,
+                Tool_Choice = profileOptions?.Tool_Choice ?? profile.Tool_Choice,
+                ReferenceDescription = profileOptions?.ReferenceDescription ?? profile.ReferenceDescription
             };
         }
         #endregion
@@ -337,7 +342,8 @@ namespace IntelligenceHub.Business.Implementations
                 completionRequest.Messages.Add(completionMessageWithRagData);
             }
 
-            var completion = await _AIClient.PostCompletion(completionRequest);
+            var agiClient = _agiClientFactory.GetClient(completionRequest.ProfileOptions.Host);
+            var completion = await agiClient.PostCompletion(completionRequest);
             if (completion.FinishReason == FinishReason.Error) return completion;
 
             if (completionRequest.ConversationId is Guid id)

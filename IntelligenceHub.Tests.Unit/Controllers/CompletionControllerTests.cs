@@ -37,7 +37,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var name = "testProfile";
-            var completionRequest = new CompletionRequest { ProfileOptions = new Profile { Name = name } };
+            var completionRequest = new CompletionRequest { ProfileOptions = new Profile { Name = name }, ConversationId = Guid.NewGuid(), };
             var expectedResponse = new CompletionResponse
             {
                 FinishReason = GlobalVariables.FinishReason.Stop,

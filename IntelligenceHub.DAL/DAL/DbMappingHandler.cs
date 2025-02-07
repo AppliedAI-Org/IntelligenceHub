@@ -5,6 +5,7 @@ using IntelligenceHub.DAL.Models;
 using IntelligenceHub.API.DTOs.RAG;
 using System.Text.Json;
 using IntelligenceHub.Common;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.DAL
 {
@@ -18,6 +19,7 @@ namespace IntelligenceHub.DAL
                 Id = dbProfile.Id,
                 Name = dbProfile.Name,
                 Model = dbProfile.Model,
+                Host = dbProfile.Host.ToServiceHost(),
                 Frequency_Penalty = (float?)dbProfile.FrequencyPenalty,
                 Presence_Penalty = (float?)dbProfile.PresencePenalty,
                 Temperature = (float?)dbProfile.Temperature,
@@ -55,6 +57,10 @@ namespace IntelligenceHub.DAL
                 Model = profileUpdate?.Model
                     ?? existingProfile?.Model
                     ?? GlobalVariables.DefaultAGIModel,
+
+                Host = profileUpdate?.Host.ToString()
+                    ?? existingProfile?.Host.ToString()
+                    ?? AGIServiceHosts.OpenAI.ToString(),
 
                 FrequencyPenalty = profileUpdate?.Frequency_Penalty
                     ?? existingProfile?.FrequencyPenalty

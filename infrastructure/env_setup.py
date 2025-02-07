@@ -6,9 +6,10 @@ import sys
 #
 # Note: This script is designed to first check for the presence of environment variables and use them to populate 
 # the appsettings file. If no environment variables are found, the script will prompt the user to enter these
-# values. It can also be ran in a production setting to gaurentee that all required environment variables are set,
+# values. It can also be ran in a production setting to guarantee that all required environment variables are set,
 # although additional CI\CD configurations is required to push these variables to a production environment.
 
+base_dir = os.path.dirname(__file__)
 template_path = os.path.join(base_dir, '..', 'IntelligenceHub.Host', 'appsettings.Template.json')
 output_path = os.path.join(base_dir, '..', 'IntelligenceHub.Host', 'appsettings.Development.json')
 
@@ -43,8 +44,12 @@ required_env_vars = [
     "AuthSettings_Domain",
     "AuthSettings_Audience",
     "AppInsightSettings_ConnectionString",
-    "AGIClientSettings_Services_0_Endpoint",
-    "AGIClientSettings_Services_0_Key",
+    "AGIClientSettings_AzureServices_0_Endpoint",
+    "AGIClientSettings_AzureServices_0_Key",
+    "AGIClientSettings_OpenAIServices_0_Endpoint",
+    "AGIClientSettings_OpenAIServices_0_Key",
+    "AGIClientSettings_AnthropicServices_0_Endpoint",
+    "AGIClientSettings_AnthropicServices_0_Key",
     "AGIClientSettings_SearchServiceCompletionServiceEndpoint",
     "AGIClientSettings_SearchServiceCompletionServiceKey",
     "SearchServiceClientSettings_Endpoint",
@@ -80,24 +85,31 @@ else:
 if len(replacements) != len(required_env_vars):
     print("Enter the values for the following tokens. Leave blank to skip.")
     for token in required_env_vars:
-        replacements[token] = input(f"{token}: ").strip()
+        if token not in replacements:
+            replacements[token] = input(f"{token}: ").strip()
 
     # Add support for multiple AGIClientSettings__Services
-    additional_services = []
-    while True:
-        add_more = input("Would you like to add another AGI client service? (y/n): ").strip().lower()
-        if add_more == 'y':
-            endpoint = input("Enter the AGI client service endpoint: ").strip()
-            key = input("Enter the AGI client service key: ").strip()
-            if endpoint and key:
-                additional_services.append({"Endpoint": endpoint, "Key": key})
-        elif add_more == 'n':
-            break
-        else:
-            print("Please enter 'y' for yes or 'n' for no.")
+    additional_services = {
+        "AzureServices": [],
+        "OpenAIServices": [],
+        "AnthropicServices": []
+    }
+    for service_type in additional_services.keys():
+        while True:
+            add_more = input(f"Would you like to add another {service_type[:-1]} service? (y/n): ").strip().lower()
+            if add_more == 'y':
+                endpoint = input(f"Enter the {service_type[:-1]} service endpoint: ").strip()
+                key = input(f"Enter the {service_type[:-1]} service key: ").strip()
+                if endpoint and key:
+                    additional_services[service_type].append({"Endpoint": endpoint, "Key": key})
+            elif add_more == 'n':
+                break
+            else:
+                print("Please enter 'y' for yes or 'n' for no.")
 
-    if additional_services:
-        replacements["AGIClientSettings_Services"] = additional_services
+    for service_type, services in additional_services.items():
+        if services:
+            replacements[f"AGIClientSettings_{service_type}"] = services
 
 # Replace tokens in the template
 updated_appsettings = replace_tokens(appsettings_template, replacements)

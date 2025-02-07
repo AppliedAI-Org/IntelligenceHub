@@ -13,7 +13,7 @@ namespace IntelligenceHub.Client.Implementations
         private HttpClient _client { get; set; }
         public ToolClient(IHttpClientFactory clientFactory)
         {
-            _client = clientFactory.CreateClient(GlobalVariables.ClientPolicy.ToolClient.ToString());
+            _client = clientFactory.CreateClient(GlobalVariables.ClientPolicies.ToolClientPolicy.ToString());
         }
 
         public async Task<HttpResponseMessage> CallFunction(string toolName, string toolArgs, string endpoint, string? httpMethod = "POST", string? key = null)

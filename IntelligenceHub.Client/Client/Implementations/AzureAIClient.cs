@@ -14,15 +14,15 @@ using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Client.Implementations
 {
-    public class AGIClient : IAGIClient
+    public class AzureAIClient : IAGIClient
     {
-        private AzureOpenAIClient _azureOpenAIClient;
+        internal AzureOpenAIClient _azureOpenAIClient;
 
-        public AGIClient(IOptionsMonitor<AGIClientSettings> settings, IHttpClientFactory policyFactory)
+        public AzureAIClient(IOptionsMonitor<AGIClientSettings> settings, IHttpClientFactory policyFactory)
         {
-            var policyClient = policyFactory.CreateClient(ClientPolicy.CompletionClient.ToString());
+            var policyClient = policyFactory.CreateClient(ClientPolicies.AzureAIClientPolicy.ToString());
 
-            var service = settings.CurrentValue.Services.Find(service => service.Endpoint == policyClient.BaseAddress?.ToString())
+            var service = settings.CurrentValue.AzureServices.Find(service => service.Endpoint == policyClient.BaseAddress?.ToString())
                 ?? throw new InvalidOperationException("service key failed to be retrieved when attempting to generate a completion.");
 
             var apiKey = service.Key;
@@ -31,8 +31,11 @@ namespace IntelligenceHub.Client.Implementations
             {
                 Transport = new HttpClientPipelineTransport(policyClient)
             };
-            _azureOpenAIClient = new AzureOpenAIClient(policyClient.BaseAddress, credential, options);  //+ "chat/completions"; add this if url is for OpenAI instead of Azure OpenAI
+            _azureOpenAIClient = new AzureOpenAIClient(policyClient.BaseAddress, credential, options);
         }
+
+        // parameterless constructor for derived classes
+        public AzureAIClient() { }
 
         public async Task<CompletionResponse> PostCompletion(CompletionRequest completionRequest)
         {
@@ -40,12 +43,13 @@ namespace IntelligenceHub.Client.Implementations
             var options = BuildCompletionOptions(completionRequest);
             var messages = BuildCompletionMessages(completionRequest);
             var chatClient = _azureOpenAIClient.GetChatClient(completionRequest.ProfileOptions.Model);
+
             var completionResult = await chatClient.CompleteChatAsync(messages, options);
 
             var toolCalls = new Dictionary<string, string>();
             foreach (var tool in completionResult.Value.ToolCalls)
             {
-                if (tool.FunctionName.ToLower() == SystemTools.Recurse_ai_dialogue.ToString().ToLower()) toolCalls.Add(tool.FunctionName, tool.FunctionArguments.ToString());
+                if (tool.FunctionName.ToLower() != SystemTools.Recurse_ai_dialogue.ToString().ToLower()) toolCalls.Add(tool.FunctionName, tool.FunctionArguments.ToString());
                 else toolCalls.Add(SystemTools.Recurse_ai_dialogue.ToString().ToLower(), string.Empty);
             }
 
@@ -56,7 +60,7 @@ namespace IntelligenceHub.Client.Implementations
             {
                 Content = contentString,
                 Role = completionResult.Value.Role.ToString().ConvertStringToRole() ?? Role.Assistant,
-                User = completionRequest.ProfileOptions.User,
+                User = completionRequest.ProfileOptions.User ?? string.Empty,
                 TimeStamp = DateTime.UtcNow
             };
 
@@ -91,8 +95,8 @@ namespace IntelligenceHub.Client.Implementations
             var toolCalls = new Dictionary<string, string>();
             await foreach (var result in resultCollection)
             {
-                if (!string.IsNullOrEmpty(result.Role.ToString())) role = result.Role.ToString() ?? role;
-                if (!string.IsNullOrEmpty(result.FinishReason.ToString())) finishReason = result.FinishReason.ToString() ?? finishReason;
+                if (!string.IsNullOrEmpty(result.Role.ToString())) role = result.Role.ToString() ?? role ?? string.Empty;
+                if (!string.IsNullOrEmpty(result.FinishReason.ToString())) finishReason = result.FinishReason.ToString() ?? finishReason ?? string.Empty;
                 var content = string.Empty;
                 var base64Image = string.Empty;
 
@@ -115,11 +119,13 @@ namespace IntelligenceHub.Client.Implementations
                     }
 
                     if (toolCalls.ContainsKey(currentTool)) toolCalls[currentTool] = currentToolArgs;
-                    else toolCalls.Add(currentTool, currentToolArgs);
+                    else
+                    {
+                        if (currentTool.ToLower() != SystemTools.Recurse_ai_dialogue.ToString().ToLower()) toolCalls.Add(currentTool, currentToolArgs);
+                        else toolCalls.Add(SystemTools.Recurse_ai_dialogue.ToString().ToLower(), string.Empty);
+                    }
                 }
-
                 var finalContentString = GetMessageContent(content, toolCalls);
-
                 yield return new CompletionStreamChunk()
                 {
                     Id = chunkId++,
@@ -191,8 +197,8 @@ namespace IntelligenceHub.Client.Implementations
             if (completion.ProfileOptions.Tools != null) 
                 foreach (var tool in completion.ProfileOptions.Tools)
                 {
-                    var thing = JsonSerializer.Serialize(tool.Function.Parameters);
-                    var newTool = ChatTool.CreateFunctionTool(tool.Function.Name, tool.Function.Description, BinaryData.FromString(thing));
+                    var serializedParameters = JsonSerializer.Serialize(tool.Function.Parameters);
+                    var newTool = ChatTool.CreateFunctionTool(tool.Function.Name, tool.Function.Description, BinaryData.FromString(serializedParameters));
                     options.Tools.Add(newTool);
                 };
 
@@ -211,59 +217,6 @@ namespace IntelligenceHub.Client.Implementations
             return options;
         }
 
-        public async Task<float[]?> GetEmbeddings(string completion, string? embeddingModel = null)
-        {
-            embeddingModel = embeddingModel ?? DefaultEmbeddingModel;
-            var embeddingClient = _azureOpenAIClient.GetEmbeddingClient(embeddingModel);
-            var embeddingResponse = await embeddingClient.GenerateEmbeddingAsync(completion);
-            return embeddingResponse.Value.ToFloats().ToArray();
-        }
-
-        // below code is currently not being used since Azure OpenAI does not support tools with RAG via AI Search.
-        // Therefore AI Search indexes are queried directly and the we manually attach the data to the final user request.
-        private ChatCompletionOptions AttachDatabaseOptions(string indexName, ChatCompletionOptions options)
-        {
-            throw new NotImplementedException("This method has been deprecated in favor of attaching RAG data via direct requests to Azure AI Search Services");
-
-            //var fieldMappings = new DataSourceFieldMappings();
-
-            //// configure below dynamically based off of RAG database definition
-            //fieldMappings.VectorFieldNames.Add("contentVector");
-            //fieldMappings.VectorFieldNames.Add("titleVector");
-
-            // get below values from database
-            //options.AddDataSource(new AzureSearchChatDataSource()
-            //{
-            //    Endpoint = new Uri(_aiSearchServiceUrl), // retrieve from RagDB
-            //    Authentication = DataSourceAuthentication.FromApiKey(_aiSearchServiceKey), // retrieve from RagDB
-            //    IndexName = indexName, // create an Options property for API requests to hold this and below values
-            //    InScope = false, // add to DatabaseOptions
-            //    SemanticConfiguration = "semantic", // add to DatabaseOptions ?? defaultValue
-            //    QueryType = "vector", // add to DatabaseOptions ?? defaultValue
-            //    VectorizationSource = DataSourceVectorizer.FromDeploymentName(_embeddingModel), // add string to dbOptions
-            //    FieldMappings = fieldMappings,
-
-            //    // Add these
-            //    TopNDocuments = 5, // get from databaseOptions ?? defaultValue
-            //    OutputContextFlags = DataSourceOutputContexts.Citations | // probably just hard code value as this?
-            //        DataSourceOutputContexts.Intent |
-            //        DataSourceOutputContexts.AllRetrievedDocuments,
-
-            //    Strictness = 4, // get from databaseOptions ?? null
-
-            //    // not sure if we want to set this or not
-            //    MaxSearchQueries = 5,
-
-
-
-            //    // probably don't use below for now
-            //    //AllowPartialResult = false,
-            //    //Filter = // seems very useful
-            //});
-
-            //return options;
-        }
-            
         private string GetMessageContent(string? messageContent, Dictionary<string, string> toolCalls)
         {
             try

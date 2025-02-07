@@ -9,21 +9,23 @@ namespace IntelligenceHub.Common.Extensions
 
         public static FinishReason? ConvertStringToFinishReason(this string finishReason)
         {
-            if (finishReason == ChatFinishReason.Stop.ToString()) return FinishReason.Stop;
-            if (finishReason == ChatFinishReason.Length.ToString()) return FinishReason.Length;
-            if (finishReason == ChatFinishReason.ToolCalls.ToString()) return FinishReason.ToolCalls;
-            if (finishReason == ChatFinishReason.FunctionCall.ToString()) return FinishReason.ToolCalls;
-            if (finishReason == ChatFinishReason.ContentFilter.ToString()) return FinishReason.ContentFilter;
+            finishReason = finishReason.ToLower();
+            if (finishReason == ChatFinishReason.Stop.ToString().ToLower()) return FinishReason.Stop;
+            if (finishReason == ChatFinishReason.Length.ToString().ToLower()) return FinishReason.Length;
+            if (finishReason == ChatFinishReason.ToolCalls.ToString().ToLower()) return FinishReason.ToolCalls;
+            if (finishReason == ChatFinishReason.FunctionCall.ToString().ToLower()) return FinishReason.ToolCalls;
+            if (finishReason == ChatFinishReason.ContentFilter.ToString().ToLower()) return FinishReason.ContentFilter;
             return null;
         }
 
         public static Role? ConvertStringToRole(this string role)
         {
-            if (role == ChatMessageRole.Assistant.ToString()) return Role.Assistant;
-            if (role == ChatMessageRole.User.ToString()) return Role.User;
-            if (role == ChatMessageRole.Tool.ToString()) return Role.Tool;
-            if (role == ChatMessageRole.Function.ToString()) return Role.Tool;
-            if (role == ChatMessageRole.System.ToString()) return Role.System;
+            role = role.ToLower();
+            if (role == ChatMessageRole.Assistant.ToString().ToLower()) return Role.Assistant;
+            else if (role == ChatMessageRole.User.ToString().ToLower()) return Role.User;
+            else if (role == ChatMessageRole.Tool.ToString().ToLower()) return Role.Tool;
+            else if (role == ChatMessageRole.Function.ToString().ToLower()) return Role.Tool;
+            else if (role == ChatMessageRole.System.ToString().ToLower()) return Role.System;
             return null;
         }
 
@@ -44,6 +46,17 @@ namespace IntelligenceHub.Common.Extensions
             string[] result = commaSeparatedString.Split(',');
             for (int i = 0; i < result.Length; i++) result[i] = result[i].Trim(); // Trim each element to remove leading and trailing whitespaces
             return result;
+        }
+
+        public static AGIServiceHosts? ToServiceHost(this string hostString)
+        {
+            if (string.IsNullOrEmpty(hostString)) throw new ArgumentException(nameof(hostString));
+
+            hostString = hostString.ToLower();
+            if (hostString == AGIServiceHosts.OpenAI.ToString().ToLower()) return AGIServiceHosts.OpenAI;
+            else if (hostString == AGIServiceHosts.Azure.ToString().ToLower()) return AGIServiceHosts.Azure;
+            else if (hostString == AGIServiceHosts.Anthropic.ToString().ToLower()) return AGIServiceHosts.Anthropic;
+            return null;
         }
     }
 }

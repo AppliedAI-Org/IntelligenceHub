@@ -1,5 +1,6 @@
 ﻿using IntelligenceHub.API.DTOs.Tools;
 using Newtonsoft.Json;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.API.DTOs
 {
@@ -9,6 +10,7 @@ namespace IntelligenceHub.API.DTOs
         public int Id { get; set; }
         public string? Name { get; set; }
         public string? Model { get; set; }
+        public AGIServiceHosts? Host { get; set; }
         public string? RagDatabase { get; set; }
         public float? Frequency_Penalty { get; set; }
         public float? Presence_Penalty { get; set; }
