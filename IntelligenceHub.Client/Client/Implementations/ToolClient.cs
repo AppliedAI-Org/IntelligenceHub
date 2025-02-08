@@ -19,11 +19,7 @@ namespace IntelligenceHub.Client.Implementations
         public async Task<HttpResponseMessage> CallFunction(string toolName, string toolArgs, string endpoint, string? httpMethod = "POST", string? key = null)
         {
             // validate inputs
-            //if (string.IsNullOrEmpty(endpoint)) return new HttpResponseMessage(System.Net.HttpStatusCode.NotFound) { Content = new StringContent("No endpoint provided") };
-            //if (string.IsNullOrEmpty(toolArgs) && (httpMethod?.ToUpper() == "POST" || httpMethod?.ToUpper() == "PUT" || httpMethod?.ToUpper() == "PATCH"))
-            //{
-            //    return new HttpResponseMessage(System.Net.HttpStatusCode.NotFound) { Content = new StringContent("No tool args provided on a request requiring a body") };
-            //}
+            if (string.IsNullOrEmpty(endpoint)) return new HttpResponseMessage(System.Net.HttpStatusCode.NotFound) { Content = new StringContent("No endpoint provided") };
 
             _client.DefaultRequestHeaders.Clear();
             _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -54,9 +50,9 @@ namespace IntelligenceHub.Client.Implementations
                 }
 
                 if (httpMethod?.ToUpper() == HttpMethod.Post.ToString()) return await _client.PostAsync(endpoint, body);
-                else if (httpMethod?.ToUpper() == HttpMethod.Get.ToString()) return await _client.GetAsync(endpoint);
                 else if (httpMethod?.ToUpper() == HttpMethod.Put.ToString()) return await _client.PutAsync(endpoint, body);
                 else if (httpMethod?.ToUpper() == HttpMethod.Patch.ToString()) return await _client.PatchAsync(endpoint, body);
+                else if (httpMethod?.ToUpper() == HttpMethod.Get.ToString()) return await _client.GetAsync(endpoint);
                 else if (httpMethod?.ToUpper() == HttpMethod.Delete.ToString()) return await _client.DeleteAsync(endpoint);
                 else return new HttpResponseMessage(System.Net.HttpStatusCode.NotFound);
             }

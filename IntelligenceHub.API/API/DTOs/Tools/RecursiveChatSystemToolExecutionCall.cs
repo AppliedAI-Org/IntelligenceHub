@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace IntelligenceHub.API.API.DTOs.Tools
 {
-    public class ProfileReferenceToolExecutionCall
+    public class RecursiveChatSystemToolExecutionCall
     {
         public string responding_ai_model { get; set; }
         public string prompt_response { get; set; }

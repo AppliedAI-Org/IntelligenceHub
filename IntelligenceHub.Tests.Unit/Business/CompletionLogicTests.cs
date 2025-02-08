@@ -2,6 +2,7 @@ using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Client.Interfaces;
+using IntelligenceHub.Common.Config;
 using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
 using Moq;
@@ -188,7 +189,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task ExecuteTools_ReturnsResponses_WhenRecursionIsExecuted()
         {
             // Arrange
-            var toolCalls = new Dictionary<string, string> { { "recurse_ai_dialogue", "{\"responding_ai_model\":\"TestProfile\"}" } };
+            var toolCalls = new Dictionary<string, string> { { SystemTools.Chat_Recursion.ToString(), "{\"responding_ai_model\":\"TestProfile\"}" } };
             var messages = new List<Message> { new Message { Content = "Initial message", Role = Role.User, TimeStamp = DateTime.UtcNow } };
             var httpResponse = new HttpResponseMessage();
             var dbTool = new DbTool { Name = "Tool1", ExecutionUrl = "http://example.com", ExecutionMethod = "POST" };

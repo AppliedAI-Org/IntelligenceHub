@@ -3,7 +3,6 @@ using IntelligenceHub.API.API.DTOs.Tools;
 using IntelligenceHub.API.DTOs;
 using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Business.Interfaces;
-using IntelligenceHub.Client.Implementations;
 using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Extensions;
 using IntelligenceHub.DAL;
@@ -205,6 +204,12 @@ namespace IntelligenceHub.Business.Implementations
             // adds the profile references to the tools
             var profileReferences = profileOptions?.Reference_Profiles ?? profile.Reference_Profiles ?? Array.Empty<string>();
             if (profile.Tools == null) profile.Tools = new List<Tool>();
+
+            // add image gen system tool if appropriate - Anthropic does not support image gen currently
+            var host = profileOptions?.Host ?? profile.Host;
+            if (host != AGIServiceHosts.Anthropic) profile.Tools.Add(new ImageGenSystemTool());
+
+            // add recursive chat system tool if appropriate
             if (profileReferences != null && profileReferences.Any())
             {
                 // add to both tool sets to ensure no overwrites occur
@@ -243,7 +248,7 @@ namespace IntelligenceHub.Business.Implementations
 
         #region Shared
 
-        private async Task<ProfileReferenceTool> BuildProfileReferenceTool(string[] profileNames)
+        private async Task<RecursiveChatSystemTool> BuildProfileReferenceTool(string[] profileNames)
         {
             var referenceProfiles = new List<Profile>();
             foreach (var name in profileNames)
@@ -252,7 +257,7 @@ namespace IntelligenceHub.Business.Implementations
                 if (profile == null) continue;
                 referenceProfiles.Add(DbMappingHandler.MapFromDbProfile(profile));
             }
-            return new ProfileReferenceTool(referenceProfiles);
+            return new RecursiveChatSystemTool(referenceProfiles);
         }
 
         public async Task<(List<HttpResponseMessage>, List<Message>)> ExecuteTools(Dictionary<string, string> toolCalls, List<Message> messages, Profile? options = null, Guid? conversationId = null, bool streaming = false, int currentRecursionDepth = 0)
@@ -261,7 +266,8 @@ namespace IntelligenceHub.Business.Implementations
             var maxDepth = options?.MaxMessageHistory ?? _defaultMaxRecursionMessageHistory;
             foreach (var tool in toolCalls)
             {
-                if (tool.Key.Equals(SystemTools.Recurse_ai_dialogue.ToString().ToLower()) || currentRecursionDepth > maxDepth) messages = await HandleRecursiveDialogue(tool.Value, messages, options, conversationId, currentRecursionDepth + 1);
+                if (tool.Key.ToLower().Equals(SystemTools.Chat_Recursion.ToString().ToLower()) || currentRecursionDepth > maxDepth) messages = await HandleRecursiveDialogue(tool.Value, messages, options, conversationId, currentRecursionDepth + 1);
+                else if (tool.Key.ToLower().Equals(SystemTools.Image_Gen.ToString().ToLower()) || currentRecursionDepth > maxDepth) messages = await GenerateImage(tool.Value, options?.Host, messages);
                 else
                 {
                     var dbTool = await _toolDb.GetByNameAsync(tool.Key);
@@ -273,7 +279,7 @@ namespace IntelligenceHub.Business.Implementations
 
         private async Task<List<Message>> HandleRecursiveDialogue(string toolCall, List<Message> messages, Profile? options = null, Guid? conversationId = null, int currentRecursionDepth = 0)
         {
-            var toolExecutionCall = JsonSerializer.Deserialize<ProfileReferenceToolExecutionCall>(toolCall);
+            var toolExecutionCall = JsonSerializer.Deserialize<RecursiveChatSystemToolExecutionCall>(toolCall);
             if (toolExecutionCall == null) return messages;
 
             var profileName = toolExecutionCall.responding_ai_model;
@@ -407,6 +413,26 @@ namespace IntelligenceHub.Business.Implementations
                 + ragDataString;
 
             return completion;
+        }
+
+        private async Task<List<Message>> GenerateImage(string imageGenArgs, AGIServiceHosts? host, List<Message> messages)
+        {
+            // anthropic does not support image gen currently
+            if (host == AGIServiceHosts.Anthropic) return messages;
+
+            var imageGenArgsJson = JsonSerializer.Deserialize<Dictionary<string, string>>(imageGenArgs);
+            if (imageGenArgsJson == null || !imageGenArgsJson.ContainsKey("prompt")) return messages;
+
+            var prompt = imageGenArgsJson["prompt"];
+
+            var client = _agiClientFactory.GetClient(host);
+            var base64Image = await client.GenerateImage(prompt);
+
+            // Append the generated image to the last message
+            var lastMessage = messages.LastOrDefault();
+            if (lastMessage != null && !string.IsNullOrEmpty(base64Image)) lastMessage.Base64Image = base64Image ?? string.Empty;
+            else if (!string.IsNullOrEmpty(base64Image)) messages.Add(new Message() { Content = string.Empty, Role = Role.Assistant, TimeStamp = DateTime.UtcNow, Base64Image = base64Image ?? string.Empty });
+            return messages;
         }
 #endregion
     }

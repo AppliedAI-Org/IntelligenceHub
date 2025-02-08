@@ -55,7 +55,8 @@
 
         public enum SystemTools
         {
-            Recurse_ai_dialogue,
+            Image_Gen,
+            Chat_Recursion,
         }
 
         public enum AGIServiceHosts

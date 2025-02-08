@@ -144,7 +144,7 @@ namespace IntelligenceHub.Tests.Unit.Client
                 .ReturnsAsync(responseMessage);
 
             // Act
-            var response = await _toolClient.CallFunction("tool", null, endpoint);
+            var response = await _toolClient.CallFunction("tool", null, endpoint, "POST");
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);

@@ -6,5 +6,6 @@ namespace IntelligenceHub.Client.Interfaces
     {
         public Task<CompletionResponse> PostCompletion(CompletionRequest completionRequest);
         public IAsyncEnumerable<CompletionStreamChunk> StreamCompletion(CompletionRequest completionRequest);
+        public Task<string?> GenerateImage(string prompt);
     }
 }

@@ -13,6 +13,7 @@ namespace IntelligenceHub.Client.Implementations
 {
     public class AnthropicAIClient : IAGIClient
     {
+        private readonly string _aiModelName = "claude-3-5-sonnet-20241022";
         private enum AnthropicSpecificStrings 
         {
             user_id,
@@ -32,6 +33,12 @@ namespace IntelligenceHub.Client.Implementations
 
             var apiKey = service.Key;
             _anthropicClient = new AnthropicClient(apiKey, policyClient);
+        }
+
+        public Task<string?> GenerateImage(string prompt)
+        {
+            // Anthropic does not currently support image gen
+            return Task.FromResult<string?>(null);
         }
 
         public async Task<CompletionResponse> PostCompletion(CompletionRequest completionRequest)
@@ -92,12 +99,15 @@ namespace IntelligenceHub.Client.Implementations
             foreach (var message in request.Messages)
             {
                 var messageContents = ConvertToAnthropicMessage(message);
+                var mimeType = GetMimeTypeFromBase64(message.Base64Image);
+
                 if (message.Role == Role.System) systemMessages.Add(new Anthropic.SDK.Messaging.SystemMessage(message.Content));
+                if (message.Base64Image != null) anthropicMessages.Add(new Anthropic.SDK.Messaging.Message { Content = new List<ContentBase> { new ImageContent { Source = new ImageSource() { Data = message.Base64Image, MediaType = mimeType } } }, Role = ConvertToAnthropicRole(message.Role) });
                 else if (!string.IsNullOrEmpty(message.Content)) anthropicMessages.Add(new Anthropic.SDK.Messaging.Message { Content = messageContents, Role = ConvertToAnthropicRole(message.Role) });
             }
 
             var anthropicTools = new List<Anthropic.SDK.Common.Tool>();
-            foreach (var tool in request.ProfileOptions.Tools)
+            foreach (var tool in request.ProfileOptions?.Tools)
             {
                 var schema = ConvertToolParameters(tool);
                 var serializedParams = JsonSerializer.Serialize(tool.Function.Parameters);
@@ -114,7 +124,7 @@ namespace IntelligenceHub.Client.Implementations
             var messageParams = new MessageParameters()
             {
                 Messages = anthropicMessages,
-                Model = request.ProfileOptions.Model,
+                Model = _aiModelName, // only one model is supported from anthropic
                 Stream = false,
                 StopSequences = request.ProfileOptions.Stop,
                 System = systemMessages,
@@ -136,7 +146,7 @@ namespace IntelligenceHub.Client.Implementations
                 var content = messageContent ?? string.Empty;
                 foreach (var tool in toolCalls)
                 {
-                    if (tool.Key.Equals(SystemTools.Recurse_ai_dialogue.ToString().ToLower())) return JsonSerializer.Deserialize<ProfileReferenceToolExecutionCall>(tool.Value)?.prompt_response ?? content;
+                    if (tool.Key.Equals(SystemTools.Chat_Recursion.ToString().ToLower())) return JsonSerializer.Deserialize<RecursiveChatSystemToolExecutionCall>(tool.Value)?.prompt_response ?? content;
                 }
                 return content;
             }
@@ -206,8 +216,8 @@ namespace IntelligenceHub.Client.Implementations
             var intelligenceHubTools = new Dictionary<string, string>();
             foreach (var tool in toolCalls)
             {
-                if (tool.Name.ToLower() != SystemTools.Recurse_ai_dialogue.ToString().ToLower()) intelligenceHubTools.Add(tool.Name, tool.Arguments.ToJsonString());
-                else intelligenceHubTools.Add(SystemTools.Recurse_ai_dialogue.ToString().ToLower(), string.Empty);
+                if (tool.Name.ToLower() != SystemTools.Chat_Recursion.ToString().ToLower()) intelligenceHubTools.Add(tool.Name, tool.Arguments.ToJsonString());
+                else intelligenceHubTools.Add(SystemTools.Chat_Recursion.ToString().ToLower(), string.Empty);
             }
             return intelligenceHubTools;
         }
@@ -220,6 +230,19 @@ namespace IntelligenceHub.Client.Implementations
             else if (anthropicStopReason.ToLower() == AnthropicSpecificStrings.stop_sequence.ToString().ToLower()) reason = FinishReason.Stop;
             else if (anthropicStopReason.ToLower() == AnthropicSpecificStrings.max_tokens.ToString().ToLower()) reason = FinishReason.Length;
             return reason;
+        }
+
+        private string GetMimeTypeFromBase64(string base64)
+        {
+            byte[] imageBytes = Convert.FromBase64String(base64.Substring(0, 20)); // Read only the first few bytes
+            if (imageBytes.Length < 4) return "image/png";
+
+            // Check the file signature (magic number) to determine the MIME type
+            if (imageBytes.Take(4).SequenceEqual(new byte[] { 0xFF, 0xD8, 0xFF })) return "image/jpeg";
+            if (imageBytes.Take(8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47 })) return "image/png";
+            if (imageBytes.Take(6).SequenceEqual(new byte[] { 0x47, 0x49, 0x46, 0x38 })) return "image/gif";
+            if (imageBytes.Take(4).SequenceEqual(new byte[] { 0x42, 0x4D })) return "image/bmp";
+            return "image/png"; // Default if unknown
         }
     }
 }

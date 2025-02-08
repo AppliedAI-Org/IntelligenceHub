@@ -9,6 +9,7 @@ using IntelligenceHub.Common.Extensions;
 using Microsoft.Extensions.Options;
 using OpenAI;
 using OpenAI.Chat;
+using OpenAI.Images;
 using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.Text.Json;
@@ -20,8 +21,13 @@ namespace IntelligenceHub.Client.Implementations
     {
         private readonly string _gpt4o = "gpt-4o";
         private readonly string _gpt4oMini = "gpt-4o-mini";
+        private readonly string _dalle3 = "dall-e-3";
+        private readonly string _dalle2 = "dall-e-2";
+
         private readonly ChatClient _gpt4oAIClient;
         private readonly ChatClient _gpt4ominiAIClient;
+        private readonly ImageClient _qualityImageGenClient; // DALL-E 3 - does not current support image modifications and prompting is less reliable (as of 2/7/2025)
+        private readonly ImageClient _versatileImageGenClient; // DALL-E 2 - currently more versatile and provides more reliable image generation via prompting (as of 2/7/2025)
 
         public OpenAIClient(IOptionsMonitor<AGIClientSettings> settings, IHttpClientFactory policyFactory)
         {
@@ -37,6 +43,26 @@ namespace IntelligenceHub.Client.Implementations
             };  
             _gpt4oAIClient = new ChatClient(_gpt4o, credential, options);
             _gpt4ominiAIClient = new ChatClient(_gpt4oMini, credential, options);
+
+            _qualityImageGenClient = new ImageClient(_dalle3, credential, options);
+            _versatileImageGenClient = new ImageClient(_dalle2, credential, options);
+        }
+
+        public async Task<string?> GenerateImage(string prompt)
+        {
+            var options = new ImageGenerationOptions()
+            {
+                ResponseFormat = GeneratedImageFormat.Bytes,
+
+                // add below to image gen system tool as arguments later potentially
+                Quality = GeneratedImageQuality.High,
+                Size = GeneratedImageSize.W1792xH1024,
+                //Style = GeneratedImageStyle.Vivid,
+            };
+
+            var completion = await _qualityImageGenClient.GenerateImageAsync(prompt, options);
+            var base64Image = completion.Value.ImageBytes != null && completion.Value.ImageBytes.ToArray().Length > 0 ? Convert.ToBase64String(completion.Value.ImageBytes) : null;
+            return base64Image;
         }
 
         public async Task<CompletionResponse> PostCompletion(CompletionRequest completionRequest)
@@ -69,8 +95,8 @@ namespace IntelligenceHub.Client.Implementations
             var toolCalls = new Dictionary<string, string>();
             foreach (var tool in completion.ToolCalls)
             {
-                if (tool.FunctionName.ToLower() != SystemTools.Recurse_ai_dialogue.ToString().ToLower()) toolCalls.Add(tool.FunctionName, tool.FunctionArguments.ToString());
-                else toolCalls.Add(SystemTools.Recurse_ai_dialogue.ToString().ToLower(), string.Empty);
+                if (tool.FunctionName.ToLower() != SystemTools.Chat_Recursion.ToString().ToLower()) toolCalls.Add(tool.FunctionName, tool.FunctionArguments.ToString());
+                else toolCalls.Add(SystemTools.Chat_Recursion.ToString().ToLower(), string.Empty);
             }
 
             return new CompletionResponse()
@@ -125,8 +151,8 @@ namespace IntelligenceHub.Client.Implementations
                     if(toolCalls.ContainsKey(currentTool)) toolCalls[currentTool] = currentToolArgs;
                     else
                     {
-                        if (currentTool.ToLower() != SystemTools.Recurse_ai_dialogue.ToString().ToLower()) toolCalls.Add(currentTool, currentToolArgs);
-                        else toolCalls.Add(SystemTools.Recurse_ai_dialogue.ToString().ToLower(), string.Empty);
+                        if (currentTool.ToLower() != SystemTools.Chat_Recursion.ToString().ToLower()) toolCalls.Add(currentTool, currentToolArgs);
+                        else toolCalls.Add(SystemTools.Chat_Recursion.ToString().ToLower(), string.Empty);
                     }
                 }
 
@@ -149,23 +175,32 @@ namespace IntelligenceHub.Client.Implementations
         {
             var systemMessage = completionRequest.ProfileOptions.System_Message;
             var completionMessages = new List<ChatMessage>();
+
             if (!string.IsNullOrWhiteSpace(systemMessage)) completionMessages.Add(new SystemChatMessage(systemMessage));
             foreach (var message in completionRequest.Messages)
             {
-                if (message.Role.ToString() == Role.User.ToString())
+                if (message.Role == Role.User)
                 {
-                    completionMessages.Add(new UserChatMessage(message.Content));
+                    // Create a list of content blocks for this user message.
+                    // Each block is an anonymous object with a "type" key.
+                    var contentBlocks = new List<ChatMessageContentPart>();
 
-                    // Add an image if necessary
-                    if (!string.IsNullOrEmpty(message.Base64Image)) completionMessages.Add(new UserChatMessage(message.Base64Image));
+                    // If there is text content, add it as a "text" block.
+                    if (!string.IsNullOrWhiteSpace(message.Content)) contentBlocks.Add(ChatMessageContentPart.CreateTextPart(message.Content));
 
+                    // If an image is present, add it as an "image_url" block.
+                    if (!string.IsNullOrEmpty(message.Base64Image))
+                    {
+                        // Convert the base64 string to a byte array
+                        var imageBytes = Convert.FromBase64String(message.Base64Image);
+                        var mimeType = GetMimeTypeFromBase64(message.Base64Image);
+                        contentBlocks.Add(ChatMessageContentPart.CreateImagePart(new BinaryData(imageBytes), mimeType));
+                    }
 
-                    // might need to do something like this to get the above to work
-                    //
-                    // $"data:image/jpeg;base64,{encodedImage}"
-
+                    // Create the user chat message with the composite content.
+                    completionMessages.Add(new UserChatMessage(contentBlocks));
                 }
-                else if (message.Role.ToString() == Role.Assistant.ToString()) completionMessages.Add(new AssistantChatMessage(message.Content));
+                else if (message.Role == Role.Assistant) completionMessages.Add(new AssistantChatMessage(message.Content));
             }
             return completionMessages;
         }
@@ -230,13 +265,26 @@ namespace IntelligenceHub.Client.Implementations
                 var content = messageContent ?? string.Empty;
                 foreach (var tool in toolCalls)
                 {
-                    if (tool.Key.Equals(SystemTools.Recurse_ai_dialogue.ToString().ToLower())) return JsonSerializer.Deserialize<ProfileReferenceToolExecutionCall>(tool.Value)?.prompt_response ?? content;
+                    if (tool.Key.Equals(SystemTools.Chat_Recursion.ToString().ToLower())) return JsonSerializer.Deserialize<RecursiveChatSystemToolExecutionCall>(tool.Value)?.prompt_response ?? content;
                 }
                 return content;
             }
             catch (JsonException) { return string.Empty; }
             catch (NotSupportedException) { return string.Empty; }
             catch (ArgumentNullException) { return string.Empty; }
+        }
+
+        private string GetMimeTypeFromBase64(string base64)
+        {
+            byte[] imageBytes = Convert.FromBase64String(base64.Substring(0, 20)); // Read only the first few bytes
+            if (imageBytes.Length < 4) return "image/png";
+
+            // Check the file signature (magic number) to determine the MIME type
+            if (imageBytes.Take(4).SequenceEqual(new byte[] { 0xFF, 0xD8, 0xFF })) return "image/jpeg";
+            if (imageBytes.Take(8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47 })) return "image/png";
+            if (imageBytes.Take(6).SequenceEqual(new byte[] { 0x47, 0x49, 0x46, 0x38 })) return "image/gif";
+            if (imageBytes.Take(4).SequenceEqual(new byte[] { 0x42, 0x4D })) return "image/bmp";
+            return "image/png"; // Default if unknown
         }
     }
 }
