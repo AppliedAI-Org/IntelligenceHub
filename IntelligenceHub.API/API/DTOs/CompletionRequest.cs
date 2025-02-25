@@ -1,5 +1,4 @@
-﻿
-namespace IntelligenceHub.API.DTOs
+﻿namespace IntelligenceHub.API.DTOs
 {
     public class CompletionRequest
     {

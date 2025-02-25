@@ -1,34 +1,23 @@
 ﻿using Azure.Search.Documents.Indexes;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.API.DTOs.RAG
 {
     public class IndexDefinition
     {
-        [SimpleField(IsKey = true)]
-        public string id { get; set; }
-        [SearchableField(IsFilterable = true)]
-        public string title { get; set; }
-        [SearchableField(IsFilterable = true)]
-        public string content { get; set; }
-        [SearchableField(IsFilterable = true)]
-        public string topic { get; set; }
-        [SearchableField(IsFilterable = true)]
-        public string keywords { get; set; }
-        [SimpleField]
-        public string source { get; set; }
-        [SimpleField(IsFilterable = true)]
-        public DateTimeOffset created { get; set; }
-        [SimpleField(IsFilterable = true)]
-        public DateTimeOffset modified { get; set; }
-        [SimpleField]
-        public int chunk { get; set; }
-        [VectorSearchField(VectorSearchDimensions = 3072, VectorSearchProfileName = "vector-search-profile", IsHidden = false)]
-        public IReadOnlyList<float> titleVector { get; set; }
-        [VectorSearchField(VectorSearchDimensions = 3072, VectorSearchProfileName = "vector-search-profile", IsHidden = false)]
-        public IReadOnlyList<float> contentVector { get; set; }
-        [VectorSearchField(VectorSearchDimensions = 3072, VectorSearchProfileName = "vector-search-profile", IsHidden = false)]
-        public IReadOnlyList<float> topicVector { get; set; }
-        [VectorSearchField(VectorSearchDimensions = 3072, VectorSearchProfileName = "vector-search-profile", IsHidden = false)]
-        public IReadOnlyList<float> keywordVector { get; set; }
+        public string Id { get; set; }
+        public string Parent_Id { get; set; }
+        public string Chunk_Id { get; set; }
+        public string Title { get; set; }
+        public string chunk { get; set; }
+        public string Topic { get; set; }
+        public string Keywords { get; set; }
+        public string Source { get; set; }
+        public DateTimeOffset Created { get; set; }
+        public DateTimeOffset Modified { get; set; }
+        public IReadOnlyList<float> TitleVector { get; set; }
+        public IReadOnlyList<float> ContentVector { get; set; }
+        public IReadOnlyList<float> TopicVector { get; set; }
+        public IReadOnlyList<float> KeywordsVector { get; set; }
     }
 }

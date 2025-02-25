@@ -17,8 +17,8 @@ namespace IntelligenceHub.Business.Implementations
         private readonly IValidationHandler _validationLogic;
 
         private readonly string _unknownErroMessage = "something went wrong...";
-        private readonly string _missingProfileMessage = "No profile with the specified name was found. Name: ";
-        private readonly string _missingToolMessage = "No tool with the specified name was found. Name: ";
+        private readonly string _missingProfileMessage = "No profile with the specified name was found. Name: "; // make sure to use interpolation here
+        private readonly string _missingToolMessage = "No tool with the specified name was found. Name: "; // make sure to use interpolation here
 
         public ProfileLogic(IProfileRepository profileDb, IProfileToolsAssociativeRepository profileToolsDb, IToolRepository toolDb, IPropertyRepository propertyDb, IValidationHandler validationLogic)
         {

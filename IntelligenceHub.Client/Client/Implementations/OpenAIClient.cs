@@ -1,5 +1,4 @@
 ﻿using Azure.AI.OpenAI;
-using IntelligenceHub.API.API.DTOs.Tools;
 using IntelligenceHub.API.DTOs;
 using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Client.Interfaces;

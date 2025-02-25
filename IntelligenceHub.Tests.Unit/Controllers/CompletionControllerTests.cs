@@ -99,26 +99,6 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         }
 
         [Fact]
-        public async Task CompletionStandard_Returns400BadRequest_WhenHttpRequestExceptionThrown()
-        {
-            // Arrange
-            var name = "testProfile";
-            var completionRequest = new CompletionRequest { ProfileOptions = new Profile { Name = name } };
-            var exceptionMessage = "Request error";
-
-            _mockCompletionLogic.Setup(x => x.ProcessCompletion(completionRequest))
-                                .ThrowsAsync(new HttpRequestException(exceptionMessage));
-
-            // Act
-            var result = await _controller.CompletionStandard(name, completionRequest);
-
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal(StatusCodes.Status400BadRequest, badRequestResult.StatusCode);
-            Assert.Equal(exceptionMessage, badRequestResult.Value);
-        }
-
-        [Fact]
         public async Task CompletionStandard_Returns500InternalServerError_WhenGenericExceptionThrown()
         {
             // Arrange
@@ -200,25 +180,6 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
             Assert.Equal(StatusCodes.Status400BadRequest, badRequestResult.StatusCode);
             Assert.Equal(errorMessage, badRequestResult.Value);
-        }
-
-        [Fact]
-        public async Task CompletionStreaming_Returns400BadRequest_WhenHttpRequestExceptionThrown()
-        {
-            // Arrange
-            var name = "testProfile";
-            var completionRequest = new CompletionRequest { ProfileOptions = new Profile { Name = name } };
-            var exceptionMessage = GlobalVariables.DefaultExceptionMessage;
-
-            _mockCompletionLogic.Setup(x => x.StreamCompletion(completionRequest)).Throws(new HttpRequestException(exceptionMessage));
-
-            // Act
-            var result = await _controller.CompletionStreaming(name, completionRequest);
-
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal(StatusCodes.Status400BadRequest, badRequestResult.StatusCode);
-            Assert.Equal(exceptionMessage, badRequestResult.Value);
         }
 
         [Fact]

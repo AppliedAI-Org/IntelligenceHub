@@ -9,19 +9,54 @@ using IntelligenceHub.API.DTOs.RAG;
 using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Config;
 using Microsoft.Extensions.Options;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Client.Implementations
 {
     public class AISearchServiceClient : IAISearchServiceClient
     {
-        private readonly int _defaultFreshnessBoostDuration = 365;
-        private readonly int _defaultFreshnessBoost = 2;
-
         private readonly SearchIndexClient _indexClient;
         private readonly SearchIndexerClient _indexerClient;
+
         private readonly string _sqlRagDbConnectionString;
         private readonly string _openaiKey;
         private readonly string _openaiUrl;
+
+        private readonly int _defaultRagDimensions = 3072; // move to globalvariables
+        private readonly string _defaultVectorSearchProfile = "vector-search-profile";
+        private readonly string _defaultVectorAlgConfig = "hnsw";
+        private readonly string _defaultKnnSearchProfile = "ExhaustiveKnnProfile";
+        private readonly string _defaultKnnConfig = "ExhaustiveKnn";
+        private readonly string _defaultVectorizer = "Vectorizer";
+
+        private readonly string _indexerSuffix  = "-indexer";
+        private readonly string _skillsetSuffix  = "-skillset";
+
+        // Rag indexes are created with lower case values
+        private enum RagField
+        {
+            title,
+            topic,
+            keywords,
+            created,
+            modified,
+            source,
+            chunk,
+            contentVector,
+            keywordsVector,
+            topicVector,
+            titleVector,
+            pages,
+            chunk_id,
+            parent_id,
+        }
+
+        private enum RagFieldType
+        {
+            text,
+            textItems,
+            embedding
+        }
 
         public AISearchServiceClient(IOptionsMonitor<SearchServiceClientSettings> searchClientSettings, IOptionsMonitor<AGIClientSettings> agiClientSettings, IOptionsMonitor<Settings> settings)
         {
@@ -29,11 +64,12 @@ namespace IntelligenceHub.Client.Implementations
 
             var options = new SearchClientOptions()
             {
-                RetryPolicy = new RetryPolicy(5, DelayStrategy.CreateExponentialDelayStrategy(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(120)))
+                RetryPolicy = new RetryPolicy(AISearchServiceMaxRetries, DelayStrategy.CreateExponentialDelayStrategy(TimeSpan.FromSeconds(AISearchServiceInitialDelay), TimeSpan.FromSeconds(AISearchServiceMaxDelay)))
             };
 
             _indexClient = new SearchIndexClient(new Uri(searchClientSettings.CurrentValue.Endpoint), credential, options);
             _indexerClient = new SearchIndexerClient(new Uri(searchClientSettings.CurrentValue.Endpoint), credential, options);
+
             _sqlRagDbConnectionString = settings.CurrentValue.DbConnectionString;
             _openaiUrl = agiClientSettings.CurrentValue.SearchServiceCompletionServiceEndpoint;
             _openaiKey = agiClientSettings.CurrentValue.SearchServiceCompletionServiceKey;
@@ -54,11 +90,17 @@ namespace IntelligenceHub.Client.Implementations
             var searchClient = _indexClient.GetSearchClient(index.Name);
 
             var queryType = SearchQueryType.Simple;
-            if (index.QueryType == SearchQueryType.Full.ToString()) queryType = SearchQueryType.Full;
-            else if (index.QueryType == SearchQueryType.Semantic.ToString()) queryType = SearchQueryType.Semantic;
+            if (index.QueryType.ToString()?.ToLower() == SearchQueryType.Full.ToString().ToLower()) queryType = SearchQueryType.Full;
+            else if (index.QueryType.ToString()?.ToLower() == SearchQueryType.Semantic.ToString().ToLower()) queryType = SearchQueryType.Semantic;
 
             var vectorProfile = new VectorSearchOptions();
-            vectorProfile.Queries.Add(new VectorizableTextQuery(query));
+            var vectorizableQuery = new VectorizableTextQuery(query);
+            vectorizableQuery.Fields.Add(RagField.contentVector.ToString());
+            vectorizableQuery.Fields.Add(RagField.titleVector.ToString());
+            vectorizableQuery.Fields.Add(RagField.topicVector.ToString());
+            vectorizableQuery.Fields.Add(RagField.keywordsVector.ToString());
+
+            vectorProfile.Queries.Add(vectorizableQuery);
 
             var options = new SearchOptions()
             {
@@ -68,86 +110,65 @@ namespace IntelligenceHub.Client.Implementations
                 SemanticSearch = new SemanticSearchOptions()
                 {
                     ErrorMode = SemanticErrorMode.Partial,
-                    SemanticConfigurationName = "semantic"
+                    SemanticConfigurationName = SearchQueryType.Semantic.ToString()
                 },
                 VectorSearch = vectorProfile
             };
 
-            options.HighlightFields.Add("content");
+            options.HighlightFields.Add(RagField.chunk.ToString().ToLower());
+
+            options.SearchFields.Add(RagField.chunk.ToString().ToLower());
+            options.SearchFields.Add(RagField.title.ToString().ToLower());
+            options.SearchFields.Add(RagField.topic.ToString().ToLower());
+            options.SearchFields.Add(RagField.keywords.ToString().ToLower());
 
             var response = await searchClient.SearchAsync<IndexDefinition>(query, options);
             return response.Value;
         }
 
-        public async Task<bool> CreateIndex(IndexMetadata indexDefinition)
+        public async Task<bool> UpsertIndex(IndexMetadata indexDefinition)
         {
-            // build fields based off of the class and its attributes
-            var fieldBuilder = new FieldBuilder();
-            var searchFields = fieldBuilder.Build(typeof(IndexDefinition));
-
-            var searchIndex = new SearchIndex(indexDefinition.Name, searchFields)
-            {
-                DefaultScoringProfile = indexDefinition.ScoringProfile?.Name,
-                SemanticSearch = new SemanticSearch()
-                {
-                    DefaultConfigurationName = "semantic",
-                }
-            };
-
-            // build a semantic search profile
-            var semanticFields = new SemanticPrioritizedFields();
-            semanticFields.TitleField = new SemanticField("title"); // change this and others to global constants
-            semanticFields.ContentFields.Add(new SemanticField("content"));
-            semanticFields.KeywordsFields.Add(new SemanticField("keywords"));
-            searchIndex.SemanticSearch.Configurations.Add(new SemanticConfiguration("semantic", semanticFields));
-
-            // build a vector profile
-            searchIndex.VectorSearch.Algorithms.Add(new HnswAlgorithmConfiguration("hnsw"));
-            searchIndex.VectorSearch.Profiles.Add(new VectorSearchProfile("vector", "hnsw"));
+            var searchIndex = GetIndexDefinition(indexDefinition);
 
             if (indexDefinition.ScoringProfile != null)
             {
+                if (string.IsNullOrEmpty(indexDefinition.ScoringProfile.Name)) indexDefinition.ScoringProfile.Name = _defaultVectorSearchProfile;
                 var scoringProfile = new ScoringProfile(indexDefinition.ScoringProfile?.Name);
-
-                if (indexDefinition.ScoringProfile != null && indexDefinition.ScoringProfile.Weights.Any()) scoringProfile.TextWeights = new TextWeights(indexDefinition.ScoringProfile.Weights);
+                if (indexDefinition.ScoringProfile?.Weights != null && indexDefinition.ScoringProfile.Weights.Any()) scoringProfile.TextWeights = new TextWeights(indexDefinition.ScoringProfile.Weights);
 
                 // assign function aggregation
-                if (indexDefinition.ScoringProfile?.Aggregation == ScoringFunctionAggregation.Sum.ToString()) scoringProfile.FunctionAggregation = ScoringFunctionAggregation.Sum;
-                else if (indexDefinition.ScoringProfile?.Aggregation == ScoringFunctionAggregation.FirstMatching.ToString()) scoringProfile.FunctionAggregation = ScoringFunctionAggregation.FirstMatching;
-                else if (indexDefinition.ScoringProfile?.Aggregation == ScoringFunctionAggregation.Average.ToString()) scoringProfile.FunctionAggregation = ScoringFunctionAggregation.Average;
-                else if (indexDefinition.ScoringProfile?.Aggregation == ScoringFunctionAggregation.Minimum.ToString()) scoringProfile.FunctionAggregation = ScoringFunctionAggregation.Minimum;
-                else if (indexDefinition.ScoringProfile?.Aggregation == ScoringFunctionAggregation.Maximum.ToString()) scoringProfile.FunctionAggregation = ScoringFunctionAggregation.Maximum;
+                if (indexDefinition.ScoringProfile?.SearchAggregation.ToString()?.ToLower() == ScoringFunctionAggregation.Sum.ToString().ToLower()) scoringProfile.FunctionAggregation = ScoringFunctionAggregation.Sum;
+                else if (indexDefinition.ScoringProfile?.SearchAggregation.ToString()?.ToLower() == ScoringFunctionAggregation.FirstMatching.ToString().ToLower()) scoringProfile.FunctionAggregation = ScoringFunctionAggregation.FirstMatching;
+                else if (indexDefinition.ScoringProfile?.SearchAggregation.ToString()?.ToLower() == ScoringFunctionAggregation.Average.ToString().ToLower()) scoringProfile.FunctionAggregation = ScoringFunctionAggregation.Average;
+                else if (indexDefinition.ScoringProfile?.SearchAggregation.ToString()?.ToLower() == ScoringFunctionAggregation.Minimum.ToString().ToLower()) scoringProfile.FunctionAggregation = ScoringFunctionAggregation.Minimum;
+                else if (indexDefinition.ScoringProfile?.SearchAggregation.ToString()?.ToLower() == ScoringFunctionAggregation.Maximum.ToString().ToLower()) scoringProfile.FunctionAggregation = ScoringFunctionAggregation.Maximum;
 
                 // assign interpolation
                 var interpolation = ScoringFunctionInterpolation.Linear;
-                if (indexDefinition.ScoringProfile?.Interpolation == ScoringFunctionInterpolation.Constant.ToString()) interpolation = ScoringFunctionInterpolation.Constant;
-                else if (indexDefinition.ScoringProfile?.Interpolation == ScoringFunctionInterpolation.Quadratic.ToString()) interpolation = ScoringFunctionInterpolation.Quadratic;
-                else if (indexDefinition.ScoringProfile?.Interpolation == ScoringFunctionInterpolation.Logarithmic.ToString()) interpolation = ScoringFunctionInterpolation.Logarithmic;
+                if (indexDefinition.ScoringProfile?.SearchInterpolation.ToString()?.ToLower() == ScoringFunctionInterpolation.Constant.ToString().ToLower()) interpolation = ScoringFunctionInterpolation.Constant;
+                else if (indexDefinition.ScoringProfile?.SearchInterpolation.ToString()?.ToLower() == ScoringFunctionInterpolation.Quadratic.ToString().ToLower()) interpolation = ScoringFunctionInterpolation.Quadratic;
+                else if (indexDefinition.ScoringProfile?.SearchInterpolation.ToString()?.ToLower() == ScoringFunctionInterpolation.Logarithmic.ToString().ToLower()) interpolation = ScoringFunctionInterpolation.Logarithmic;
 
                 // add scoring functions to the profile
-                var freshnessBoostDuration = TimeSpan.FromDays(indexDefinition.ScoringProfile?.BoostDurationDays ?? _defaultFreshnessBoostDuration);
-                var freshnessFunction = new FreshnessScoringFunction("modified", indexDefinition.ScoringProfile?.FreshnessBoost ?? _defaultFreshnessBoostDuration, new FreshnessScoringParameters(freshnessBoostDuration))
+                if (indexDefinition.ScoringProfile?.FreshnessBoost > 1) scoringProfile.Functions.Add(new FreshnessScoringFunction(RagField.modified.ToString(), indexDefinition.ScoringProfile.FreshnessBoost, new FreshnessScoringParameters(TimeSpan.FromDays(indexDefinition.ScoringProfile.BoostDurationDays)))
                 {
                     Interpolation = interpolation,
-                };
-
-                if (indexDefinition.ScoringProfile?.FreshnessBoost > 1) scoringProfile.Functions.Add(freshnessFunction);
+                });
                 else if (indexDefinition.ScoringProfile?.TagBoost > 1)
                 {
-                    scoringProfile.Functions.Add(new TagScoringFunction("title", indexDefinition.ScoringProfile.TagBoost, new TagScoringParameters("keywords"))
+                    scoringProfile.Functions.Add(new TagScoringFunction(RagField.title.ToString(), indexDefinition.ScoringProfile.TagBoost, new TagScoringParameters(RagField.keywords.ToString()))
                     {
                         Interpolation = interpolation
                     });
-                    scoringProfile.Functions.Add(new TagScoringFunction("content", indexDefinition.ScoringProfile.TagBoost, new TagScoringParameters("keywords"))
+                    scoringProfile.Functions.Add(new TagScoringFunction(RagField.chunk.ToString(), indexDefinition.ScoringProfile.TagBoost, new TagScoringParameters(RagField.keywords.ToString()))
                     {
                         Interpolation = interpolation
                     });
                 }
-
                 searchIndex.ScoringProfiles.Add(scoringProfile);
             }
 
-            var response = await _indexClient.CreateIndexAsync(searchIndex);
+            var response = await _indexClient.CreateOrUpdateIndexAsync(searchIndex);
             return true;
         }
 
@@ -159,10 +180,10 @@ namespace IntelligenceHub.Client.Implementations
 
         public async Task<bool> DeleteIndexer(string indexName, string embeddingModel)
         {
-            var skillsetDeletionResponse = await _indexerClient.DeleteSkillsetAsync(embeddingModel + "-embeddingSkillset");
+            var skillsetDeletionResponse = await _indexerClient.DeleteSkillsetAsync(indexName.ToLower() + _skillsetSuffix );
             if (skillsetDeletionResponse == null || skillsetDeletionResponse.IsError) return false;
 
-            var response = await _indexerClient.DeleteIndexerAsync(indexName + "-indexer");
+            var response = await _indexerClient.DeleteIndexerAsync(indexName + _indexerSuffix );
             return response.Status > 199 && response.Status < 300;
         }
 
@@ -170,10 +191,8 @@ namespace IntelligenceHub.Client.Implementations
         {
             try
             {
-                var connectionString = _sqlRagDbConnectionString;
-
                 var container = new SearchIndexerDataContainer(databaseName);
-                var connection = new SearchIndexerDataSourceConnection(databaseName, SearchIndexerDataSourceType.AzureSql, connectionString, container)
+                var connection = new SearchIndexerDataSourceConnection(databaseName, SearchIndexerDataSourceType.AzureSql, _sqlRagDbConnectionString, container)
                 {
                     DataChangeDetectionPolicy = new SqlIntegratedChangeTrackingPolicy(),
                 };
@@ -192,154 +211,272 @@ namespace IntelligenceHub.Client.Implementations
             return response.Status > 199 && response.Status < 300;
         }
 
-        public async Task<bool> CreateIndexer(IndexMetadata index)
+        public async Task<bool> RunIndexer(string indexName)
         {
-            var connectionString = _sqlRagDbConnectionString;
-            var chunkingLengthInChars = 1312; // (avg chars per token = 3.5) * (average recomended chunk size = 375) = 1312.5
+            var response = await _indexerClient.RunIndexerAsync(indexName + _indexerSuffix );
+            return response.Status > 199 && response.Status < 300;
+        }
 
-            var indexer = new SearchIndexer($"{index.Name}-indexer", index.Name, index.Name)
-            {
-                IsDisabled = false, // indexer will automatically run after creation. Adjust this later if needed
-                Schedule = new IndexingSchedule(index.IndexingInterval),
+        public async Task<bool> UpsertIndexer(IndexMetadata index)
+        {
+            // Define the indexer
+            var interval = TimeSpan.FromDays(1);
+            if (index.IndexingInterval.HasValue) interval = index.IndexingInterval.Value;
+            var indexer = new SearchIndexer($"{index.Name}{_indexerSuffix }", index.Name, index.Name) { Schedule = new IndexingSchedule(interval) };
 
-                // probably won't need one
-                //FieldMappings = new FieldMapping[] {}
+            // Map the existing "Id" column to the parent_id and chunk_id fields
+            indexer.FieldMappings.Add(new FieldMapping("Id") { TargetFieldName = RagField.parent_id.ToString() });
+            indexer.FieldMappings.Add(new FieldMapping("Id") { TargetFieldName = RagField.chunk_id.ToString() });
 
-                // maybe add later
-                // Parameters = new IndexingParameters(),
-                // OutputFieldMappings = null,
-                // ETag = null,
-                // SkillsetName = null,
-            };
+            indexer.SkillsetName = await UpsertSkillset(index);
+            await _indexerClient.CreateOrUpdateIndexerAsync(indexer);
 
-            if (!string.IsNullOrEmpty(index.EmbeddingModel))
-            {
-                var skillsetName = index.EmbeddingModel + "-embeddingSkillset";
-                var skills = new List<SearchIndexerSkill>();
-
-
-                if (index.GenerateTitleVector) skills.Add(new AzureOpenAIEmbeddingSkill(
-                    new List<InputFieldMappingEntry>()
-                    {
-                        new InputFieldMappingEntry("title")
-                        {
-                            Source = "/document/title"
-                        }
-                    },
-                    new List<OutputFieldMappingEntry>()
-                    {
-                        new OutputFieldMappingEntry("titleEmbedding")
-                        {
-                            TargetName = "titleVector"
-                        },
-                    })
-                {
-                    ResourceUri = new Uri(_openaiUrl),
-                    ApiKey = _openaiKey,
-                    ModelName = index.EmbeddingModel,
-                    Dimensions = 3072,
-
-                    // if running into issues check how using the context property works
-                });
-
-                if (index.GenerateTopicVector) skills.Add(new AzureOpenAIEmbeddingSkill(
-                    new List<InputFieldMappingEntry>()
-                    {
-                        new InputFieldMappingEntry("topic")
-                        {
-                            Source = "/document/topic"
-                        }
-                    },
-                    new List<OutputFieldMappingEntry>()
-                    {
-                        new OutputFieldMappingEntry("topicEmbedding")
-                        {
-                            TargetName = "topicVector"
-                        },
-                    })
-                {
-                    ResourceUri = new Uri(_openaiUrl),
-                    ApiKey = _openaiKey,
-                    ModelName = index.EmbeddingModel,
-                    Dimensions = 3072,
-                });
-
-                if (index.GenerateKeywordVector) skills.Add(new AzureOpenAIEmbeddingSkill(
-                    new List<InputFieldMappingEntry>()
-                    {
-                        new InputFieldMappingEntry("keywords")
-                        {
-                            Source = "/document/keywords"
-                        }
-                    },
-                    new List<OutputFieldMappingEntry>()
-                    {
-                        new OutputFieldMappingEntry("keywordsEmbedding")
-                        {
-                            TargetName = "keywordsVector"
-                        },
-                    })
-                {
-                    ResourceUri = new Uri(_openaiUrl),
-                    ApiKey = _openaiKey,
-                    ModelName = index.EmbeddingModel,
-                    Dimensions = 3072,
-                });
-
-                //chunk content
-                if (index.GenerateContentVector)
-                {
-                    skills.Add(new SplitSkill(
-                    new List<InputFieldMappingEntry>
-                    {
-                        new InputFieldMappingEntry("text") { Source = "/document/content" }
-                    },
-                    new List<OutputFieldMappingEntry>
-                    {
-                        new OutputFieldMappingEntry("textItems") { TargetName = "chunkSplits" }
-                    })
-                    {
-                        Context = "/document/content",
-                        TextSplitMode = TextSplitMode.Pages,
-                        MaximumPageLength = chunkingLengthInChars,
-                        PageOverlapLength = (int)(chunkingLengthInChars * index.ChunkOverlap),
-                    });
-
-                    skills.Add(new AzureOpenAIEmbeddingSkill(
-                        new List<InputFieldMappingEntry>()
-                        {
-                        new InputFieldMappingEntry("content")
-                        {
-                            Source = "/document/chunkSplits/*"
-                        }
-                        },
-                        new List<OutputFieldMappingEntry>()
-                        {
-                        new OutputFieldMappingEntry("contentEmbedding")
-                        {
-                            TargetName = "contentVector"
-                        },
-                        })
-                    {
-                        ResourceUri = new Uri(_openaiUrl),
-                        ApiKey = _openaiKey,
-                        ModelName = index.EmbeddingModel,
-                        Dimensions = 3072,
-                    });
-                }
-
-                var skillset = new SearchIndexerSkillset(skillsetName, skills);
-                await _indexerClient.CreateOrUpdateSkillsetAsync(skillset);
-                indexer.SkillsetName = skillsetName;
-            }
-
-            var response = await _indexerClient.CreateIndexerAsync(indexer);
             return true;
         }
 
-        #region Private Methods
+        private async Task<string> UpsertSkillset(IndexMetadata index)
+        {
+            var chunkingLengthInChars = 1312; // (avg chars per token = 3.5) * (average recommended chunk size = 375) = 1312.5
+            var ragDimensions = 3072;
+            if (string.IsNullOrEmpty(index.EmbeddingModel)) index.EmbeddingModel = DefaultEmbeddingModel;
+            if (index.EmbeddingModel?.ToLower() != DefaultEmbeddingModel.ToLower()) ragDimensions = 1536; // only text-embedding-3-large supports 3072 dimensions
 
+            var skillsetName = index.Name.ToLower() + _indexerSuffix ;
+            var skills = new List<SearchIndexerSkill>();
+            var projectionInputMappings = new List<InputFieldMappingEntry>();
 
-        #endregion
+            // Add default skills and associated projections
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.chunk.ToString())
+            {
+                Source = "/document/pages/*"
+            });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.title.ToString())
+            {
+                Source = "/document/title"
+            });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.topic.ToString())
+            {
+                Source = "/document/topic"
+            });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.keywords.ToString())
+            {
+                Source = "/document/keywords"
+            });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.source.ToString())
+            {
+                Source = "/document/source"
+            });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.created.ToString())
+            {
+                Source = "/document/created"
+            });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.modified.ToString())
+            {
+                Source = "/document/modified"
+            });
+
+            skills.Add(
+                new SplitSkill(
+                    new List<InputFieldMappingEntry> { new InputFieldMappingEntry(RagFieldType.text.ToString()) { Source = "/document/Content" } },
+                    new List<OutputFieldMappingEntry> { new OutputFieldMappingEntry(RagFieldType.textItems.ToString()) { TargetName = RagField.pages.ToString() } }
+                )
+                {
+                    Context = "/document",
+                    TextSplitMode = TextSplitMode.Pages,
+                    MaximumPageLength = chunkingLengthInChars,
+                    PageOverlapLength = (int)(chunkingLengthInChars * index.ChunkOverlap ?? .1),
+                }
+            );
+
+            // Add conditional vector fields
+            if (index.GenerateContentVector ?? false)
+            {
+                skills.Add(
+                    new AzureOpenAIEmbeddingSkill(
+                        new List<InputFieldMappingEntry> { new InputFieldMappingEntry(RagFieldType.text.ToString()) { Source = "/document/pages/*" } },
+                        new List<OutputFieldMappingEntry> { new OutputFieldMappingEntry(RagFieldType.embedding.ToString()) { TargetName = RagField.contentVector.ToString() } }
+                    )
+                    {
+                        Context = "/document/pages/*",
+                        ResourceUri = new Uri(_openaiUrl),
+                        ApiKey = _openaiKey,
+                        ModelName = index.EmbeddingModel,
+                        DeploymentName = index.EmbeddingModel
+                    }
+                );
+
+                projectionInputMappings.Add(new InputFieldMappingEntry(RagField.contentVector.ToString()) { Source = "/document/pages/*/contentVector" });
+            }
+
+            if (index.GenerateTitleVector ?? false)
+            {
+                skills.Add(
+                    new AzureOpenAIEmbeddingSkill(
+                        new List<InputFieldMappingEntry> { new InputFieldMappingEntry(RagFieldType.text.ToString()) { Source = "/document/title" } },
+                        new List<OutputFieldMappingEntry> { new OutputFieldMappingEntry(RagFieldType.embedding.ToString()) { TargetName = RagField.titleVector.ToString() } }
+                    )
+                    {
+                        Context = "/document/pages/*",
+                        ResourceUri = new Uri(_openaiUrl),
+                        ApiKey = _openaiKey,
+                        ModelName = index.EmbeddingModel,
+                        DeploymentName = index.EmbeddingModel
+                    }
+                );
+
+                projectionInputMappings.Add(new InputFieldMappingEntry(RagField.titleVector.ToString()) { Source = "/document/pages/*/titleVector" });
+            }
+
+            if (index.GenerateTopicVector ?? false)
+            {
+                skills.Add(
+                    new AzureOpenAIEmbeddingSkill(
+                        new List<InputFieldMappingEntry> { new InputFieldMappingEntry(RagFieldType.text.ToString()) { Source = "/document/topic" } },
+                        new List<OutputFieldMappingEntry> { new OutputFieldMappingEntry(RagFieldType.embedding.ToString()) { TargetName = RagField.topicVector.ToString() } }
+                    )
+                    {
+                        Context = "/document/pages/*",
+                        ResourceUri = new Uri(_openaiUrl),
+                        ApiKey = _openaiKey,
+                        ModelName = index.EmbeddingModel,
+                        DeploymentName = index.EmbeddingModel
+                    }
+                );
+
+                projectionInputMappings.Add(new InputFieldMappingEntry(RagField.topicVector.ToString()) { Source = "/document/pages/*/topicVector" });
+            }
+
+            if (index.GenerateKeywordVector ?? false)
+            {
+                skills.Add(
+                    new AzureOpenAIEmbeddingSkill(
+                        new List<InputFieldMappingEntry> { new InputFieldMappingEntry(RagFieldType.text.ToString()) { Source = "/document/keywords" } },
+                        new List<OutputFieldMappingEntry> { new OutputFieldMappingEntry(RagFieldType.embedding.ToString()) { TargetName = RagField.keywordsVector.ToString() } }
+                    )
+                    {
+                        Context = "/document/pages/*",
+                        ResourceUri = new Uri(_openaiUrl),
+                        ApiKey = _openaiKey,
+                        ModelName = index.EmbeddingModel,
+                        DeploymentName = index.EmbeddingModel
+                    }
+                );
+
+                projectionInputMappings.Add(new InputFieldMappingEntry(RagField.keywordsVector.ToString()) { Source = "/document/pages/*/keywordsVector" });
+            }
+
+            var skillset = new SearchIndexerSkillset(skillsetName, skills)
+            {
+                IndexProjection = new SearchIndexerIndexProjection(new[]
+                {
+                    new SearchIndexerIndexProjectionSelector(index.Name, parentKeyFieldName: RagField.parent_id.ToString(), sourceContext: "/document/pages/*", mappings: projectionInputMappings)
+                })
+                {
+                    Parameters = new SearchIndexerIndexProjectionsParameters
+                    {
+                        ProjectionMode = IndexProjectionMode.SkipIndexingParentDocuments
+                    }
+                }
+            };
+            var result = await _indexerClient.CreateOrUpdateSkillsetAsync(skillset);
+            return skillsetName;
+        }
+
+        private SearchIndex GetIndexDefinition(IndexMetadata index)
+        {
+            // Choose the appropriate rag dimensions for the given embedding model
+            var ragDimensions = _defaultRagDimensions;
+            if (string.IsNullOrEmpty(index.EmbeddingModel)) index.EmbeddingModel = DefaultEmbeddingModel;
+            if (index.EmbeddingModel?.ToLower() != DefaultEmbeddingModel.ToLower()) ragDimensions = 1536; // only text-embedding-3-large supports 3072 dimensions
+
+            var searchIndex = new SearchIndex(index.Name)
+            {
+                DefaultScoringProfile = index.ScoringProfile?.Name,
+                VectorSearch = new()
+                {
+                    Profiles =
+                    {
+                        new VectorSearchProfile(_defaultVectorSearchProfile, _defaultVectorAlgConfig)
+                        {
+                            VectorizerName = _defaultVectorizer,
+                        },
+                        new VectorSearchProfile(_defaultKnnSearchProfile, _defaultKnnConfig)
+                    },
+                    Algorithms =
+                    {
+                        new HnswAlgorithmConfiguration(_defaultVectorAlgConfig),
+                        new ExhaustiveKnnAlgorithmConfiguration(_defaultKnnConfig)
+                    },
+                    Vectorizers =
+                    {
+                        new AzureOpenAIVectorizer(_defaultVectorizer)
+                        {
+                            Parameters = new AzureOpenAIVectorizerParameters()
+                            {
+                                ResourceUri = new Uri(_openaiUrl),
+                                ApiKey = _openaiKey,
+                                ModelName = index.EmbeddingModel,
+                                DeploymentName = index.EmbeddingModel
+                            }
+                        }
+                    }
+                },
+                SemanticSearch = new()
+                {
+                    DefaultConfigurationName = SearchQueryType.Semantic.ToString(),
+                    Configurations =
+                    {
+                        new SemanticConfiguration(SearchQueryType.Semantic.ToString(), new()
+                        {
+                            TitleField = new SemanticField(fieldName: RagField.title.ToString()),
+                            ContentFields =
+                            {
+                                new SemanticField(fieldName: RagField.chunk.ToString()),
+                                new SemanticField(fieldName: RagField.keywords.ToString()),
+                                new SemanticField(fieldName: RagField.topic.ToString())
+                            },
+                        })
+                    },
+                },
+                Fields =
+                {
+                    new SearchableField(RagField.parent_id.ToString()) { IsFilterable = true, IsSortable = true, IsFacetable = true },
+                    new SearchableField(RagField.chunk_id.ToString()) { IsKey = true, IsFilterable = true, IsSortable = true, IsFacetable = true, AnalyzerName = LexicalAnalyzerName.Keyword },
+                    new SearchableField(RagField.title.ToString()),
+                    new SearchableField(RagField.chunk.ToString()),
+                    new SearchableField(RagField.topic.ToString()),
+                    new SearchableField(RagField.keywords.ToString()),
+                    new SimpleField(RagField.source.ToString(), SearchFieldDataType.String),
+                    new SimpleField(RagField.created.ToString(), SearchFieldDataType.DateTimeOffset),
+                    new SimpleField(RagField.modified.ToString(), SearchFieldDataType.DateTimeOffset),
+                    new SearchField(RagField.contentVector.ToString(), SearchFieldDataType.Collection(SearchFieldDataType.Single))
+                    {
+                        IsSearchable = true,
+                        VectorSearchDimensions = ragDimensions,
+                        VectorSearchProfileName = _defaultVectorSearchProfile
+                    },
+                    new SearchField(RagField.titleVector.ToString(), SearchFieldDataType.Collection(SearchFieldDataType.Single))
+                    {
+                        IsSearchable = true,
+                        VectorSearchDimensions = ragDimensions,
+                        VectorSearchProfileName = _defaultVectorSearchProfile
+                    },
+                    new SearchField(RagField.topicVector.ToString(), SearchFieldDataType.Collection(SearchFieldDataType.Single))
+                    {
+                        IsSearchable = true,
+                        VectorSearchDimensions = ragDimensions,
+                        VectorSearchProfileName = _defaultVectorSearchProfile
+                    },
+                    new SearchField(RagField.keywordsVector.ToString(), SearchFieldDataType.Collection(SearchFieldDataType.Single))
+                    {
+                        IsSearchable = true,
+                        VectorSearchDimensions = ragDimensions,
+                        VectorSearchProfileName = _defaultVectorSearchProfile
+                    },
+                },
+            };
+
+            return searchIndex;
+        }
     }
 }

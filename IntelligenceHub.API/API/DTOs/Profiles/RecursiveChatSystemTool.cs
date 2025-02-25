@@ -6,7 +6,7 @@ namespace IntelligenceHub.API.DTOs.Tools
     public class RecursiveChatSystemTool : Tool
     {
         private readonly string _promptResponsePropertyName = "prompt_response";
-        private readonly string _respondingModelPropertyName = "prompt_response";
+        private readonly string _respondingModelPropertyName = "responding_ai_model";
 
         public RecursiveChatSystemTool(List<Profile> referenceProfiles)
         {
@@ -30,7 +30,7 @@ namespace IntelligenceHub.API.DTOs.Tools
                 Name = SystemTools.Chat_Recursion.ToString().ToLower(),
                 Description = $"Starts or continues an internal dialogue between yourself, or between other LLM models and configurations. " +
                               $"Below is the name of each model you can call, along with a description of when it should be used. You " +
-                              $"should pass this name as the 'responding_ai_model' parameter associated with this tool. Only provide names " +
+                              $"should pass this name as the '{_respondingModelPropertyName}' parameter associated with this tool. Only provide names " +
                               $"of tools that exist in the below list, otherwise an error will occur.\n\n",
 
                 Parameters = new Parameters()

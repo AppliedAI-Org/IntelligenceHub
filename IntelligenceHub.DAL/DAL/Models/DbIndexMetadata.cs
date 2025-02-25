@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.DAL.Models
 {
@@ -8,6 +9,7 @@ namespace IntelligenceHub.DAL.Models
     public class DbIndexMetadata
     {
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         [Required]
         public string Name { get; set; } = string.Empty;
@@ -15,8 +17,8 @@ namespace IntelligenceHub.DAL.Models
         [Required]
         public TimeSpan IndexingInterval { get; set; }
         public string? EmbeddingModel { get; set; }
-        public int MaxRagAttachments { get; set; } = 3;
-        public float ChunkOverlap { get; set; } = 0.1f;
+        public int? MaxRagAttachments { get; set; }
+        public double? ChunkOverlap { get; set; }
         public bool GenerateTopic { get; set; }
         public bool GenerateKeywords { get; set; }
         public bool GenerateTitleVector { get; set; }
@@ -26,9 +28,9 @@ namespace IntelligenceHub.DAL.Models
         public string? DefaultScoringProfile { get; set; }
         public string? ScoringAggregation { get; set; }
         public string? ScoringInterpolation { get; set; }
-        public double ScoringFreshnessBoost { get; set; }
-        public int ScoringBoostDurationDays { get; set; }
-        public double ScoringTagBoost { get; set; }
-        public string? ScoringWeights { get; set; } // serialized Dictioanry<string, double> as json
+        public double? ScoringFreshnessBoost { get; set; }
+        public int? ScoringBoostDurationDays { get; set; }
+        public double? ScoringTagBoost { get; set; }
+        public string? ScoringWeights { get; set; } // serialized Dictionary<string, double> as json
     }
 }

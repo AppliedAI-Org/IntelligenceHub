@@ -129,6 +129,84 @@ namespace IntelligenceHub.Tests.Unit.Common
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => input.ToStringArray());
         }
+
+        [Fact]
+        public void ConvertStringToQueryType_ValidQueryType_ReturnsExpectedEnum()
+        {
+            // Arrange
+            string input = QueryType.Simple.ToString();
+
+            // Act
+            var result = input.ConvertStringToQueryType();
+
+            // Assert
+            Assert.Equal(QueryType.Simple, result);
+        }
+
+        [Fact]
+        public void ConvertStringToQueryType_InvalidQueryType_ReturnsNull()
+        {
+            // Arrange
+            string input = "InvalidQueryType";
+
+            // Act
+            var result = input.ConvertStringToQueryType();
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void ConvertStringToSearchInterpolation_ValidSearchInterpolation_ReturnsExpectedEnum()
+        {
+            // Arrange
+            string input = SearchInterpolation.Linear.ToString();
+
+            // Act
+            var result = input.ConvertStringToSearchInterpolation();
+
+            // Assert
+            Assert.Equal(SearchInterpolation.Linear, result);
+        }
+
+        [Fact]
+        public void ConvertStringToSearchInterpolation_InvalidSearchInterpolation_ReturnsNull()
+        {
+            // Arrange
+            string input = "InvalidSearchInterpolation";
+
+            // Act
+            var result = input.ConvertStringToSearchInterpolation();
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void ConvertStringToSearchAggregation_ValidSearchAggregation_ReturnsExpectedEnum()
+        {
+            // Arrange
+            string input = SearchAggregation.Average.ToString();
+
+            // Act
+            var result = input.ConvertStringToSearchAggregation();
+
+            // Assert
+            Assert.Equal(SearchAggregation.Average, result);
+        }
+
+        [Fact]
+        public void ConvertStringToSearchAggregation_InvalidSearchAggregation_ReturnsNull()
+        {
+            // Arrange
+            string input = "InvalidSearchAggregation";
+
+            // Act
+            var result = input.ConvertStringToSearchAggregation();
+
+            // Assert
+            Assert.Null(result);
+        }
     }
 
 }

@@ -175,9 +175,12 @@ namespace IntelligenceHub.DAL
         {
             return new IndexDocument()
             {
+                Id = dbDocument.Id,
                 Title = dbDocument.Title,
                 Content = dbDocument.Content,
                 Topic = dbDocument.Topic,
+                Keywords = dbDocument.Keywords,
+                Source = dbDocument.Source,
                 Created = dbDocument.Created,
                 Modified = dbDocument.Modified
             };
@@ -187,9 +190,12 @@ namespace IntelligenceHub.DAL
         {
             return new DbIndexDocument()
             {
+                Id = document.Id,
                 Title = document.Title,
                 Content = document.Content,
                 Topic = document.Topic,
+                Keywords = document.Keywords,
+                Source = document.Source,
                 Created = document.Created,
                 Modified = document.Modified
             };
@@ -200,10 +206,10 @@ namespace IntelligenceHub.DAL
             return new IndexMetadata()
             {
                 Name = dbIndexData.Name,
-                QueryType = dbIndexData.QueryType,
-                ChunkOverlap = dbIndexData.ChunkOverlap,
+                QueryType = dbIndexData.QueryType?.ConvertStringToQueryType() ?? QueryType.Simple,
+                ChunkOverlap = dbIndexData.ChunkOverlap ?? DefaultChunkOverlap, // make this a global variable
                 IndexingInterval = dbIndexData.IndexingInterval,
-                MaxRagAttachments = dbIndexData.MaxRagAttachments,
+                MaxRagAttachments = dbIndexData.MaxRagAttachments ?? DefaultRagAttachmentNumber, // make this a global variable
                 EmbeddingModel = dbIndexData.EmbeddingModel,
                 GenerateTopic = dbIndexData.GenerateTopic,
                 GenerateKeywords = dbIndexData.GenerateKeywords,
@@ -214,11 +220,11 @@ namespace IntelligenceHub.DAL
                 ScoringProfile = new IndexScoringProfile()
                 {
                     Name = dbIndexData.DefaultScoringProfile ?? string.Empty,
-                    Aggregation = dbIndexData.ScoringAggregation,
-                    Interpolation = dbIndexData.ScoringInterpolation,
-                    BoostDurationDays = dbIndexData.ScoringBoostDurationDays,
-                    FreshnessBoost = dbIndexData.ScoringFreshnessBoost,
-                    TagBoost = dbIndexData.ScoringTagBoost,
+                    SearchAggregation = dbIndexData.ScoringAggregation?.ConvertStringToSearchAggregation(),
+                    SearchInterpolation = dbIndexData.ScoringInterpolation?.ConvertStringToSearchInterpolation(),
+                    BoostDurationDays = dbIndexData.ScoringBoostDurationDays ?? DefaultScoringBoostDurationDays,
+                    FreshnessBoost = dbIndexData.ScoringFreshnessBoost ?? DefaultScoringFreshnessBoost,
+                    TagBoost = dbIndexData.ScoringTagBoost ?? DefaultScoringTagBoost,
                     Weights = DeserializeDbWeights(dbIndexData.ScoringWeights) ?? new Dictionary<string, double>()
                 }
             };
@@ -227,27 +233,28 @@ namespace IntelligenceHub.DAL
         public static DbIndexMetadata MapToDbIndexMetadata(IndexMetadata indexData)
         {
             if (indexData.ScoringProfile == null) indexData.ScoringProfile = new IndexScoringProfile();
+            var chunkOverlap = indexData.ChunkOverlap;
             return new DbIndexMetadata()
             {
                 Name = indexData.Name,
-                QueryType = indexData.QueryType,
-                ChunkOverlap = indexData.ChunkOverlap,
-                IndexingInterval = indexData.IndexingInterval,
-                MaxRagAttachments = indexData.MaxRagAttachments,
-                EmbeddingModel = indexData.EmbeddingModel,
-                GenerateTopic = indexData.GenerateTopic,
-                GenerateKeywords = indexData.GenerateKeywords,
-                GenerateTitleVector = indexData.GenerateTitleVector,
-                GenerateContentVector = indexData.GenerateContentVector,
-                GenerateTopicVector = indexData.GenerateTopicVector,
-                GenerateKeywordVector = indexData.GenerateKeywordVector,
+                QueryType = indexData.QueryType.ToString(),
+                ChunkOverlap = chunkOverlap ?? DefaultChunkOverlap,
+                IndexingInterval = indexData.IndexingInterval ?? TimeSpan.FromHours(23.99), // only slightly under 1 day is supported
+                MaxRagAttachments = indexData.MaxRagAttachments ?? DefaultRagAttachmentNumber, // make this a global variable,
+                EmbeddingModel = indexData.EmbeddingModel ?? DefaultEmbeddingModel,
+                GenerateTopic = indexData.GenerateTopic ?? false,
+                GenerateKeywords = indexData.GenerateKeywords ?? false,
+                GenerateTitleVector = indexData.GenerateTitleVector ?? true,
+                GenerateContentVector = indexData.GenerateContentVector ?? true,
+                GenerateTopicVector = indexData.GenerateTopicVector ?? false,
+                GenerateKeywordVector = indexData.GenerateKeywordVector ?? false,
                 DefaultScoringProfile = indexData.ScoringProfile?.Name,
-                ScoringAggregation = indexData.ScoringProfile?.Aggregation,
-                ScoringInterpolation = indexData.ScoringProfile?.Interpolation,
-                ScoringFreshnessBoost = indexData.ScoringProfile?.FreshnessBoost ?? 0,
-                ScoringBoostDurationDays = indexData.ScoringProfile?.BoostDurationDays ?? 0,
-                ScoringTagBoost = indexData.ScoringProfile?.TagBoost ?? 0,
-                ScoringWeights = indexData.ScoringProfile?.Weights.Count > 0 ? SerializeDbWeights(indexData.ScoringProfile.Weights) : string.Empty,
+                ScoringAggregation = indexData.ScoringProfile?.SearchAggregation.ToString(),
+                ScoringInterpolation = indexData.ScoringProfile?.SearchInterpolation.ToString(),
+                ScoringFreshnessBoost = indexData.ScoringProfile?.FreshnessBoost ?? DefaultScoringFreshnessBoost,
+                ScoringBoostDurationDays = indexData.ScoringProfile?.BoostDurationDays ?? DefaultScoringBoostDurationDays,
+                ScoringTagBoost = indexData.ScoringProfile?.TagBoost ?? DefaultScoringTagBoost,
+                ScoringWeights = indexData.ScoringProfile?.Weights?.Count > 0 ? SerializeDbWeights(indexData.ScoringProfile.Weights) : string.Empty,
             };
         }
 

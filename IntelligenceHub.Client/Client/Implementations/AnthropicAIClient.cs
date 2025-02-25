@@ -5,7 +5,7 @@ using Anthropic.SDK.Messaging;
 using static IntelligenceHub.Common.GlobalVariables;
 using Microsoft.Extensions.Options;
 using IntelligenceHub.Common.Config;
-using IntelligenceHub.API.API.DTOs.Tools;
+using IntelligenceHub.API.DTOs.Tools;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 

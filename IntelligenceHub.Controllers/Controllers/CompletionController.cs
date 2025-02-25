@@ -42,10 +42,6 @@ namespace IntelligenceHub.Controllers
                 if (response is not null) return Ok(response);
                 else return BadRequest("Invalid request. Please check your request body.");
             }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
-            }
             catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
@@ -80,10 +76,6 @@ namespace IntelligenceHub.Controllers
                     await Response.Body.FlushAsync();
                 }
                 return new EmptyResult();
-            }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {

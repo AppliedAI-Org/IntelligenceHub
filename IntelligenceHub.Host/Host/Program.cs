@@ -95,6 +95,8 @@ namespace IntelligenceHub.Host
 
             builder.Services.AddSingleton(new LoadBalancingSelector(serviceUrls));
             builder.Services.AddSingleton<IValidationHandler, ValidationHandler>();
+            builder.Services.AddSingleton<IBackgroundTaskQueueHandler, BackgroundTaskQueueHandler>();
+            builder.Services.AddHostedService<BackgroundWorker>();
 
             #endregion
 
@@ -166,6 +168,9 @@ namespace IntelligenceHub.Host
                 // Set serialization for global enums utilized in DTOs
                 options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                 options.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            }).AddHubOptions<ChatHub>(options =>
+            {
+                if (builder.Environment.IsDevelopment()) options.EnableDetailedErrors = true; // enable detailed errors for dev environments
             });
             builder.Services.AddControllers().AddJsonOptions(options =>
             {
@@ -242,22 +247,24 @@ namespace IntelligenceHub.Host
                 // Apply the security scheme globally
                 options.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
-                                {
-                                    new OpenApiSecurityScheme
-                                    {
-                                        Reference = new OpenApiReference
-                                        {
-                                            Type = ReferenceType.SecurityScheme,
-                                            Id = "Bearer"
-                                        }
-                                    },
-                                    Array.Empty<string>()
-                                }
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
                 });
             });
+
             #endregion
 
             #region Build App
+
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
@@ -268,7 +275,7 @@ namespace IntelligenceHub.Host
 
                 app.UseCors(policy =>
                 {
-                    policy.WithOrigins("http://localhost:3000", "https://intelligencehub-dev.azurewebsites.net") // Specify allowed origin explicitly
+                    policy.WithOrigins("http://localhost:3000", "https://localhost:7228", "https://localhost:44483", "https://intelligencehub-dev.azurewebsites.net") // Specify allowed origin explicitly
                       .AllowAnyMethod()
                       .AllowAnyHeader()
                       .AllowCredentials()

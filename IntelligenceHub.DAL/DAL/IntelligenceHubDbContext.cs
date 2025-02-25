@@ -1,11 +1,17 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using IntelligenceHub.DAL.Models;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.DAL
 {
     public class IntelligenceHubDbContext : DbContext
     {
         public IntelligenceHubDbContext(DbContextOptions<IntelligenceHubDbContext> options) : base(options)
+        {
+        }
+
+        // parameterless constructor for testing classes
+        public IntelligenceHubDbContext() : base()
         {
         }
 
@@ -29,6 +35,7 @@ namespace IntelligenceHub.DAL
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.ConversationId).IsRequired();
+                entity.Property(e => e.User).HasMaxLength(255);
                 entity.Property(e => e.Role).IsRequired().HasMaxLength(255);
                 entity.Property(e => e.Base64Image).HasColumnType("nvarchar(max)");
                 entity.Property(e => e.TimeStamp).IsRequired();
@@ -44,10 +51,13 @@ namespace IntelligenceHub.DAL
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
                 entity.HasIndex(e => e.Name).IsUnique();
                 entity.Property(e => e.QueryType).HasMaxLength(255);
-                entity.Property(e => e.IndexingInterval).IsRequired();
+                entity.Property(e => e.IndexingInterval).IsRequired().HasConversion(
+                    v => (long)v.TotalMilliseconds,  // Convert TimeSpan to BigInt (milliseconds)
+                    v => TimeSpan.FromMilliseconds(v)  // Convert BigInt back to TimeSpan
+                );
                 entity.Property(e => e.EmbeddingModel).HasMaxLength(255);
-                entity.Property(e => e.MaxRagAttachments).HasDefaultValue(3);
-                entity.Property(e => e.ChunkOverlap).HasDefaultValue(0.1f);
+                entity.Property(e => e.MaxRagAttachments).HasDefaultValue(DefaultRagAttachmentNumber);
+                entity.Property(e => e.ChunkOverlap).HasDefaultValue(DefaultChunkOverlap);
                 entity.Property(e => e.GenerateTopic).IsRequired();
                 entity.Property(e => e.GenerateKeywords).IsRequired();
                 entity.Property(e => e.GenerateTitleVector).IsRequired();
@@ -138,6 +148,7 @@ namespace IntelligenceHub.DAL
 
             modelBuilder.Entity<DbProfileTool>(entity =>
             {
+                entity.ToTable("ProfileTools");
                 entity.HasKey(e => new { e.ProfileID, e.ToolID });
 
                 entity.HasOne(e => e.Profile)

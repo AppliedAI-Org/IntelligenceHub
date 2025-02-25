@@ -34,10 +34,6 @@ namespace IntelligenceHub.Controllers
                 if (conversation is null || conversation.Count < 1) return NotFound($"The conversation '{id}' does not exist or is empty...");
                 else return Ok(conversation);
             }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
-            }
             catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
@@ -61,10 +57,6 @@ namespace IntelligenceHub.Controllers
                 if (responseMessages is null) return StatusCode(StatusCodes.Status500InternalServerError, $"Something went wrong when adding the messages.");
                 else return Ok(responseMessages);
             }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
-            }
             catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
@@ -85,10 +77,6 @@ namespace IntelligenceHub.Controllers
                 if (response) return Ok(response);
                 else return NotFound($"No conversation with ID '{id}' was found");
             }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
-            }
             catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
@@ -108,10 +96,6 @@ namespace IntelligenceHub.Controllers
                 var response = await _messageHistoryLogic.DeleteMessage(conversationId, messageId);
                 if (response) return Ok(response);
                 else return NotFound("The conversation or message was not found");
-            }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {

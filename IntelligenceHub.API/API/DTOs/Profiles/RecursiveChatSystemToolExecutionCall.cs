@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IntelligenceHub.API.API.DTOs.Tools
+namespace IntelligenceHub.API.DTOs.Tools
 {
     public class RecursiveChatSystemToolExecutionCall
     {

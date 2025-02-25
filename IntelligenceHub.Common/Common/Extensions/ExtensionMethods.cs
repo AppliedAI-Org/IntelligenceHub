@@ -29,6 +29,33 @@ namespace IntelligenceHub.Common.Extensions
             return null;
         }
 
+        public static QueryType? ConvertStringToQueryType(this string queryType)
+        {
+            if (queryType == QueryType.Simple.ToString()) return QueryType.Simple;
+            if (queryType == QueryType.Semantic.ToString()) return QueryType.Semantic;
+            if (queryType == QueryType.Full.ToString()) return QueryType.Full;
+            return null;
+        }
+
+        public static SearchInterpolation? ConvertStringToSearchInterpolation(this string queryType)
+        {
+            if (queryType == SearchInterpolation.Linear.ToString()) return SearchInterpolation.Linear;
+            if (queryType == SearchInterpolation.Constant.ToString()) return SearchInterpolation.Constant;
+            if (queryType == SearchInterpolation.Quadratic.ToString()) return SearchInterpolation.Quadratic;
+            if (queryType == SearchInterpolation.Logarithmic.ToString()) return SearchInterpolation.Quadratic;
+            return null;
+        }
+
+        public static SearchAggregation? ConvertStringToSearchAggregation(this string queryType)
+        {
+            if (queryType == SearchAggregation.Average.ToString()) return SearchAggregation.Average;
+            if (queryType == SearchAggregation.Sum.ToString()) return SearchAggregation.Sum;
+            if (queryType == SearchAggregation.Maximum.ToString()) return SearchAggregation.Maximum;
+            if (queryType == SearchAggregation.Minimum.ToString()) return SearchAggregation.Minimum;
+            if (queryType == SearchAggregation.FirstMatching.ToString()) return SearchAggregation.FirstMatching;
+            return null;
+        }
+
         public static string ToCommaSeparatedString(this IEnumerable<string> strings)
         {
             if (strings is null) throw new ArgumentNullException(nameof(strings));

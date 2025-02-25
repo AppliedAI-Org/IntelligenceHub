@@ -34,10 +34,6 @@ namespace IntelligenceHub.Controllers
                 if (profileDto is not null) return Ok(profileDto);
                 return NotFound($"No profile with the name {name} was found.");
             }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
-            }
             catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
@@ -55,10 +51,6 @@ namespace IntelligenceHub.Controllers
             try
             {
                 return Ok(await _profileLogic.GetAllProfiles());
-            }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -80,10 +72,6 @@ namespace IntelligenceHub.Controllers
                 var errorMessage = await _profileLogic.CreateOrUpdateProfile(profileDto);
                 if (!string.IsNullOrEmpty(errorMessage)) return BadRequest(errorMessage);
                 else return Ok(await _profileLogic.GetProfile(profileDto.Name));
-            }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -107,10 +95,6 @@ namespace IntelligenceHub.Controllers
                 if (errorMessage is null) return Ok(await _profileLogic.GetProfileToolAssociations(name));
                 else return NotFound(errorMessage);
             }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
-            }
             catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
@@ -133,10 +117,6 @@ namespace IntelligenceHub.Controllers
                 if (errorMessage is null) return NoContent();
                 else return NotFound(errorMessage);
             }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
-            }
             catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
@@ -157,10 +137,6 @@ namespace IntelligenceHub.Controllers
                 var errorMessage = await _profileLogic.DeleteProfile(name);
                 if (errorMessage is not null) return NotFound(errorMessage);
                 else return NoContent();
-            }
-            catch (HttpRequestException ex)
-            {
-                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {

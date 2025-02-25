@@ -1,9 +1,15 @@
-﻿using global::IntelligenceHub.API.DTOs.RAG;
+﻿using Azure.Search.Documents.Models;
+using global::IntelligenceHub.API.DTOs.RAG;
 using global::IntelligenceHub.DAL.Models;
+using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.Client.Interfaces;
+using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Interfaces;
 using Moq;
+using System.Reflection;
+using System.Web.Razor.Generator;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Tests.Unit.Business
 {
@@ -14,6 +20,9 @@ namespace IntelligenceHub.Tests.Unit.Business
         private readonly Mock<IAISearchServiceClient> _mockSearchClient;
         private readonly Mock<IAGIClient> _mockAiClient;
         private readonly Mock<IIndexRepository> _mockRagRepository;
+        private readonly Mock<IValidationHandler> _mockValidationHandler;
+        private readonly Mock<IBackgroundTaskQueueHandler> _mockBackgroundTaskQueueHandler;
+        private readonly Mock<IntelligenceHubDbContext> _context;
         private readonly RagLogic _ragLogic;
 
         public RagLogicTests()
@@ -22,8 +31,11 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockAiClient = new Mock<IAGIClient>();
             _mockMetaRepository = new Mock<IIndexMetaRepository>();
             _mockRagRepository = new Mock<IIndexRepository>();
+            _mockValidationHandler = new Mock<IValidationHandler>();
+            _mockBackgroundTaskQueueHandler = new Mock<IBackgroundTaskQueueHandler>();
+            _context = new Mock<IntelligenceHubDbContext>();
 
-            _ragLogic = new RagLogic(_mockAiClient.Object, _mockSearchClient.Object, _mockMetaRepository.Object, _mockRagRepository.Object);
+            _ragLogic = new RagLogic(_mockAiClient.Object, _mockSearchClient.Object, _mockMetaRepository.Object, _mockRagRepository.Object, _mockValidationHandler.Object, _mockBackgroundTaskQueueHandler.Object, _context.Object);
         }
 
         [Fact]
@@ -32,6 +44,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Arrange
             var indexName = "testIndex";
             var dbIndexMetadata = new DbIndexMetadata { Name = indexName };
+            _mockValidationHandler.Setup(repo => repo.IsValidIndexName(indexName)).Returns(true);
             _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync(dbIndexMetadata);
 
             // Act
@@ -57,16 +70,65 @@ namespace IntelligenceHub.Tests.Unit.Business
         }
 
         [Fact]
+        public async Task GetAllIndexesAsync_ShouldReturnAllIndexes_WhenIndexesExist()
+        {
+            // Arrange
+            var dbIndexes = new List<DbIndexMetadata>
+    {
+        new DbIndexMetadata { Name = "index1" },
+        new DbIndexMetadata { Name = "index2" }
+    };
+            _mockMetaRepository.Setup(repo => repo.GetAllAsync(null, null)).ReturnsAsync(dbIndexes);
+
+            // Act
+            var result = await _ragLogic.GetAllIndexesAsync();
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Count());
+            Assert.Contains(result, index => index.Name == "index1");
+            Assert.Contains(result, index => index.Name == "index2");
+        }
+
+        [Fact]
+        public async Task GetAllIndexesAsync_ShouldReturnEmptyList_WhenNoIndexesExist()
+        {
+            // Arrange
+            var dbIndexes = new List<DbIndexMetadata>();
+            _mockMetaRepository.Setup(repo => repo.GetAllAsync(null, null)).ReturnsAsync(dbIndexes);
+
+            // Act
+            var result = await _ragLogic.GetAllIndexesAsync();
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task GetAllIndexesAsync_ShouldThrowException_WhenRepositoryThrowsException()
+        {
+            // Arrange
+            _mockMetaRepository.Setup(repo => repo.GetAllAsync(null, null)).ThrowsAsync(new Exception("Database error"));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<Exception>(() => _ragLogic.GetAllIndexesAsync());
+        }
+
+        [Fact]
         public async Task CreateIndex_ShouldReturnTrue_WhenIndexIsCreatedSuccessfully()
         {
             // Arrange
-            var indexMetadata = new IndexMetadata { Name = "newIndex" };
+            var indexMetadata = new IndexMetadata { Name = "newIndex", QueryType = QueryType.Simple };
+            var dbIndexMetadata = new DbIndexMetadata() { Name = indexMetadata.Name, QueryType = QueryType.Simple.ToString(), ChunkOverlap = DefaultChunkOverlap, EmbeddingModel = DefaultEmbeddingModel };
+
             _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexMetadata.Name)).ReturnsAsync((DbIndexMetadata)null);
-            _mockMetaRepository.Setup(repo => repo.AddAsync(It.IsAny<DbIndexMetadata>())).ReturnsAsync(new DbIndexMetadata());
+            _mockMetaRepository.Setup(repo => repo.AddAsync(It.IsAny<DbIndexMetadata>())).ReturnsAsync(dbIndexMetadata);
             _mockRagRepository.Setup(repo => repo.CreateIndexAsync(indexMetadata.Name)).ReturnsAsync(true);
-            _mockSearchClient.Setup(client => client.CreateIndex(indexMetadata)).ReturnsAsync(true);
+            _mockRagRepository.Setup(repo => repo.EnableChangeTrackingAsync(indexMetadata.Name)).ReturnsAsync(true);
+            _mockSearchClient.Setup(client => client.UpsertIndex(indexMetadata)).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.CreateDatasource(indexMetadata.Name)).ReturnsAsync(true);
-            _mockSearchClient.Setup(client => client.CreateIndexer(indexMetadata)).ReturnsAsync(true);
+            _mockSearchClient.Setup(client => client.UpsertIndexer(indexMetadata)).ReturnsAsync(true);
 
             // Act
             var result = await _ragLogic.CreateIndex(indexMetadata);
@@ -104,11 +166,376 @@ namespace IntelligenceHub.Tests.Unit.Business
         }
 
         [Fact]
-        public async Task DeleteIndex_ShouldReturnTrue_WhenIndexIsDeletedSuccessfully()
+        public async Task ConfigureIndex_ShouldReturnFalse_WhenIndexDefinitionIsInvalid()
+        {
+            // Arrange
+            var indexMetadata = new IndexMetadata { Name = "invalidIndex" };
+            _mockValidationHandler.Setup(v => v.ValidateIndexDefinition(indexMetadata)).Returns("Invalid definition");
+
+            // Act
+            var result = await _ragLogic.ConfigureIndex(indexMetadata);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task ConfigureIndex_ShouldReturnFalse_WhenIndexDoesNotExist()
+        {
+            // Arrange
+            var indexMetadata = new IndexMetadata { Name = "nonExistentIndex" };
+            _mockValidationHandler.Setup(v => v.ValidateIndexDefinition(indexMetadata)).Returns(string.Empty);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexMetadata.Name)).ReturnsAsync((DbIndexMetadata)null);
+
+            // Act
+            var result = await _ragLogic.ConfigureIndex(indexMetadata);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task ConfigureIndex_ShouldReturnFalse_WhenUpsertIndexFails()
+        {
+            // Arrange
+            var indexMetadata = new IndexMetadata { Name = "testIndex" };
+            var dbIndexMetadata = new DbIndexMetadata { Name = indexMetadata.Name };
+            _mockValidationHandler.Setup(v => v.ValidateIndexDefinition(indexMetadata)).Returns(string.Empty);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexMetadata.Name)).ReturnsAsync(dbIndexMetadata);
+            _mockSearchClient.Setup(client => client.UpsertIndex(indexMetadata)).ReturnsAsync(false);
+
+            // Act
+            var result = await _ragLogic.ConfigureIndex(indexMetadata);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task ConfigureIndex_ShouldReturnFalse_WhenUpsertIndexerFails()
+        {
+            // Arrange
+            var indexMetadata = new IndexMetadata { Name = "testIndex" };
+            var dbIndexMetadata = new DbIndexMetadata { Name = indexMetadata.Name };
+            _mockValidationHandler.Setup(v => v.ValidateIndexDefinition(indexMetadata)).Returns(string.Empty);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexMetadata.Name)).ReturnsAsync(dbIndexMetadata);
+            _mockSearchClient.Setup(client => client.UpsertIndex(indexMetadata)).ReturnsAsync(true);
+            _mockSearchClient.Setup(client => client.UpsertIndexer(indexMetadata)).ReturnsAsync(false);
+
+            // Act
+            var result = await _ragLogic.ConfigureIndex(indexMetadata);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task ConfigureIndex_ShouldReturnTrue_WhenConfigurationIsSuccessful()
+        {
+            // Arrange
+            var indexMetadata = new IndexMetadata { Name = "testIndex" };
+            var dbIndexMetadata = new DbIndexMetadata { Name = indexMetadata.Name, GenerateKeywords = false, GenerateTopic = false }; // To vastly simplify testing, these are set to false for the time being
+            _mockValidationHandler.Setup(v => v.ValidateIndexDefinition(indexMetadata)).Returns(string.Empty);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexMetadata.Name)).ReturnsAsync(dbIndexMetadata);
+            _mockSearchClient.Setup(client => client.UpsertIndex(indexMetadata)).ReturnsAsync(true);
+            _mockSearchClient.Setup(client => client.UpsertIndexer(indexMetadata)).ReturnsAsync(true);
+            _mockMetaRepository.Setup(repo => repo.UpdateAsync(dbIndexMetadata, It.IsAny<DbIndexMetadata>())).ReturnsAsync(1);
+            _mockSearchClient.Setup(repo => repo.RunIndexer(indexMetadata.Name)).ReturnsAsync(true);
+
+            // Act
+            var result = await _ragLogic.ConfigureIndex(indexMetadata);
+
+            // Assert
+            Assert.True(result);
+        }
+
+        [Fact]
+        public async Task ConfigureIndex_ShouldRunIndexer_WhenGenerativeFieldsAreUpdated()
+        {
+            // Arrange
+            var indexMetadata = new IndexMetadata { Name = "testIndex", GenerateContentVector = true };
+            var dbIndexMetadata = new DbIndexMetadata { Name = indexMetadata.Name, GenerateContentVector = false };
+            _mockValidationHandler.Setup(v => v.ValidateIndexDefinition(indexMetadata)).Returns(string.Empty);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexMetadata.Name)).ReturnsAsync(dbIndexMetadata);
+            _mockSearchClient.Setup(client => client.UpsertIndex(indexMetadata)).ReturnsAsync(true);
+            _mockSearchClient.Setup(client => client.UpsertIndexer(indexMetadata)).ReturnsAsync(true);
+            _mockMetaRepository.Setup(repo => repo.UpdateAsync(dbIndexMetadata, It.IsAny<DbIndexMetadata>())).ReturnsAsync(1);
+            _mockRagRepository.Setup(repo => repo.MarkIndexForUpdateAsync(indexMetadata.Name)).ReturnsAsync(true);
+            _mockSearchClient.Setup(client => client.RunIndexer(indexMetadata.Name)).ReturnsAsync(true);
+
+            // Act
+            var result = await _ragLogic.ConfigureIndex(indexMetadata);
+
+            // Assert
+            Assert.True(result);
+            _mockRagRepository.Verify(repo => repo.MarkIndexForUpdateAsync(indexMetadata.Name), Times.Once);
+            _mockSearchClient.Verify(client => client.RunIndexer(indexMetadata.Name), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunIndexUpdate_ShouldReturnFalse_WhenIndexNameIsInvalid()
+        {
+            // Arrange
+            var indexName = "invalid index name";
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(false);
+
+            // Act
+            var result = await _ragLogic.RunIndexUpdate(indexName);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task RunIndexUpdate_ShouldReturnFalse_WhenIndexDoesNotExist()
+        {
+            // Arrange
+            var indexName = "nonExistentIndex";
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync((DbIndexMetadata?)null);
+
+            // Act
+            var result = await _ragLogic.RunIndexUpdate(indexName);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task RunIndexUpdate_ShouldReturnTrue_WhenIndexerRunsSuccessfully()
         {
             // Arrange
             var indexName = "testIndex";
             var dbIndexMetadata = new DbIndexMetadata { Name = indexName };
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync(dbIndexMetadata);
+            _mockSearchClient.Setup(client => client.RunIndexer(indexName)).ReturnsAsync(true);
+
+            // Act
+            var result = await _ragLogic.RunIndexUpdate(indexName);
+
+            // Assert
+            Assert.True(result);
+        }
+
+        [Fact]
+        public async Task RunIndexUpdate_ShouldReturnFalse_WhenIndexerFailsToRun()
+        {
+            // Arrange
+            var indexName = "testIndex";
+            var dbIndexMetadata = new DbIndexMetadata { Name = indexName };
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync(dbIndexMetadata);
+            _mockSearchClient.Setup(client => client.RunIndexer(indexName)).ReturnsAsync(false);
+
+            // Act
+            var result = await _ragLogic.RunIndexUpdate(indexName);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task QueryIndex_ShouldReturnNull_WhenIndexNameIsInvalid()
+        {
+            // Arrange
+            var indexName = "invalid index name";
+            var query = "test query";
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(false);
+
+            // Act
+            var result = await _ragLogic.QueryIndex(indexName, query);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task QueryIndex_ShouldReturnNull_WhenQueryIsEmpty()
+        {
+            // Arrange
+            var indexName = "testIndex";
+            var query = string.Empty;
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+
+            // Act
+            var result = await _ragLogic.QueryIndex(indexName, query);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task QueryIndex_ShouldReturnNull_WhenIndexDoesNotExist()
+        {
+            // Arrange
+            var indexName = "nonExistentIndex";
+            var query = "test query";
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync((DbIndexMetadata?)null);
+
+            // Act
+            var result = await _ragLogic.QueryIndex(indexName, query);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task QueryIndex_ShouldReturnDocuments_WhenQueryIsSuccessful()
+        {
+            // Arrange
+            var indexName = "testIndex";
+            var query = "test query";
+            var dbIndexMetadata = new DbIndexMetadata { Name = indexName, QueryType = QueryType.Simple.ToString() };
+            var searchResults = CreateMockSimpleSearchResults();
+
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync(dbIndexMetadata);
+            _mockSearchClient.Setup(client => client.SearchIndex(It.IsAny<IndexMetadata>(), query))
+                .ReturnsAsync(searchResults);
+
+            // Act
+            var result = await _ragLogic.QueryIndex(indexName, query);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Single(result);
+            var doc = result.First();
+            Assert.Equal("doc1", doc.Title);
+            Assert.Equal("keyword1", doc.Keywords);
+            Assert.Equal("topic1", doc.Topic);
+            Assert.Equal("source1", doc.Source);
+            Assert.Equal("content1", doc.Content);
+        }
+
+        [Fact]
+        public async Task QueryIndex_ShouldReturnDocumentsWithSemanticContent_WhenQueryTypeIsSemantic()
+        {
+            // Arrange
+            var indexName = "testIndex";
+            var query = "test query";
+            var dbIndexMetadata = new DbIndexMetadata { Name = indexName, QueryType = QueryType.Semantic.ToString() };
+            var searchResults = CreateMockSemanticSearchResults();
+
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync(dbIndexMetadata);
+            _mockSearchClient.Setup(client => client.SearchIndex(It.IsAny<IndexMetadata>(), query))
+                .ReturnsAsync(searchResults);
+
+            // Act
+            var result = await _ragLogic.QueryIndex(indexName, query);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Single(result);
+            var doc = result.First();
+            Assert.Equal("doc1", doc.Title);
+            Assert.Equal("keyword1", doc.Keywords);
+            Assert.Equal("topic1", doc.Topic);
+            Assert.Equal("source1", doc.Source);
+            Assert.Contains("semantic content", doc.Content);
+        }
+
+        /// <summary>
+        /// Creates a mock SearchResults for a simple query.
+        /// </summary>
+        private static SearchResults<IndexDefinition> CreateMockSimpleSearchResults()
+        {
+            // Create a sample document.
+            var indexDefinition = new IndexDefinition
+            {
+                Title = "doc1",
+                Keywords = "keyword1",
+                Topic = "topic1",
+                Source = "source1",
+                chunk = "content1"
+            };
+
+            // Use the factory to create a SearchResult instance.
+            var searchResult = SearchModelFactory.SearchResult(
+                indexDefinition,
+                score: null,
+                highlights: null);
+
+            var results = new List<SearchResult<IndexDefinition>> { searchResult };
+
+            // Use the factory method to create a SearchResults instance.
+            return SearchModelFactory.SearchResults(
+                values: results,
+                totalCount: null,
+                facets: null,
+                coverage: null,
+                rawResponse: null);
+        }
+
+        /// <summary>
+        /// Creates a mock SearchResults for a semantic query.
+        /// </summary>
+        private static SearchResults<IndexDefinition> CreateMockSemanticSearchResults()
+        {
+            var indexDefinition = new IndexDefinition
+            {
+                Title = "doc1",
+                Keywords = "keyword1",
+                Topic = "topic1",
+                Source = "source1",
+                chunk = "content1"
+            };
+
+            // Create a semantic search result with a caption using our helper method.
+            var captionResult = CreateMockQueryCaptionResult("semantic content");
+            var semanticSearchResult = SearchModelFactory.SemanticSearchResult(
+                rerankerScore: null,
+                captions: new List<QueryCaptionResult> { captionResult });
+
+            // Use the factory to create a SearchResult with semantic data.
+            var searchResult = SearchModelFactory.SearchResult(
+                indexDefinition,
+                score: null,
+                highlights: null,
+                semanticSearch: semanticSearchResult);
+
+            var results = new List<SearchResult<IndexDefinition>> { searchResult };
+
+            // Use the factory method to create a SearchResults instance.
+            return SearchModelFactory.SearchResults(
+                values: results,
+                totalCount: null,
+                facets: null,
+                coverage: null,
+                rawResponse: null);
+        }
+
+        /// <summary>
+        /// Creates a mock QueryCaptionResult using reflection to bypass constructor limitations.
+        /// </summary>
+        private static QueryCaptionResult CreateMockQueryCaptionResult(string text)
+        {
+            // Create an instance using the non-public constructor.
+            var captionResult = (QueryCaptionResult)Activator.CreateInstance(typeof(QueryCaptionResult), nonPublic: true);
+
+            // Get the backing field for the read-only 'Text' property.
+            var backingField = typeof(QueryCaptionResult)
+                .GetField("<Text>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (backingField == null)
+            {
+                throw new InvalidOperationException("The backing field for Text was not found.");
+            }
+
+            // Set the backing field's value.
+            backingField.SetValue(captionResult, text);
+
+            return captionResult;
+        }
+
+        [Fact]
+        public async Task DeleteIndex_ShouldReturnTrue_WhenIndexIsDeletedSuccessfully()
+        {
+            // Arrange
+            var indexName = "testIndex";
+            var dbIndexMetadata = new DbIndexMetadata() { Name = indexName, QueryType = QueryType.Simple.ToString(), ChunkOverlap = DefaultChunkOverlap, EmbeddingModel = DefaultEmbeddingModel };
+            _mockValidationHandler.Setup(repo => repo.IsValidIndexName(indexName)).Returns(true);
             _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync(dbIndexMetadata);
             _mockRagRepository.Setup(repo => repo.DeleteIndexAsync(indexName)).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.DeleteIndexer(indexName, It.IsAny<string>())).ReturnsAsync(true);
@@ -158,6 +585,8 @@ namespace IntelligenceHub.Tests.Unit.Business
             var dbIndexMetadata = new DbIndexMetadata { Name = indexName };
             var document = new IndexDocument { Title = "testDocument", Content = "testContent" };
             var upsertRequest = new RagUpsertRequest { Documents = new List<IndexDocument> { document } };
+            _mockValidationHandler.Setup(repo => repo.IsValidIndexName(indexName)).Returns(true);
+            _mockValidationHandler.Setup(repo => repo.IsValidRagUpsertRequest(upsertRequest)).Returns(string.Empty);
             _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync(dbIndexMetadata);
             _mockRagRepository.Setup(repo => repo.GetDocumentAsync(indexName, document.Title)).ReturnsAsync((DbIndexDocument?)null);
             _mockRagRepository.Setup(repo => repo.AddAsync(It.IsAny<DbIndexDocument>(), indexName)).ReturnsAsync(new DbIndexDocument());
@@ -199,12 +628,157 @@ namespace IntelligenceHub.Tests.Unit.Business
         }
 
         [Fact]
+        public async Task GetDocument_ShouldReturnDocument_WhenDocumentExists()
+        {
+            // Arrange
+            var indexName = "testIndex";
+            var documentName = "testDocument";
+            var dbDocument = new DbIndexDocument { Title = documentName, Content = "testContent" };
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+            _mockRagRepository.Setup(repo => repo.GetDocumentAsync(indexName, documentName)).ReturnsAsync(dbDocument);
+
+            // Act
+            var result = await _ragLogic.GetDocument(indexName, documentName);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(documentName, result.Title);
+            Assert.Equal("testContent", result.Content);
+        }
+
+        [Fact]
+        public async Task GetDocument_ShouldReturnNull_WhenIndexNameIsInvalid()
+        {
+            // Arrange
+            var indexName = "invalid index name";
+            var documentName = "testDocument";
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(false);
+
+            // Act
+            var result = await _ragLogic.GetDocument(indexName, documentName);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetDocument_ShouldReturnNull_WhenDocumentNameIsEmpty()
+        {
+            // Arrange
+            var indexName = "testIndex";
+            var documentName = string.Empty;
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+
+            // Act
+            var result = await _ragLogic.GetDocument(indexName, documentName);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetDocument_ShouldReturnNull_WhenDocumentDoesNotExist()
+        {
+            // Arrange
+            var indexName = "testIndex";
+            var documentName = "nonExistentDocument";
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+            _mockRagRepository.Setup(repo => repo.GetDocumentAsync(indexName, documentName)).ReturnsAsync((DbIndexDocument?)null);
+
+            // Act
+            var result = await _ragLogic.GetDocument(indexName, documentName);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetAllDocuments_ShouldReturnDocuments_WhenIndexIsValid()
+        {
+            // Arrange
+            var indexName = "testIndex";
+            var count = 10;
+            var page = 1;
+            var dbDocuments = new List<DbIndexDocument>
+            {
+                new DbIndexDocument { Title = "doc1", Content = "content1" },
+                new DbIndexDocument { Title = "doc2", Content = "content2" }
+            };
+            var expectedDocuments = dbDocuments.Select(DbMappingHandler.MapFromDbIndexDocument).ToList();
+
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+            _mockRagRepository.Setup(repo => repo.GetAllAsync(indexName, count, page)).ReturnsAsync(dbDocuments);
+
+            // Act
+            var result = await _ragLogic.GetAllDocuments(indexName, count, page);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(expectedDocuments.Count, result.Count());
+            Assert.Equal(expectedDocuments.First().Title, result.First().Title);
+            Assert.Equal(expectedDocuments.First().Content, result.First().Content);
+        }
+
+        [Fact]
+        public async Task GetAllDocuments_ShouldReturnNull_WhenIndexNameIsInvalid()
+        {
+            // Arrange
+            var indexName = "invalid index name";
+            var count = 10;
+            var page = 1;
+
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(false);
+
+            // Act
+            var result = await _ragLogic.GetAllDocuments(indexName, count, page);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetAllDocuments_ShouldReturnEmptyList_WhenNoDocumentsExist()
+        {
+            // Arrange
+            var indexName = "testIndex";
+            var count = 10;
+            var page = 1;
+            var dbDocuments = new List<DbIndexDocument>();
+
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+            _mockRagRepository.Setup(repo => repo.GetAllAsync(indexName, count, page)).ReturnsAsync(dbDocuments);
+
+            // Act
+            var result = await _ragLogic.GetAllDocuments(indexName, count, page);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task GetAllDocuments_ShouldThrowException_WhenRepositoryThrowsException()
+        {
+            // Arrange
+            var indexName = "testIndex";
+            var count = 10;
+            var page = 1;
+
+            _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
+            _mockRagRepository.Setup(repo => repo.GetAllAsync(indexName, count, page)).ThrowsAsync(new Exception("Database error"));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<Exception>(() => _ragLogic.GetAllDocuments(indexName, count, page));
+        }
+
+        [Fact]
         public async Task DeleteDocuments_ShouldReturnDeletedCount_WhenDocumentsAreDeletedSuccessfully()
         {
             // Arrange
             var indexName = "testIndex";
             var documentNames = new[] { "doc1", "doc2" };
             var dbDocument = new DbIndexDocument();
+            _mockValidationHandler.Setup(repo => repo.IsValidIndexName(indexName)).Returns(true);
             _mockRagRepository.Setup(repo => repo.GetDocumentAsync(indexName, It.IsAny<string>())).ReturnsAsync(dbDocument);
             _mockRagRepository.Setup(repo => repo.DeleteAsync(dbDocument, indexName)).ReturnsAsync(1);
 

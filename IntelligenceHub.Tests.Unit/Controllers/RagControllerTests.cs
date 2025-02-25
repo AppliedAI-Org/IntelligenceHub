@@ -168,7 +168,8 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var index = "testIndex";
-            var documentUpsertRequest = new RagUpsertRequest();
+            var documentToDelete = new IndexDocument() { Title = "doc1", Content = "content" };
+            var documentUpsertRequest = new RagUpsertRequest() { Documents = new List<IndexDocument>() { documentToDelete } };
             _mockRagLogic.Setup(r => r.UpsertDocuments(index, documentUpsertRequest)).ReturnsAsync(true);
 
             // Act
@@ -183,7 +184,8 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var index = "testIndex";
-            var documentUpsertRequest = new RagUpsertRequest();
+            var documentToDelete = new IndexDocument() { Title = "doc1", Content = "content" };
+            var documentUpsertRequest = new RagUpsertRequest() { Documents = new List<IndexDocument>() { documentToDelete } };
             _mockRagLogic.Setup(r => r.UpsertDocuments(index, documentUpsertRequest)).ReturnsAsync(false);
 
             // Act
@@ -191,6 +193,20 @@ namespace IntelligenceHub.Tests.Unit.Controllers
 
             // Assert
             Assert.IsType<BadRequestResult>(result);
+        }
+
+        [Fact]
+        public async Task UpsertDocuments_EmptyRequest_ReturnsBadRequest()
+        {
+            // Arrange
+            var index = "testIndex";
+            var documentUpsertRequest = new RagUpsertRequest() { Documents = new List<IndexDocument>() };
+
+            // Act
+            var result = await _controller.UpsertDocuments(index, documentUpsertRequest);
+
+            // Assert
+            Assert.IsType<BadRequestObjectResult>(result);
         }
 
         [Fact]
