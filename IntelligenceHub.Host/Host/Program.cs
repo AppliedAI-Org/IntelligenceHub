@@ -21,7 +21,7 @@ using Polly.Extensions.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using static IntelligenceHub.Common.GlobalVariables;
-using Microsoft.Extensions.DependencyInjection;
+using IntelligenceHub.Business.Factories;
 
 namespace IntelligenceHub.Host
 {

@@ -4,10 +4,12 @@ using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Interfaces;
-using IntelligenceHub.DAL.Models;
 
 namespace IntelligenceHub.Business.Implementations
 {
+    /// <summary>
+    /// Business logic for handling profile operations.
+    /// </summary>
     public class ProfileLogic : IProfileLogic
     {
         private readonly IProfileRepository _profileDb;
@@ -20,6 +22,14 @@ namespace IntelligenceHub.Business.Implementations
         private readonly string _missingProfileMessage = "No profile with the specified name was found. Name: "; // make sure to use interpolation here
         private readonly string _missingToolMessage = "No tool with the specified name was found. Name: "; // make sure to use interpolation here
 
+        /// <summary>
+        /// Constructor for ProfileLogic resolved with DI.
+        /// </summary>
+        /// <param name="profileDb">The repository used to retrieve profile data.</param>
+        /// <param name="profileToolsDb">The repository used to retrieve associations between profiles and tools.</param>
+        /// <param name="toolDb">The repository used to retrieve tool data.</param>
+        /// <param name="propertyDb">The repository used to retrieve property data, which are associated with tools.</param>
+        /// <param name="validationLogic">The validation class used to assess the validity of request properties.</param>
         public ProfileLogic(IProfileRepository profileDb, IProfileToolsAssociativeRepository profileToolsDb, IToolRepository toolDb, IPropertyRepository propertyDb, IValidationHandler validationLogic)
         {
             _profileDb = profileDb;
@@ -29,8 +39,12 @@ namespace IntelligenceHub.Business.Implementations
             _validationLogic = validationLogic;
         }
 
-        // else shouldn't be required here
-        public async Task<Profile?> GetProfile(string name)
+        /// <summary>
+        /// Retrieves a profile by name.
+        /// </summary>
+        /// <param name="name">The name of the profile.</param>
+        /// <returns>The profile, if one with the requested name exists, otherwise null.</returns>
+        public async Task<Profile?> GetProfile(string name) // else shouldn't be required here
         {
             var dbProfile = await _profileDb.GetByNameAsync(name);
             if (dbProfile != null)
@@ -56,6 +70,10 @@ namespace IntelligenceHub.Business.Implementations
             return null;
         }
 
+        /// <summary>
+        /// Retrieves all profiles.
+        /// </summary>
+        /// <returns>An list of all existing profiles.</returns>
         public async Task<IEnumerable<Profile>> GetAllProfiles()
         {
             var response = await _profileDb.GetAllAsync();
@@ -81,8 +99,12 @@ namespace IntelligenceHub.Business.Implementations
             return apiResponseList;
         }
 
-        // refactor this
-        public async Task<string?> CreateOrUpdateProfile(Profile profileDto)
+        /// <summary>
+        /// Creates or updates an AGI client profile.
+        /// </summary>
+        /// <param name="profileDto">The request body used to create or update the profile.</param>
+        /// <returns>An error message if the profile DTO fails to pass validation, otherwise null.</returns>
+        public async Task<string?> CreateOrUpdateProfile(Profile profileDto) // refactor this
         {
             var errorMessage = _validationLogic.ValidateAPIProfile(profileDto); // move to controller
             if (errorMessage != null) return errorMessage;
@@ -110,8 +132,12 @@ namespace IntelligenceHub.Business.Implementations
             return null;
         }
 
-        // could also use some refactoring
-        public async Task<string> DeleteProfile(string name)
+        /// <summary>
+        /// Deletes an AGI client profile by name.
+        /// </summary>
+        /// <param name="name">The name of the profile to delete.</param>
+        /// <returns>An error message if the operation faile, otherwise null.</returns>
+        public async Task<string?> DeleteProfile(string name) // could also use some refactoring
         {
             var dbProfile = await _profileDb.GetByNameAsync(name);
             int rows;
@@ -137,6 +163,13 @@ namespace IntelligenceHub.Business.Implementations
         }
 
         #region Tool Logic
+
+        /// <summary>
+        /// Adds or updates the tools associated with a profile.
+        /// </summary>
+        /// <param name="profileDto">The DTO used to construct the profile.</param>
+        /// <param name="existingProfile">The existing profile in the database.</param>
+        /// <returns>A bool indicating the operations success.</returns>
         private async Task<bool> AddOrUpdateProfileTools(Profile profileDto, Profile existingProfile)
         {
             var toolIds = new List<int>();
@@ -154,12 +187,23 @@ namespace IntelligenceHub.Business.Implementations
             return true;
         }
 
-        public async Task<Tool> GetTool(string name)
+        /// <summary>
+        /// Retrieves a tool by name.
+        /// </summary>
+        /// <param name="name">The name of the tool.</param>
+        /// <returns>The tool if it exists in the database.</returns>
+        public async Task<Tool?> GetTool(string name)
         {
             var dbTool = await _toolDb.GetByNameAsync(name);
+            if (dbTool == null) return null;
+
             return DbMappingHandler.MapFromDbTool(dbTool);
         }
 
+        /// <summary>
+        /// Retrieves all tools in the database.
+        /// </summary>
+        /// <returns>A list of all existing tools.</returns>
         public async Task<IEnumerable<Tool>> GetAllTools()
         {
             var returnList = new List<Tool>();
@@ -173,21 +217,36 @@ namespace IntelligenceHub.Business.Implementations
             return returnList;
         }
 
+        /// <summary>
+        /// Retrieves the tools associated with a profile.
+        /// </summary>
+        /// <param name="name">The name of the profile.</param>
+        /// <returns>A list of tool names.</returns>
         public async Task<List<string>> GetProfileToolAssociations(string name)
         {
             var profileNames = await _toolDb.GetProfileToolsAsync(name);
             if (profileNames.Count > 0) return profileNames;
-            else return null;
+            else return new List<string>();
         }
 
+        /// <summary>
+        /// Retrieves the profiles associated with a tool.
+        /// </summary>
+        /// <param name="name">The name of the tools.</param>
+        /// <returns>A list of profile names.</returns>
         public async Task<List<string>> GetToolProfileAssociations(string name)
         {
             var profileNames = await _toolDb.GetToolProfilesAsync(name);
             if (profileNames.Count > 0) return profileNames;
-            else return null;
+            else return new List<string>();
         }
 
-        public async Task<string> CreateOrUpdateTools(List<Tool> toolList)
+        /// <summary>
+        /// Creates or updates a list of tools.
+        /// </summary>
+        /// <param name="toolList">A list of tools to create or update.</param>
+        /// <returns>An error message if the operation failed, otherwise null.</returns>
+        public async Task<string?> CreateOrUpdateTools(List<Tool> toolList)
         {
             // move below to controller
             foreach (var tool in toolList)
@@ -216,7 +275,13 @@ namespace IntelligenceHub.Business.Implementations
             return null;
         }
 
-        public async Task<string> AddToolToProfiles(string name, List<string> profiles)
+        /// <summary>
+        /// Associates a list of profiles with a tool.
+        /// </summary>
+        /// <param name="name">The name of the tool.</param>
+        /// <param name="profiles">A list of profile names.</param>
+        /// <returns>An error message if the operation fails, otherwise null.</returns>
+        public async Task<string?> AddToolToProfiles(string name, List<string> profiles)
         {
             var tool = await _toolDb.GetByNameAsync(name);
             if (tool != null)
@@ -228,7 +293,13 @@ namespace IntelligenceHub.Business.Implementations
             return _missingToolMessage + $"'{name}'";
         }
 
-        public async Task<string> AddProfileToTools(string name, List<string> tools)
+        /// <summary>
+        /// Associates a list of tools with a profile.
+        /// </summary>
+        /// <param name="name">The name of the profile.</param>
+        /// <param name="tools">A list of tool names.</param>
+        /// <returns>An error message if the operation fails, otherwise null.</returns>
+        public async Task<string?> AddProfileToTools(string name, List<string> tools)
         {
             var toolIDs = new List<int>();
             foreach (var toolName in tools)
@@ -243,10 +314,16 @@ namespace IntelligenceHub.Business.Implementations
                 var success = await _profileToolsDb.AddAssociationsByProfileIdAsync(profile.Id, toolIDs);
                 if (success) return null;
             }
-            return _missingProfileMessage + $"'{profile.Name}'";
+            return _missingProfileMessage + $"'{name}'";
         }
 
-        public async Task<string> DeleteToolAssociations(string name, List<string> profiles)
+        /// <summary>
+        /// Deletes the associations between a tool and a list of profiles.
+        /// </summary>
+        /// <param name="name">The name of the tool.</param>
+        /// <param name="profiles">A list of profile names.</param>
+        /// <returns>An error message if the operation fails, otherwise null.</returns>
+        public async Task<string?> DeleteToolAssociations(string name, List<string> profiles)
         {
             var tool = await _toolDb.GetByNameAsync(name);
             if (tool != null)
@@ -257,7 +334,13 @@ namespace IntelligenceHub.Business.Implementations
             return _missingToolMessage + $"'{name}'";
         }
 
-        public async Task<string> DeleteProfileAssociations(string name, List<string> tools)
+        /// <summary>
+        /// Deletes the associations between a profile and a list of tools.
+        /// </summary>
+        /// <param name="name">The name of the profile.</param>
+        /// <param name="tools">A list of tool names.</param>
+        /// <returns>An error message if the operation fails, otherwise null.</returns>
+        public async Task<string?> DeleteProfileAssociations(string name, List<string> tools)
         {
             var profile = await _profileDb.GetByNameAsync(name);
             if (profile != null)
@@ -268,6 +351,11 @@ namespace IntelligenceHub.Business.Implementations
             return _missingToolMessage + $"'{name}'";
         }
 
+        /// <summary>
+        /// Deletes a tool by name.
+        /// </summary>
+        /// <param name="name">The name of the tool.</param>
+        /// <returns>A bool indicating the success of the operation.</returns>
         public async Task<bool> DeleteTool(string name)
         {
             var existingDbTool = await _toolDb.GetByNameAsync(name);
@@ -287,6 +375,13 @@ namespace IntelligenceHub.Business.Implementations
             return false;
         }
 
+        /// <summary>
+        /// Adds or updates the properties associated with a tool.
+        /// </summary>
+        /// <param name="existingTool">The existing tool.</param>
+        /// <param name="newProperties">A dictionary of properties where the name of the 
+        /// property is the key, and the value is the property object.</param>
+        /// <returns>A bool indicating the success of the operation.</returns>
         public async Task<bool> AddOrUpdateToolProperties(Tool existingTool, Dictionary<string, Property> newProperties)
         {
             var existingProperties = await _propertyDb.GetToolProperties(existingTool.Id);

@@ -7,6 +7,9 @@ using System.Text.RegularExpressions;
 
 namespace IntelligenceHub.Business.Handlers
 {
+    /// <summary>
+    /// A class that handles validation for incoming DTOs sent to the API.
+    /// </summary>
     public class ValidationHandler : IValidationHandler
     {
         #region Profile And Tool Validation
@@ -36,8 +39,16 @@ namespace IntelligenceHub.Business.Handlers
             //"object"
         };
 
+        /// <summary>
+        /// Default constructor for the ValidationHandler class.
+        /// </summary>
         public ValidationHandler() { }
 
+        /// <summary>
+        /// Validates the API chat request DTO.
+        /// </summary>
+        /// <param name="chatRequest">The chat request DTO.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
         public string? ValidateChatRequest(CompletionRequest chatRequest)
         {
             if (chatRequest.ProfileOptions.Name == null) return "A profile name must be included in the request body or route.";
@@ -48,6 +59,11 @@ namespace IntelligenceHub.Business.Handlers
             return null;
         }
 
+        /// <summary>
+        /// Validates the API profile DTO.
+        /// </summary>
+        /// <param name="profile">The profile to validate.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
         public string? ValidateAPIProfile(Profile profile)
         {
             // validate reference profiles exist (same with any other values?)
@@ -59,6 +75,11 @@ namespace IntelligenceHub.Business.Handlers
             return null;
         }
 
+        /// <summary>
+        /// Validates the base DTO/Profile DTO for the chat request API and profile API.
+        /// </summary>
+        /// <param name="profile">The profile to validate.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
         public string? ValidateBaseDTO(Profile profile)
         {
             if (profile.Model != null && _validModels.Contains(profile.Model.ToLower()) == false) return "The model name must match and existing AI model";
@@ -81,6 +102,11 @@ namespace IntelligenceHub.Business.Handlers
             return null;
         }
 
+        /// <summary>
+        /// Validates the tool DTO.
+        /// </summary>
+        /// <param name="tool">The tool DTO to validate.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
         public string? ValidateTool(Tool tool)
         {
             if (tool.Function.Name == null || string.IsNullOrEmpty(tool.Function.Name)) return "A function name is required for all tools.";
@@ -102,6 +128,12 @@ namespace IntelligenceHub.Business.Handlers
             return null;
         }
 
+        /// <summary>
+        /// Validates the properties of a tool.
+        /// </summary>
+        /// <param name="properties">The properties to validate in a dictionary form where the 
+        /// key is the property name, and the value is the property object.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
         public string? ValidateProperties(Dictionary<string, Property> properties)
         {
             foreach (var prop in properties)
@@ -116,10 +148,16 @@ namespace IntelligenceHub.Business.Handlers
 
         #region RAG Index Validation
 
+        /// <summary>
+        /// Validates the index definition DTO for RAG operations.
+        /// </summary>
+        /// <param name="index">The index definition.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
         public string? ValidateIndexDefinition(IndexMetadata index)
         {
             // Validate Name
             if (string.IsNullOrWhiteSpace(index.Name)) return "The provided index name is invalid.";
+            if (string.IsNullOrEmpty(index.GenerationProfile)) return "The GenerationProfile is required.";
             if (index.Name.Length > 255) return "The index name exceeds the maximum allowed length of 255 characters.";
             if (index.IndexingInterval <= TimeSpan.Zero) return "IndexingInterval must be a positive value.";
             if (index.IndexingInterval > TimeSpan.FromDays(1)) return "The indexing interval cannot exceed 1 day.";
@@ -127,7 +165,7 @@ namespace IntelligenceHub.Business.Handlers
             if (index.MaxRagAttachments < 0) return "MaxRagAttachments must be a non-negative integer.";
             if (index.ChunkOverlap < 0 || index.ChunkOverlap > 1) return "ChunkOverlap must be between 0 and 1 (inclusive).";
 
-            if (!string.IsNullOrEmpty(index.ScoringProfile.Name))
+            if (!string.IsNullOrEmpty(index.ScoringProfile?.Name))
             {
                 if (string.IsNullOrWhiteSpace(index.ScoringProfile.Name)) return "The ScoringProfile name is required.";
                 if (index.ScoringProfile.Name.Length > 255) return "The ScoringProfile name exceeds the maximum allowed length of 255 characters.";
@@ -152,7 +190,11 @@ namespace IntelligenceHub.Business.Handlers
             return null;
         }
 
-
+        /// <summary>
+        /// Validates the index name for RAG operations.
+        /// </summary>
+        /// <param name="tableName">The RAG index name that will be used to create an SQL table.</param>
+        /// <returns>A bool indicating if validation passed.</returns>
         public bool IsValidIndexName(string tableName)
         {
             // Regular expression to match valid table names (alphanumeric characters and underscores only)
@@ -170,6 +212,11 @@ namespace IntelligenceHub.Business.Handlers
             return isSuccess;
         }
 
+        /// <summary>
+        /// Checks if the table name contains a SQL keyword.
+        /// </summary>
+        /// <param name="tableName">The table name to validate.</param>
+        /// <returns>A bool indicating if validation passed.</returns>
         private static bool ContainsSqlKeyword(string tableName)
         {
             // List of common SQL keywords to prevent improper use
@@ -188,6 +235,11 @@ namespace IntelligenceHub.Business.Handlers
             return false;
         }
 
+        /// <summary>
+        /// Checks if the table name contains an API keyword.
+        /// </summary>
+        /// <param name="tableName">The name of the table to validate.</param>
+        /// <returns>A bool indicating if validation passed.</returns>
         private static bool ContainsAPIKeyword(string tableName)
         {
             // List of common SQL keywords to prevent conflicts
@@ -205,6 +257,11 @@ namespace IntelligenceHub.Business.Handlers
 
         #region Rag Document Upsert Request Validation
 
+        /// <summary>
+        /// Validates the RAG document upsert request DTO.
+        /// </summary>
+        /// <param name="request">The document upsert request to validate.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
         public string? IsValidRagUpsertRequest(RagUpsertRequest request)
         {
             if (request.Documents == null || request.Documents.Count == 0) return "The request must contain at least one document.";
@@ -217,6 +274,11 @@ namespace IntelligenceHub.Business.Handlers
             return null;
         }
 
+        /// <summary>
+        /// Validates the document for RAG upsert requests.
+        /// </summary>
+        /// <param name="document">The document to validate.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
         private string? ValidateIndexDocument(IndexDocument document)
         {
             if (string.IsNullOrWhiteSpace(document.Title)) return "Document title cannot be empty.";

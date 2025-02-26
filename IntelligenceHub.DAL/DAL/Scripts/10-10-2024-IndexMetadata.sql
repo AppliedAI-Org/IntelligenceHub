@@ -2,6 +2,7 @@
     Id INT IDENTITY(1,1) PRIMARY KEY,
     [Name] NVARCHAR(255) UNIQUE NOT NULL ,
     QueryType NVARCHAR(255),
+    GenerationProfile NVARCHAR(255) NOT NULL,
     IndexingInterval BIGINT,
     EmbeddingModel NVARCHAR(255),
     MaxRagAttachments INT,

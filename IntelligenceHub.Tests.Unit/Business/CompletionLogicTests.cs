@@ -1,6 +1,6 @@
 using IntelligenceHub.API.DTOs;
+using IntelligenceHub.Business.Business.Factories;
 using IntelligenceHub.Business.Implementations;
-using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Config;
 using IntelligenceHub.DAL.Interfaces;

@@ -15,23 +15,42 @@ using System.Xml.Linq;
 using static IntelligenceHub.Common.GlobalVariables;
 using System.Transactions;
 using Microsoft.EntityFrameworkCore;
+using IntelligenceHub.Business.Factories;
+using IntelligenceHub.Common.Extensions;
 
 namespace IntelligenceHub.Business.Implementations
 {
+    /// <summary>
+    /// Business logic for handling RAG operations.
+    /// </summary>
     public class RagLogic : IRagLogic
     {
+        private readonly IAGIClientFactory _agiClientFactory;
+        private readonly IProfileRepository _profileRepository;
         private readonly IAISearchServiceClient _searchClient;
-        private readonly IAGIClient _aiClient;
         private readonly IIndexMetaRepository _metaRepository;
         private readonly IIndexRepository _ragRepository;
         private readonly IValidationHandler _validationHandler;
         private readonly IBackgroundTaskQueueHandler _backgroundTaskQueue;
         private readonly IntelligenceHubDbContext _dbContext;
 
-        public RagLogic(IAGIClient agiClient, IAISearchServiceClient aISearchServiceClient, IIndexMetaRepository metaRepository, IIndexRepository indexRepository, IValidationHandler validationHandler, IBackgroundTaskQueueHandler backgroundTaskQueue, IntelligenceHubDbContext context)
+        /// <summary>
+        /// Constructor for the RAG logic class that is resolved by the DI container.
+        /// </summary>
+        /// <param name="agiFactory">Client factory used to construct an AGI client according to the specified host.</param>
+        /// <param name="profileRepository">A repository containing profile data.</param>
+        /// <param name="aISearchServiceClient">A client representing the search service.</param>
+        /// <param name="metaRepository">A repository containing metadata about the RAG indexes.</param>
+        /// <param name="indexRepository">A special repository designed to perform CRUD operations on tables for RAG applications
+        /// these tables are associated with a RAG database within the Search Service client.</param>
+        /// <param name="validationHandler">A class that can be used to validate DTO bodies passed to the API.</param>
+        /// <param name="backgroundTaskQueue">A background task handler useful for performing operations without tying up resources.</param>
+        /// <param name="context">DAL context from EFCore used for some more specialized scenarios.</param>
+        public RagLogic(IAGIClientFactory agiFactory, IProfileRepository profileRepository, IAISearchServiceClient aISearchServiceClient, IIndexMetaRepository metaRepository, IIndexRepository indexRepository, IValidationHandler validationHandler, IBackgroundTaskQueueHandler backgroundTaskQueue, IntelligenceHubDbContext context)
         {
+            _agiClientFactory = agiFactory;
+            _profileRepository = profileRepository;
             _searchClient = aISearchServiceClient;
-            _aiClient = agiClient;
             _metaRepository = metaRepository;
             _ragRepository = indexRepository;
             _validationHandler = validationHandler;
@@ -39,6 +58,11 @@ namespace IntelligenceHub.Business.Implementations
             _dbContext = context;
         }
 
+        /// <summary>
+        /// Retrieves the metadata for a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the index.</param>
+        /// <returns>The index definition, if one exists.</returns>
         public async Task<IndexMetadata?> GetRagIndex(string index)
         {
             if (!_validationHandler.IsValidIndexName(index)) return null;
@@ -47,6 +71,10 @@ namespace IntelligenceHub.Business.Implementations
             return DbMappingHandler.MapFromDbIndexMetadata(dbIndexData);
         }
 
+        /// <summary>
+        /// Retrieves all RAG metadata associated with RAG indexes.
+        /// </summary>
+        /// <returns>A list of index metadata.</returns>
         public async Task<IEnumerable<IndexMetadata>> GetAllIndexesAsync()
         {
             var allIndexes = new List<IndexMetadata>();
@@ -55,6 +83,11 @@ namespace IntelligenceHub.Business.Implementations
             return allIndexes;
         }
 
+        /// <summary>
+        /// Creates a new RAG index.
+        /// </summary>
+        /// <param name="indexDefinition">The definition of the index.</param>
+        /// <returns>A boolean indicating success or failure.</returns>
         public async Task<bool> CreateIndex(IndexMetadata indexDefinition)
         {
             var errorMessage = _validationHandler.ValidateIndexDefinition(indexDefinition);
@@ -62,6 +95,9 @@ namespace IntelligenceHub.Business.Implementations
 
             var existing = await _metaRepository.GetByNameAsync(indexDefinition.Name);
             if (existing != null) return false;
+
+            var profile = _profileRepository.GetByNameAsync(indexDefinition.GenerationProfile);
+            if (profile == null) return false;
 
             // add index entry for metadata
             var newDbIndex = DbMappingHandler.MapToDbIndexMetadata(indexDefinition);
@@ -87,12 +123,20 @@ namespace IntelligenceHub.Business.Implementations
             return await _searchClient.UpsertIndexer(indexDefinition);
         }
 
-        // NOTE: Given the below code, disabling generative columns will not destroy existing data
-        public async Task<bool> ConfigureIndex(IndexMetadata indexDefinition)
+        /// <summary>
+        /// Configures an existing RAG index.
+        /// </summary>
+        /// <param name="indexDefinition">The new definition of the index.</param>
+        /// <returns>A boolean indicating success or failure.</returns>
+        public async Task<bool> ConfigureIndex(IndexMetadata indexDefinition) // NOTE: Given the below code, disabling generative columns will not destroy existing data
         {
             if (!string.IsNullOrEmpty(_validationHandler.ValidateIndexDefinition(indexDefinition))) return false;
             var existingDefinition = await _metaRepository.GetByNameAsync(indexDefinition.Name);
             if (existingDefinition == null) return false;
+
+            // Ensure the generation profile exists
+            var profile = _profileRepository.GetByNameAsync(indexDefinition.GenerationProfile);
+            if (profile == null) return false;
 
             var success = await _searchClient.UpsertIndex(indexDefinition);
             if (!success) return false;
@@ -113,7 +157,6 @@ namespace IntelligenceHub.Business.Implementations
             if (!existingDefinition.GenerateTopic && newDefinition.GenerateTopic) generateMissingFields = true;
             else if (!existingDefinition.GenerateKeywords && newDefinition.GenerateKeywords) generateMissingFields = true;
             
-
             // Update the SQL entry
             var rows = await _metaRepository.UpdateAsync(existingDefinition, newDefinition);
 
@@ -127,6 +170,11 @@ namespace IntelligenceHub.Business.Implementations
             return true;
         }
 
+        /// <summary>
+        /// Generates missing RAG fields for an index.
+        /// </summary>
+        /// <param name="index">The definition of the index.</param>
+        /// <returns>An awaitable task.</returns>
         private async Task GenerateMissingRagFields(IndexMetadata index)
         {
             const int pageSize = 100; // Define a reasonable chunk size for paging
@@ -158,11 +206,17 @@ namespace IntelligenceHub.Business.Implementations
             } while (hasMorePages);
         }
 
+        /// <summary>
+        /// Runs a background task to update a document with missing RAG fields.
+        /// </summary>
+        /// <param name="index">The definition of the index.</param>
+        /// <param name="document">The document to update.</param>
+        /// <returns>An awaitable task.</returns>
         private async Task RunBackgroundDocumentUpdate(IndexMetadata index, DbIndexDocument document)
         {
             var documentDto = DbMappingHandler.MapFromDbIndexDocument(document);
-            if (index.GenerateTopic ?? false && string.IsNullOrEmpty(document.Topic)) document.Topic = await GenerateDocumentMetadata("a topic", documentDto);
-            if (index.GenerateKeywords ?? false && string.IsNullOrEmpty(document.Keywords)) document.Keywords = await GenerateDocumentMetadata("a comma separated list of keywords", documentDto);
+            if (index.GenerateTopic ?? false && string.IsNullOrEmpty(document.Topic)) document.Topic = await GenerateDocumentMetadata("a topic", documentDto, index.GenerationProfile);
+            if (index.GenerateKeywords ?? false && string.IsNullOrEmpty(document.Keywords)) document.Keywords = await GenerateDocumentMetadata("a comma separated list of keywords", documentDto, index.GenerationProfile);
 
             // Use EF Core execution strategy
             var strategy = _dbContext.Database.CreateExecutionStrategy();
@@ -183,19 +237,15 @@ namespace IntelligenceHub.Business.Implementations
                     document.Modified = DateTimeOffset.UtcNow;
                     await _ragRepository.AddAsync(document, index.Name);
                 }
-
                 await transaction.CommitAsync();
             });
         }
 
-        public async Task<bool> RunIndexUpdate(string index)
-        {
-            if (!_validationHandler.IsValidIndexName(index)) return false;
-            var indexMetadata = await _metaRepository.GetByNameAsync(index);
-            if (indexMetadata == null) return false;
-            return await _searchClient.RunIndexer(index);
-        }
-
+        /// <summary>
+        /// Deletes a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the RAG index.</param>
+        /// <returns>A boolean indicating success or failure.</returns>
         public async Task<bool> DeleteIndex(string index)
         {
             if (!_validationHandler.IsValidIndexName(index)) return false;
@@ -218,6 +268,12 @@ namespace IntelligenceHub.Business.Implementations
             return false;
         }
 
+        /// <summary>
+        /// Queries a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the RAG index.</param>
+        /// <param name="query">The query to search against the RAG index.</param>
+        /// <returns>A list of documents most closely matching the query.</returns>
         public async Task<List<IndexDocument>?> QueryIndex(string index, string query)
         {
             if (!_validationHandler.IsValidIndexName(index) || string.IsNullOrEmpty(query)) return null;
@@ -246,6 +302,26 @@ namespace IntelligenceHub.Business.Implementations
             return docList;
         }
 
+        /// <summary>
+        /// Runs an update on a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the RAG index.</param>
+        /// <returns>A bool indicating success or failure.</returns>
+        public async Task<bool> RunIndexUpdate(string index)
+        {
+            if (!_validationHandler.IsValidIndexName(index)) return false;
+            var indexMetadata = await _metaRepository.GetByNameAsync(index);
+            if (indexMetadata == null) return false;
+            return await _searchClient.RunIndexer(index);
+        }
+
+        /// <summary>
+        /// Retrieves all documents from a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the RAG index.</param>
+        /// <param name="count">The number of documents to retreive.</param>
+        /// <param name="page">The current page number.</param>
+        /// <returns>A list of documents in the RAG index.</returns>
         public async Task<IEnumerable<IndexDocument>?> GetAllDocuments(string index, int count, int page)
         {
             if (!_validationHandler.IsValidIndexName(index)) return null;
@@ -255,6 +331,12 @@ namespace IntelligenceHub.Business.Implementations
             return docList;
         }
 
+        /// <summary>
+        /// Retrieves a single document from a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the RAG index.</param>
+        /// <param name="document">The title/name of the document.</param>
+        /// <returns>A matching document, or null if none exists.</returns>
         public async Task<IndexDocument?> GetDocument(string index, string document)
         {
             if (!_validationHandler.IsValidIndexName(index) || string.IsNullOrEmpty(document)) return null;
@@ -263,6 +345,12 @@ namespace IntelligenceHub.Business.Implementations
             return DbMappingHandler.MapFromDbIndexDocument(dbDocument);
         }
 
+        /// <summary>
+        /// Upserts documents into a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the index.</param>
+        /// <param name="documentUpsertRequest">The request body containing the documents to upsert.</param>
+        /// <returns>A boolean indicating success or failure.</returns>
         public async Task<bool> UpsertDocuments(string index, RagUpsertRequest documentUpsertRequest)
         {
             if (!_validationHandler.IsValidIndexName(index)) return false;
@@ -273,8 +361,8 @@ namespace IntelligenceHub.Business.Implementations
 
             foreach (var document in documentUpsertRequest.Documents)
             {
-                if (indexData.GenerateTopic) document.Topic = await GenerateDocumentMetadata("a topic", document);
-                if (indexData.GenerateKeywords) document.Keywords = await GenerateDocumentMetadata("a comma seperated list of keywords", document);
+                if (indexData.GenerateTopic) document.Topic = await GenerateDocumentMetadata("a topic", document, indexData.GenerationProfile);
+                if (indexData.GenerateKeywords) document.Keywords = await GenerateDocumentMetadata("a comma seperated list of keywords", document, indexData.GenerationProfile);
 
                 var newDbDocument = DbMappingHandler.MapToDbIndexDocument(document);
 
@@ -296,6 +384,12 @@ namespace IntelligenceHub.Business.Implementations
             return true;
         }
 
+        /// <summary>
+        /// Deletes documents from a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the RAG index.</param>
+        /// <param name="documentList">A list of document titles/names to delete.</param>
+        /// <returns>In integer indicating the number of documents that were succesfully deleted.</returns>
         public async Task<int> DeleteDocuments(string index, string[] documentList)
         {
             var deletedDocuments = 0;
@@ -312,7 +406,14 @@ namespace IntelligenceHub.Business.Implementations
 
         #region Private Methods
 
-        private async Task<string> GenerateDocumentMetadata(string dataFormat, IndexDocument document)
+        /// <summary>
+        /// Generates metadata for a document.
+        /// </summary>
+        /// <param name="dataFormat">The format of the data that the AGI client will request to be generated.</param>
+        /// <param name="document">The document to generate the data for.</param>
+        /// <param name="profileName">The name of the profile that will be used to generate.</param>
+        /// <returns>The string generated by the AGI client based on the provided document.</returns>
+        private async Task<string> GenerateDocumentMetadata(string dataFormat, IndexDocument document, string profileName)
         {
             var completion = $"Please create {dataFormat} summarizing the below data delimited by triple " +
                 $"backticks. Your response should only contain {dataFormat} and absolutely no other textual " +
@@ -324,14 +425,19 @@ namespace IntelligenceHub.Business.Implementations
             completion += $"\ncontent: {document.Content}";
             completion += $"\n```";
 
+            // retrieve the generation profile from the database
+            var profile = await _profileRepository.GetByNameAsync(profileName);
+            if (profile == null) return string.Empty;
+
             var completionRequest = new CompletionRequest()
             {
-                ProfileOptions = new Profile() { Name = GlobalVariables.DefaultAGIModel, System_Message = GlobalVariables.RagRequestSystemMessage, Model = DefaultAGIModel },
-                Messages = new List<Message>() { new Message() { Role = GlobalVariables.Role.User, Content = completion } }
+                ProfileOptions = DbMappingHandler.MapFromDbProfile(profile),
+                Messages = new List<Message>() { new Message() { Role = Role.User, Content = completion } }
             };
 
-            var response = await _aiClient.PostCompletion(completionRequest); // create a seperate method for internal API completions
-            var content = response?.Messages.Last(m => m.Role == GlobalVariables.Role.Assistant).Content ?? string.Empty;
+            var aiClient = _agiClientFactory.GetClient(profile.Host.ToServiceHost());
+            var response = await aiClient.PostCompletion(completionRequest); // create a seperate method for internal API completions
+            var content = response?.Messages.Last(m => m.Role == Role.Assistant).Content ?? string.Empty;
             return content.Length > 255 ? content.Substring(0, 255) : content; // If content exceeds SQL column size, truncate.
         }
 

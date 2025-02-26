@@ -207,6 +207,7 @@ namespace IntelligenceHub.DAL
             {
                 Name = dbIndexData.Name,
                 QueryType = dbIndexData.QueryType?.ConvertStringToQueryType() ?? QueryType.Simple,
+                GenerationProfile = dbIndexData.GenerationProfile ?? string.Empty,
                 ChunkOverlap = dbIndexData.ChunkOverlap ?? DefaultChunkOverlap, // make this a global variable
                 IndexingInterval = dbIndexData.IndexingInterval,
                 MaxRagAttachments = dbIndexData.MaxRagAttachments ?? DefaultRagAttachmentNumber, // make this a global variable
@@ -238,6 +239,7 @@ namespace IntelligenceHub.DAL
             {
                 Name = indexData.Name,
                 QueryType = indexData.QueryType.ToString(),
+                GenerationProfile = indexData.GenerationProfile ?? string.Empty,
                 ChunkOverlap = chunkOverlap ?? DefaultChunkOverlap,
                 IndexingInterval = indexData.IndexingInterval ?? TimeSpan.FromHours(23.99), // only slightly under 1 day is supported
                 MaxRagAttachments = indexData.MaxRagAttachments ?? DefaultRagAttachmentNumber, // make this a global variable,
