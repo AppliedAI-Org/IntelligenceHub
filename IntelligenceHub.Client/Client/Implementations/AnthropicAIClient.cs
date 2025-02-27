@@ -11,6 +11,9 @@ using System.Text.Json.Nodes;
 
 namespace IntelligenceHub.Client.Implementations
 {
+    /// <summary>
+    /// A client for interacting with Claude's API.
+    /// </summary>
     public class AnthropicAIClient : IAGIClient
     {
         private readonly string _aiModelName = "claude-3-5-sonnet-20241022";
@@ -24,6 +27,12 @@ namespace IntelligenceHub.Client.Implementations
 
         private readonly AnthropicClient _anthropicClient;
 
+        /// <summary>
+        /// Creates a new instance of the AnthropicAIClient.
+        /// </summary>
+        /// <param name="settings">The AGIClient settings used to configure this client.</param>
+        /// <param name="policyFactory">The client factory used to retrieve a policy.</param>
+        /// <exception cref="InvalidOperationException">Thrown if the provided settings are invalid.</exception>
         public AnthropicAIClient(IOptionsMonitor<AGIClientSettings> settings, IHttpClientFactory policyFactory)
         {
             var policyClient = policyFactory.CreateClient(ClientPolicies.AnthropicAIClientPolicy.ToString());
@@ -35,12 +44,22 @@ namespace IntelligenceHub.Client.Implementations
             _anthropicClient = new AnthropicClient(apiKey, policyClient);
         }
 
+        /// <summary>
+        /// Generates an image based on the provided prompt. Is not supported by Anthropic.
+        /// </summary>
+        /// <param name="prompt">The prompt used to generate the image.</param>
+        /// <returns>The base 64 representation of the image, or null if an error was encountered.</returns>
         public Task<string?> GenerateImage(string prompt)
         {
             // Anthropic does not currently support image gen
             return Task.FromResult<string?>(null);
         }
 
+        /// <summary>
+        /// Generates a completion based on the provided request.
+        /// </summary>
+        /// <param name="completionRequest">The request details used to generate the completion.</param>
+        /// <returns>A completion response.</returns>
         public async Task<CompletionResponse> PostCompletion(CompletionRequest completionRequest)
         {
             var request = BuildCompletionParameters(completionRequest);
@@ -63,6 +82,11 @@ namespace IntelligenceHub.Client.Implementations
             };
         }
 
+        /// <summary>
+        /// Streams a completion based on the provided request.
+        /// </summary>
+        /// <param name="completionRequest">The request details used to generate the completion.</param>
+        /// <returns>Any asyncronous collection of streaming chunks containing the completion response.</returns>
         public async IAsyncEnumerable<CompletionStreamChunk> StreamCompletion(CompletionRequest completionRequest)
         {
             var request = BuildCompletionParameters(completionRequest);
@@ -92,6 +116,11 @@ namespace IntelligenceHub.Client.Implementations
             }
         }
 
+        /// <summary>
+        /// Builds the parameters used to generate a completion.
+        /// </summary>
+        /// <param name="request">The completion request details.</param>
+        /// <returns>The parameters used to generate a completion.</returns>
         private MessageParameters BuildCompletionParameters(CompletionRequest request)
         {
             var anthropicMessages = new List<Anthropic.SDK.Messaging.Message>();
@@ -139,6 +168,12 @@ namespace IntelligenceHub.Client.Implementations
             return messageParams;
         }
 
+        /// <summary>
+        /// Sets the message content based on the presence of a ChatRecursion tool call.
+        /// </summary>
+        /// <param name="messageContent">The original message content.</param>
+        /// <param name="toolCalls">The tool calls associated with the content.</param>
+        /// <returns>The original messageContent, or a response to send to the next ChatRecursion LLM model.</returns>
         private string GetMessageContent(string? messageContent, Dictionary<string, string> toolCalls)
         {
             try
@@ -155,6 +190,11 @@ namespace IntelligenceHub.Client.Implementations
             catch (ArgumentNullException) { return string.Empty; }
         }
 
+        /// <summary>
+        /// Converts an IntelligenceHub message to an Anthropic ContentBase object.
+        /// </summary>
+        /// <param name="message">The message to be converted.</param>
+        /// <returns>The ContentBase object.</returns>
         private List<ContentBase> ConvertToAnthropicMessage(API.DTOs.Message message)
         {
             var content = new List<ContentBase>();
@@ -163,6 +203,12 @@ namespace IntelligenceHub.Client.Implementations
             return content;
         }
 
+        /// <summary>
+        /// Converts an Anthropic MessageResponse object to a Message.
+        /// </summary>
+        /// <param name="message">The message response object returned from the client.</param>
+        /// <param name="contentString">The content of the response message.</param>
+        /// <returns></returns>
         private IntelligenceHub.API.DTOs.Message ConvertFromAnthropicMessage(MessageResponse message, string contentString)
         {
             return new API.DTOs.Message
@@ -172,6 +218,11 @@ namespace IntelligenceHub.Client.Implementations
             };
         }
 
+        /// <summary>
+        /// Converts an IntelligenceHub Role to an Anthropic Role.
+        /// </summary>
+        /// <param name="role">The IntelligenceHub role to be converted.</param>
+        /// <returns>The converted role.</returns>
         private RoleType ConvertToAnthropicRole(Role? role)
         {
             var anthropicRole = RoleType.Assistant;
@@ -181,6 +232,11 @@ namespace IntelligenceHub.Client.Implementations
             return anthropicRole;
         }
 
+        /// <summary>
+        /// Converts an Anthropic role to an IntelligenceHub role.
+        /// </summary>
+        /// <param name="role">The role to be conveted.</param>
+        /// <returns>The converted role.</returns>
         private Role ConvertFromAnthropicRole(RoleType role)
         {
             var intelligenceHubRole = Role.Assistant;
@@ -189,6 +245,11 @@ namespace IntelligenceHub.Client.Implementations
             return intelligenceHubRole;
         }
 
+        /// <summary>
+        /// Converts an IntelligenceHub tool to an Anthropic tool.
+        /// </summary>
+        /// <param name="tool">The tool to be converted.</param>
+        /// <returns>The converted tool/InputSchema.</returns>
         private InputSchema ConvertToolParameters(IntelligenceHub.API.DTOs.Tools.Tool tool)
         {
             var anthropicProperties = new Dictionary<string, Anthropic.SDK.Messaging.Property>();
@@ -211,6 +272,11 @@ namespace IntelligenceHub.Client.Implementations
             };
         }
 
+        /// <summary>
+        /// Converts an Anthropic tool call to an IntelligenceHub tool call.
+        /// </summary>
+        /// <param name="toolCalls">The tool calls to be converted.</param>
+        /// <returns>The converted tool calls.</returns>
         private Dictionary<string, string> ConvertResponseTools(List<Anthropic.SDK.Common.Function> toolCalls)
         {
             var intelligenceHubTools = new Dictionary<string, string>();
@@ -222,6 +288,12 @@ namespace IntelligenceHub.Client.Implementations
             return intelligenceHubTools;
         }
 
+        /// <summary>
+        /// Converts an Anthropic stop reason to an IntelligenceHub finish reason.
+        /// </summary>
+        /// <param name="anthropicStopReason">The stop reason to be converted.</param>
+        /// <param name="hasTools">Whether or not tools were included in the response.</param>
+        /// <returns>The converted finish reason.</returns>
         private FinishReason ConvertFinishReason(string anthropicStopReason, bool hasTools)
         {
             var reason = FinishReason.Stop;
@@ -232,6 +304,11 @@ namespace IntelligenceHub.Client.Implementations
             return reason;
         }
 
+        /// <summary>
+        /// Retrieves the MIME type of the base 64 image.
+        /// </summary>
+        /// <param name="base64">The base64 image string.</param>
+        /// <returns>The MIME type string.</returns>
         private string GetMimeTypeFromBase64(string base64)
         {
             byte[] imageBytes = Convert.FromBase64String(base64.Substring(0, 20)); // Read only the first few bytes

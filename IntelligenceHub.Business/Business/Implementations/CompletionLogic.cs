@@ -125,7 +125,7 @@ namespace IntelligenceHub.Business.Implementations
             if (toolCallDictionary.Any())
             {
                 if (!string.IsNullOrEmpty(allCompletionChunks)) completionRequest.Messages.Add(new Message() { Content = allCompletionChunks, Role = Role.Assistant, User = _defaultUser, TimeStamp = DateTime.UtcNow });
-                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(toolCallDictionary, completionRequest.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, streaming: true);
+                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(toolCallDictionary, completionRequest.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId);
 
                 var completionString = string.Empty;
                 if (recursiveMessages.Any()) foreach (var message in recursiveMessages) completionString += $"{message.User}: {message.Content}\n;";
@@ -210,7 +210,7 @@ namespace IntelligenceHub.Business.Implementations
 
             if (completion.FinishReason == FinishReason.ToolCalls)
             {
-                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, streaming: false);
+                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId);
                 if (toolExecutionResponses.Any()) completion.ToolExecutionResponses.AddRange(toolExecutionResponses);
                 if (recursiveMessages.Any()) completion.Messages = recursiveMessages;
             }
@@ -453,7 +453,7 @@ namespace IntelligenceHub.Business.Implementations
             
             if (completion.FinishReason == FinishReason.ToolCalls)
             {
-                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, streaming: false, currentRecursionDepth: currentRecursionDepth);
+                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, currentRecursionDepth: currentRecursionDepth);
                 if (toolExecutionResponses.Any()) completion.ToolExecutionResponses.AddRange(toolExecutionResponses);
                 if (recursiveMessages.Any()) completion.Messages = recursiveMessages;
             }

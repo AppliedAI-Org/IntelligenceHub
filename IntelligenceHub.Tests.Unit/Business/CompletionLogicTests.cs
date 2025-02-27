@@ -1,5 +1,5 @@
 using IntelligenceHub.API.DTOs;
-using IntelligenceHub.Business.Business.Factories;
+using IntelligenceHub.Business.Factories;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Config;
@@ -207,7 +207,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockToolClient.Setup(client => client.CallFunction(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(httpResponse);
 
             // Act
-            var (httpResults, messageResults) = await _completionLogic.ExecuteTools(toolCalls, messages, null, null, false, 1);
+            var (httpResults, messageResults) = await _completionLogic.ExecuteTools(toolCalls, messages, null, null, 1);
 
             // Assert
             Assert.NotNull(httpResults);

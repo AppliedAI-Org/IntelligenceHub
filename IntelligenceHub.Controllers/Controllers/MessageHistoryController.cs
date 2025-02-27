@@ -1,24 +1,38 @@
 ﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
+using static IntelligenceHub.Common.GlobalVariables;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IntelligenceHub.Controllers
 {
+    /// <summary>
+    /// This controller is used to manage message history.
+    /// </summary>
     [Route("[controller]")]
     [ApiController]
-    [Authorize(Policy = "AdminPolicy")]
+    [Authorize(Policy = ElevatedAuthPolicy)]
     public class MessageHistoryController : ControllerBase
     {
         private readonly IMessageHistoryLogic _messageHistoryLogic;
 
+        /// <summary>
+        /// This controller is used to manage message history.
+        /// </summary>
+        /// <param name="messageHistoryLogic">The message history business logic.</param>
         public MessageHistoryController(IMessageHistoryLogic messageHistoryLogic)
         {
             _messageHistoryLogic = messageHistoryLogic;
         }
 
+        /// <summary>
+        /// This endpoint is used to get the conversation history for a given conversation ID.
+        /// </summary>
+        /// <param name="id">The ID of the conversation.</param>
+        /// <param name="count">The amount of messages to retrieve.</param>
+        /// <returns>An ObjectResult containing List of messages.</returns>
         [HttpGet]
         [Route("conversation/{id}/count/{count}")]
         [ProducesResponseType(typeof(List<Message>), StatusCodes.Status200OK)]
@@ -34,12 +48,18 @@ namespace IntelligenceHub.Controllers
                 if (conversation is null || conversation.Count < 1) return NotFound($"The conversation '{id}' does not exist or is empty...");
                 else return Ok(conversation);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to add a message to the conversation history.
+        /// </summary>
+        /// <param name="id">The ID of the conversation.</param>
+        /// <param name="messages">The list of messages to add to the conversation.</param>
+        /// <returns>An ObjectResult containing the newly added messages.</returns>
         [HttpPost]
         [Route("conversation/{id}")]
         [ProducesResponseType(typeof(List<Message>), StatusCodes.Status200OK)]
@@ -57,12 +77,17 @@ namespace IntelligenceHub.Controllers
                 if (responseMessages is null) return StatusCode(StatusCodes.Status500InternalServerError, $"Something went wrong when adding the messages.");
                 else return Ok(responseMessages);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to delete a conversation from the repository.
+        /// </summary>
+        /// <param name="id">The ID of the conversation.</param>
+        /// <returns>An ObjectResult containing a boolean to indicate success or failure.</returns>
         [HttpDelete]
         [Route("conversation/{id}")]
         [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
@@ -77,12 +102,18 @@ namespace IntelligenceHub.Controllers
                 if (response) return Ok(response);
                 else return NotFound($"No conversation with ID '{id}' was found");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to add a message to the conversation history.
+        /// </summary>
+        /// <param name="conversationId">The ID of the conversation.</param>
+        /// <param name="messageId">The ID of the message.</param>
+        /// <returns>An ObjectResult containing a boolean indicating success or fialure.</returns>
         [HttpDelete]
         [Route("conversation/{conversationId}/message/{messageId}")]
         [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
@@ -97,7 +128,7 @@ namespace IntelligenceHub.Controllers
                 if (response) return Ok(response);
                 else return NotFound("The conversation or message was not found");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }

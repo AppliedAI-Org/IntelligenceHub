@@ -253,7 +253,7 @@ namespace IntelligenceHub.Business.Implementations
             if (indexMetadata == null) return false;
             if (await _ragRepository.DeleteIndexAsync(indexMetadata.Name))
             {
-                var success = await _searchClient.DeleteIndexer(indexMetadata.Name, indexMetadata.EmbeddingModel ?? GlobalVariables.DefaultEmbeddingModel);
+                var success = await _searchClient.DeleteIndexer(indexMetadata.Name);
                 if (!success) return false;
 
                 success = await _searchClient.DeleteDatasource(indexMetadata.Name);

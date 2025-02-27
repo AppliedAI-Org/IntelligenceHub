@@ -4,13 +4,23 @@ using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.DAL
 {
+    /// <summary>
+    /// Represents the database context for the Intelligence Hub application.
+    /// </summary>
     public class IntelligenceHubDbContext : DbContext
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="IntelligenceHubDbContext"/> class with the specified options.
+        /// </summary>
+        /// <param name="options">The options used to configure the database context.</param>
         public IntelligenceHubDbContext(DbContextOptions<IntelligenceHubDbContext> options) : base(options)
         {
         }
 
-        // parameterless constructor for testing classes
+        /// <summary>
+        /// Initializes a new instance of the <see cref="IntelligenceHubDbContext"/> class with a paremeterless 
+        /// constructor for unit testing.
+        /// </summary>
         public IntelligenceHubDbContext() : base()
         {
         }
@@ -24,6 +34,10 @@ namespace IntelligenceHub.DAL
         public DbSet<DbTool> Tools { get; set; }
         public DbSet<DbProperty> Properties { get; set; }
 
+        /// <summary>
+        /// Configures the model for the Intelligence Hub database context.
+        /// </summary>
+        /// <param name="modelBuilder">The ModelBuilder used to configure EF Core entities, and their relationships.</param>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

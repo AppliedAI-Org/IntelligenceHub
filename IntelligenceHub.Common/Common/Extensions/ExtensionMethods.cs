@@ -6,7 +6,11 @@ namespace IntelligenceHub.Common.Extensions
 {
     public static class ExtensionMethods
     {
-
+        /// <summary>
+        /// Converts a string to a FinishReason enum value.
+        /// </summary>
+        /// <param name="finishReason">The finish reason to convert.</param>
+        /// <returns>The converted finish reason.</returns>
         public static FinishReason? ConvertStringToFinishReason(this string finishReason)
         {
             finishReason = finishReason.ToLower();
@@ -18,6 +22,11 @@ namespace IntelligenceHub.Common.Extensions
             return null;
         }
 
+        /// <summary>
+        /// Converts a string to a Role enum value.
+        /// </summary>
+        /// <param name="role">The role to convert.</param>
+        /// <returns>The converted role.</returns>
         public static Role? ConvertStringToRole(this string role)
         {
             role = role.ToLower();
@@ -29,6 +38,11 @@ namespace IntelligenceHub.Common.Extensions
             return null;
         }
 
+        /// <summary>
+        /// Converts a string to a QueryType enum value.
+        /// </summary>
+        /// <param name="queryType">The query type to convert.</param>
+        /// <returns>The converted query type.</returns>
         public static QueryType? ConvertStringToQueryType(this string queryType)
         {
             if (queryType == QueryType.Simple.ToString()) return QueryType.Simple;
@@ -37,25 +51,41 @@ namespace IntelligenceHub.Common.Extensions
             return null;
         }
 
-        public static SearchInterpolation? ConvertStringToSearchInterpolation(this string queryType)
+        /// <summary>
+        /// Converts a string to a SearchInterpolation enum value.
+        /// </summary>
+        /// <param name="interpolation">The interpolation to convert.</param>
+        /// <returns>The converted SearchInterpolation.</returns>
+        public static SearchInterpolation? ConvertStringToSearchInterpolation(this string interpolation)
         {
-            if (queryType == SearchInterpolation.Linear.ToString()) return SearchInterpolation.Linear;
-            if (queryType == SearchInterpolation.Constant.ToString()) return SearchInterpolation.Constant;
-            if (queryType == SearchInterpolation.Quadratic.ToString()) return SearchInterpolation.Quadratic;
-            if (queryType == SearchInterpolation.Logarithmic.ToString()) return SearchInterpolation.Quadratic;
+            if (interpolation == SearchInterpolation.Linear.ToString()) return SearchInterpolation.Linear;
+            if (interpolation == SearchInterpolation.Constant.ToString()) return SearchInterpolation.Constant;
+            if (interpolation == SearchInterpolation.Quadratic.ToString()) return SearchInterpolation.Quadratic;
+            if (interpolation == SearchInterpolation.Logarithmic.ToString()) return SearchInterpolation.Quadratic;
             return null;
         }
 
-        public static SearchAggregation? ConvertStringToSearchAggregation(this string queryType)
+        /// <summary>
+        /// Converts a string to a SearchAggregation enum value.
+        /// </summary>
+        /// <param name="aggregation">The aggregation to convert.</param>
+        /// <returns>The converted search aggregation.</returns>
+        public static SearchAggregation? ConvertStringToSearchAggregation(this string aggregation)
         {
-            if (queryType == SearchAggregation.Average.ToString()) return SearchAggregation.Average;
-            if (queryType == SearchAggregation.Sum.ToString()) return SearchAggregation.Sum;
-            if (queryType == SearchAggregation.Maximum.ToString()) return SearchAggregation.Maximum;
-            if (queryType == SearchAggregation.Minimum.ToString()) return SearchAggregation.Minimum;
-            if (queryType == SearchAggregation.FirstMatching.ToString()) return SearchAggregation.FirstMatching;
+            if (aggregation == SearchAggregation.Average.ToString()) return SearchAggregation.Average;
+            if (aggregation == SearchAggregation.Sum.ToString()) return SearchAggregation.Sum;
+            if (aggregation == SearchAggregation.Maximum.ToString()) return SearchAggregation.Maximum;
+            if (aggregation == SearchAggregation.Minimum.ToString()) return SearchAggregation.Minimum;
+            if (aggregation == SearchAggregation.FirstMatching.ToString()) return SearchAggregation.FirstMatching;
             return null;
         }
 
+        /// <summary>
+        /// Converts a string to a AGIServiceHosts enum value.
+        /// </summary>
+        /// <param name="strings">The list of strings to convert.</param>
+        /// <returns>A comma delimited string.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if the provided string is null.</exception>
         public static string ToCommaSeparatedString(this IEnumerable<string> strings)
         {
             if (strings is null) throw new ArgumentNullException(nameof(strings));
@@ -65,6 +95,12 @@ namespace IntelligenceHub.Common.Extensions
             return result.ToString();
         }
 
+        /// <summary>
+        /// Converts a comma delimited string to a list of strings.
+        /// </summary>
+        /// <param name="commaSeparatedString">The commad delimited list of strings.</param>
+        /// <returns>An array of strings.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if the targeted string is null.</exception>
         public static string[] ToStringArray(this string commaSeparatedString)
         {
             if (commaSeparatedString is null) throw new ArgumentNullException(nameof(commaSeparatedString));
@@ -75,9 +111,15 @@ namespace IntelligenceHub.Common.Extensions
             return result;
         }
 
+        /// <summary>
+        /// Converts a string to a AGIServiceHosts enum value.
+        /// </summary>
+        /// <param name="hostString">The host name to convert.</param>
+        /// <returns>The converted AGIServicesHosts enum.</returns>
+        /// <exception cref="ArgumentException">Thrown if the provided string is null.</exception>
         public static AGIServiceHosts? ToServiceHost(this string hostString)
         {
-            if (string.IsNullOrEmpty(hostString)) throw new ArgumentException(nameof(hostString));
+            if (hostString == null) throw new ArgumentException(nameof(hostString));
 
             hostString = hostString.ToLower();
             if (hostString == AGIServiceHosts.OpenAI.ToString().ToLower()) return AGIServiceHosts.OpenAI;

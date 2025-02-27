@@ -4,11 +4,19 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace IntelligenceHub.DAL.Implementations
 {
+    /// <summary>
+    /// Generic repository for CRUD operations on entities of type T.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class GenericRepository<T> : IGenericRepository<T> where T : class, new()
     {
         protected readonly IntelligenceHubDbContext _context;
         protected readonly DbSet<T> _dbSet;
 
+        /// <summary>
+        /// Constructor for the GenericRepository class.
+        /// </summary>
+        /// <param name="context">The database context used to map to the SQL database.</param>
         public GenericRepository(IntelligenceHubDbContext context)
         {
             _context = context;
@@ -18,6 +26,12 @@ namespace IntelligenceHub.DAL.Implementations
         // Prodive a methodology for safely exposing database
         public DatabaseFacade Database => _context.Database;
 
+        /// <summary>
+        /// Retrieves all entities of type T from the database.
+        /// </summary>
+        /// <param name="count">The number of entities to retrieve.</param>
+        /// <param name="page">The page used to offset the collection.</param>
+        /// <returns>A collection of entities of type T.</returns>
         public async Task<IEnumerable<T>> GetAllAsync(int? count = null, int? page = null)
         {
             var query = _dbSet.AsQueryable();
@@ -28,24 +42,25 @@ namespace IntelligenceHub.DAL.Implementations
             return await query.ToListAsync();
         }
 
+        /// <summary>
+        /// Adds a new entity of type T to the database.
+        /// </summary>
+        /// <param name="entity">The entity to add.</param>
+        /// <returns>The successfully added entity.</returns>
         public async Task<T> AddAsync(T entity)
         {
-            try
-            {
-                await _dbSet.AddAsync(entity);
-                await _context.SaveChangesAsync();
-                return entity;
-            }
-            catch (Exception ex)
-            {
-
-                throw;
-            }
-            
+            await _dbSet.AddAsync(entity);
+            await _context.SaveChangesAsync();
+            return entity;
         }
 
-        // Refactor this after removing 'existingEntity' parameter
-        public async Task<int> UpdateAsync(T existingEntity, T entity)
+        /// <summary>
+        /// Updates an existing entity of type T in the database.
+        /// </summary>
+        /// <param name="existingEntity">A definition of the existing entity.</param>
+        /// <param name="entity">The updated entity.</param>
+        /// <returns>An int representing the number of rows affected.</returns>
+        public async Task<int> UpdateAsync(T existingEntity, T entity) // Refactor this after removing 'existingEntity' parameter
         {
             // Get the entry for the existing entity
             var entry = _context.Entry(existingEntity);
@@ -64,6 +79,11 @@ namespace IntelligenceHub.DAL.Implementations
             return await _context.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Deletes an entity of type T from the database.
+        /// </summary>
+        /// <param name="entity">The entity to delete.</param>
+        /// <returns>An int representing the number of rows affected.</returns>
         public async Task<int> DeleteAsync(T entity)
         {
             _dbSet.Remove(entity);

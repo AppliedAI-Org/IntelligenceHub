@@ -16,6 +16,9 @@ using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Client.Implementations
 {
+    /// <summary>
+    /// A client for interacting with Azure OpenAI's API and services
+    /// </summary>
     public class OpenAIClient : IAGIClient
     {
         private readonly string _gpt4o = "gpt-4o";
@@ -28,6 +31,12 @@ namespace IntelligenceHub.Client.Implementations
         private readonly ImageClient _qualityImageGenClient; // DALL-E 3 - does not current support image modifications and prompting is less reliable (as of 2/7/2025)
         private readonly ImageClient _versatileImageGenClient; // DALL-E 2 - currently more versatile and provides more reliable image generation via prompting (as of 2/7/2025)
 
+        /// <summary>
+        /// Creates a new instance of the OpenAIClient class
+        /// </summary>
+        /// <param name="settings">The AGIClient settings used to configure this client.</param>
+        /// <param name="policyFactory">The client factory used to retrieve a policy.</param>
+        /// <exception cref="InvalidOperationException">Thrown if the provided settings are invalid.</exception>
         public OpenAIClient(IOptionsMonitor<AGIClientSettings> settings, IHttpClientFactory policyFactory)
         {
             var policyClient = policyFactory.CreateClient(ClientPolicies.OpenAIClientPolicy.ToString());
@@ -47,6 +56,11 @@ namespace IntelligenceHub.Client.Implementations
             _versatileImageGenClient = new ImageClient(_dalle2, credential, options);
         }
 
+        /// <summary>
+        /// Generates an image based on the provided prompt using DALL-E 3.
+        /// </summary>
+        /// <param name="prompt">The prompt used to generate the image.</param>
+        /// <returns>A base 64 representation of the image.</returns>
         public async Task<string?> GenerateImage(string prompt)
         {
             var options = new ImageGenerationOptions()
@@ -64,6 +78,11 @@ namespace IntelligenceHub.Client.Implementations
             return base64Image;
         }
 
+        /// <summary>
+        /// Posts a completion request to the OpenAI client and returns the completion response.
+        /// </summary>
+        /// <param name="completionRequest">The CompletionRequest request details used to generate a completion.</param>
+        /// <returns>The completion response.</returns>
         public async Task<CompletionResponse> PostCompletion(CompletionRequest completionRequest)
         {
             var options = BuildCompletionOptions(completionRequest);
@@ -106,6 +125,11 @@ namespace IntelligenceHub.Client.Implementations
             };
         }
 
+        /// <summary>
+        /// Streams a completion request to the OpenAI client and returns the completion response.
+        /// </summary>
+        /// <param name="completionRequest">The CompletionRequest request details used to generate a completion.</param>
+        /// <returns>An asyncronous collection of CompletionStreamChunks.</returns>
         public async IAsyncEnumerable<CompletionStreamChunk> StreamCompletion(CompletionRequest completionRequest)
         {
             var options = BuildCompletionOptions(completionRequest);
@@ -170,6 +194,11 @@ namespace IntelligenceHub.Client.Implementations
             }
         }
 
+        /// <summary>
+        /// Builds the completion messages based on the provided completion request.
+        /// </summary>
+        /// <param name="completionRequest">The completion request to build the messages from.</param>
+        /// <returns>A list of ChatMessages to be used when generating a completion from the Azure OpenAI client.</returns>
         private List<ChatMessage> BuildCompletionMessages(CompletionRequest completionRequest)
         {
             var systemMessage = completionRequest.ProfileOptions.System_Message;
@@ -204,6 +233,11 @@ namespace IntelligenceHub.Client.Implementations
             return completionMessages;
         }
 
+        /// <summary>
+        /// Builds the completion options based on the provided completion request.
+        /// </summary>
+        /// <param name="completion">The completion request to build the options from.</param>
+        /// <returns>A ChatCompletionOptions object to be used when making a request to the Azure OpenAI client.</returns>
         private ChatCompletionOptions BuildCompletionOptions(CompletionRequest completion)
         {
             var options = new ChatCompletionOptions()
@@ -257,6 +291,12 @@ namespace IntelligenceHub.Client.Implementations
             return options;
         }
 
+        /// <summary>
+        /// Sets the message content based on the presence of a ChatRecursion tool call.
+        /// </summary>
+        /// <param name="messageContent">The original message content.</param>
+        /// <param name="toolCalls">The tool calls associated with the content.</param>
+        /// <returns>The original messageContent, or a response to send to the next ChatRecursion LLM model.</returns>
         private string GetMessageContent(string? messageContent, Dictionary<string, string> toolCalls)
         {
             try
@@ -273,6 +313,11 @@ namespace IntelligenceHub.Client.Implementations
             catch (ArgumentNullException) { return string.Empty; }
         }
 
+        /// <summary>
+        /// Returns the MIME type of the image based on the first few bytes of the base64 string.
+        /// </summary>
+        /// <param name="base64">The base64 image to get the MIME type for.</param>
+        /// <returns>The MIME type.</returns>
         private string GetMimeTypeFromBase64(string base64)
         {
             byte[] imageBytes = Convert.FromBase64String(base64.Substring(0, 20)); // Read only the first few bytes

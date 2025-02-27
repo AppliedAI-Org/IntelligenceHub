@@ -12,10 +12,10 @@ namespace IntelligenceHub.DAL.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         [Required]
-        public required string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public string? QueryType { get; set; }
         [Required]
-        public required string GenerationProfile { get; set; }
+        public string GenerationProfile { get; set; } = string.Empty;
         [Required]
         public TimeSpan IndexingInterval { get; set; }
         public string? EmbeddingModel { get; set; }

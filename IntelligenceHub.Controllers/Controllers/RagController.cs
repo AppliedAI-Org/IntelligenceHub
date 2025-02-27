@@ -3,24 +3,37 @@ using IntelligenceHub.API.DTOs.RAG;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
 using IntelligenceHub.Common.Extensions;
+using static IntelligenceHub.Common.GlobalVariables;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IntelligenceHub.Controllers
 {
+    /// <summary>
+    /// This controller is used to manage RAG indexes.
+    /// </summary>
     [Route("Rag")]
     [ApiController]
-    [Authorize(Policy = "AdminPolicy")]
+    [Authorize(Policy = ElevatedAuthPolicy)]
     public class RagController : ControllerBase
     {
         private readonly IRagLogic _ragLogic;
 
+        /// <summary>
+        /// This controller is used to manage RAG indexes.
+        /// </summary>
+        /// <param name="ragLogic">The business logic for managing RAG indexes.</param>
         public RagController(IRagLogic ragLogic) 
         {
             _ragLogic = ragLogic;
         }
 
+        /// <summary>
+        /// This endpoint is used to get a RAG index by name.
+        /// </summary>
+        /// <param name="index">The name of the index.</param>
+        /// <returns>The definition of the new index.</returns>
         [HttpGet]
         [Route("Index/{index}")]
         [ProducesResponseType(typeof(IndexMetadata), StatusCodes.Status200OK)]
@@ -37,12 +50,16 @@ namespace IntelligenceHub.Controllers
                 if (response == null) return NotFound();
                 else return Ok(response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to get all RAG indexes.
+        /// </summary>
+        /// <returns>A list of index definitions.</returns>
         [HttpGet]
         [Route("Index/All")]
         [ProducesResponseType(typeof(IEnumerable<IndexMetadata>), StatusCodes.Status200OK)]
@@ -57,12 +74,17 @@ namespace IntelligenceHub.Controllers
                 if (response is not null && response.Count() > 0) return Ok(response);
                 else return NotFound();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to create a new RAG index.
+        /// </summary>
+        /// <param name="indexDefinition">The definition of the index.</param>
+        /// <returns>An empty ObjectResult.</returns>
         [HttpPost]
         [Route("Index")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -75,15 +97,21 @@ namespace IntelligenceHub.Controllers
             {
                 if (indexDefinition is null) return BadRequest("The request body is malformed.");
                 var response = await _ragLogic.CreateIndex(indexDefinition);
-                if (response) return Ok();
+                if (response) return NoContent();
                 else return BadRequest();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to configure an existing RAG index.
+        /// </summary>
+        /// <param name="index">The name of the index.</param>
+        /// <param name="indexDefinition">The new definition of the index.</param>
+        /// <returns>An empty ObjectResult.</returns>
         [HttpPost]
         [Route("Index/Configure/{index}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -96,15 +124,21 @@ namespace IntelligenceHub.Controllers
             {
                 if (indexDefinition is null) return BadRequest("The request body is malformed.");
                 var response = await _ragLogic.ConfigureIndex(indexDefinition);
-                if (response) return Ok();
+                if (response) return NoContent();
                 else return NotFound();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to query a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the index.</param>
+        /// <param name="query">The query to perform against the index.</param>
+        /// <returns>An ObjectResult containing a collection of documents.</returns>
         [HttpGet]
         [Route("Index/{index}/Query/{query}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -120,12 +154,17 @@ namespace IntelligenceHub.Controllers
                 else if (response.Count > 0) return Ok(response);
                 else return BadRequest();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to run an index update.
+        /// </summary>
+        /// <param name="index">The name of the index.</param>
+        /// <returns>An empty ObjectResult.</returns>
         [HttpPost]
         [Route("Index/{index}/Run")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -139,15 +178,20 @@ namespace IntelligenceHub.Controllers
                 if (string.IsNullOrEmpty(index)) return BadRequest($"Invalid index name: '{index}'");
 
                 var response = await _ragLogic.RunIndexUpdate(index);
-                if (response) return Ok();
+                if (response) return NoContent();
                 else return BadRequest();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to delete a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the index.</param>
+        /// <returns>An empty ObjectResult.</returns>
         [HttpDelete]
         [Route("Index/Delete/{index}")]
         [ProducesResponseType(typeof(CompletionResponse), StatusCodes.Status200OK)]
@@ -161,15 +205,22 @@ namespace IntelligenceHub.Controllers
                 if (string.IsNullOrEmpty(index)) return BadRequest($"Invalid index name: '{index}'");
 
                 var response = await _ragLogic.DeleteIndex(index);
-                if (response) return Ok();
+                if (response) return NoContent();
                 else return NotFound();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to get all documents in a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the index.</param>
+        /// <param name="count">The number of documents to retrieve in the current batch.</param>
+        /// <param name="page">The number of pages to offset the collection.</param>
+        /// <returns>An ObjectResult containing a collection of documents.</returns>
         [HttpGet]
         [Route("Index/{index}/Document/{count}/Page/{page}")]
         [ProducesResponseType(typeof(IEnumerable<IndexDocument>), StatusCodes.Status200OK)]
@@ -188,12 +239,18 @@ namespace IntelligenceHub.Controllers
                 if (response != null && response.Count() > 0) return Ok(response);
                 else return NotFound();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to get a document from a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the index.</param>
+        /// <param name="document">The name of the document.</param>
+        /// <returns>An ObjectResult containing the document.</returns>
         [HttpGet]
         [Route("index/{index}/document/{document}")]
         [ProducesResponseType(typeof(IndexDocument), StatusCodes.Status200OK)]
@@ -208,12 +265,18 @@ namespace IntelligenceHub.Controllers
                 if (response is not null) return Ok(response);
                 else return NotFound();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to upsert documents to a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the index.</param>
+        /// <param name="documentUpsertRequest">An array of documents to upsert.</param>
+        /// <returns>An ObjectResult containing a boolean to indicate success or failure.</returns>
         [HttpPost]
         [Route("index/{index}/Document")]
         [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
@@ -230,12 +293,18 @@ namespace IntelligenceHub.Controllers
                 if (response) return Ok(response);
                 else return BadRequest();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to delete documents from a RAG index.
+        /// </summary>
+        /// <param name="index">The name of the index.</param>
+        /// <param name="commaDelimitedDocNames">A comma delimited string of document titles.</param>
+        /// <returns>An ObjectResult containing an int indicating the number of documents that were deleted.</returns>
         [HttpDelete]
         [Route("index/{index}/Document/{commaDelimitedDocNames}")]
         [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
@@ -253,7 +322,7 @@ namespace IntelligenceHub.Controllers
                 if (response < 1) return NotFound();
                 else return Ok(response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }

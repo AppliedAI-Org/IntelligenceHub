@@ -13,6 +13,9 @@ using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Client.Implementations
 {
+    /// <summary>
+    /// A Azure AI Search Services client oriented around RAG construction and consumption.
+    /// </summary>
     public class AISearchServiceClient : IAISearchServiceClient
     {
         private readonly SearchIndexClient _indexClient;
@@ -58,6 +61,12 @@ namespace IntelligenceHub.Client.Implementations
             embedding
         }
 
+        /// <summary>
+        /// The default constructor for the AISearchServiceClient class.
+        /// </summary>
+        /// <param name="searchClientSettings">The search service client resolved from DI.</param>
+        /// <param name="agiClientSettings">The settings for the client resolved from DI.</param>
+        /// <param name="settings">The application settings passed in from DI. Only required for the DB connection string.</param>
         public AISearchServiceClient(IOptionsMonitor<SearchServiceClientSettings> searchClientSettings, IOptionsMonitor<AGIClientSettings> agiClientSettings, IOptionsMonitor<Settings> settings)
         {
             var credential = new AzureKeyCredential(searchClientSettings.CurrentValue.Key);
@@ -76,6 +85,11 @@ namespace IntelligenceHub.Client.Implementations
         }
 
         // index operations
+
+        /// <summary>
+        /// Retrieves the metadata for a RAG index.
+        /// </summary>
+        /// <returns>A list of RAG index names.</returns>
         public async Task<List<string>> GetAllIndexNames()
         {
             var indexNames = new List<string>();
@@ -85,6 +99,12 @@ namespace IntelligenceHub.Client.Implementations
             return indexNames;
         }
 
+        /// <summary>
+        /// Retrieves the metadata for a RAG index.
+        /// </summary>
+        /// <param name="index">The definition of the RAG index.</param>
+        /// <param name="query">The query to search against the RAG index.</param>
+        /// <returns>Returns the search results retrieved from the RAG index.</returns>
         public async Task<SearchResults<IndexDefinition>> SearchIndex(IndexMetadata index, string query)
         {
             var searchClient = _indexClient.GetSearchClient(index.Name);
@@ -126,6 +146,11 @@ namespace IntelligenceHub.Client.Implementations
             return response.Value;
         }
 
+        /// <summary>
+        /// Creates or updates a RAG index.
+        /// </summary>
+        /// <param name="indexDefinition">The definition of the index.</param>
+        /// <returns>A boolean indicating success or failure of the operation.</returns>
         public async Task<bool> UpsertIndex(IndexMetadata indexDefinition)
         {
             var searchIndex = GetIndexDefinition(indexDefinition);
@@ -172,13 +197,23 @@ namespace IntelligenceHub.Client.Implementations
             return true;
         }
 
+        /// <summary>
+        /// Deletes a RAG index.
+        /// </summary>
+        /// <param name="indexName">The name of the index.</param>
+        /// <returns>A boolean indicating success or failure of the operation.</returns>
         public async Task<bool> DeleteIndex(string indexName)
         {
             var response = await _indexClient.DeleteIndexAsync(indexName);
             return response.Status > 199 && response.Status < 300;
         }
 
-        public async Task<bool> DeleteIndexer(string indexName, string embeddingModel)
+        /// <summary>
+        /// Deletes a RAG indexer and the associated skillset.
+        /// </summary>
+        /// <param name="indexName">The name of the index.</param>
+        /// <returns>A boolean indicating success or failure of the operation.</returns>
+        public async Task<bool> DeleteIndexer(string indexName)
         {
             var skillsetDeletionResponse = await _indexerClient.DeleteSkillsetAsync(indexName.ToLower() + _skillsetSuffix );
             if (skillsetDeletionResponse == null || skillsetDeletionResponse.IsError) return false;
@@ -187,12 +222,17 @@ namespace IntelligenceHub.Client.Implementations
             return response.Status > 199 && response.Status < 300;
         }
 
-        public async Task<bool> CreateDatasource(string databaseName)
+        /// <summary>
+        /// Creates a datasource connection to the SQL database table created for this index.
+        /// </summary>
+        /// <param name="indexName">The name of the index.</param>
+        /// <returns>A boolean indicating success or failure of the operation.</returns>
+        public async Task<bool> CreateDatasource(string indexName)
         {
             try
             {
-                var container = new SearchIndexerDataContainer(databaseName);
-                var connection = new SearchIndexerDataSourceConnection(databaseName, SearchIndexerDataSourceType.AzureSql, _sqlRagDbConnectionString, container)
+                var container = new SearchIndexerDataContainer(indexName);
+                var connection = new SearchIndexerDataSourceConnection(indexName, SearchIndexerDataSourceType.AzureSql, _sqlRagDbConnectionString, container)
                 {
                     DataChangeDetectionPolicy = new SqlIntegratedChangeTrackingPolicy(),
                 };
@@ -205,18 +245,33 @@ namespace IntelligenceHub.Client.Implementations
             }
         }
 
+        /// <summary>
+        /// Deletes a datasource connection to the SQL database table created for this index.
+        /// </summary>
+        /// <param name="indexName">The name of the index.</param>
+        /// <returns>A boolean indicating success or failure of the operation.</returns>
         public async Task<bool> DeleteDatasource(string indexName)
         {
             var response = await _indexerClient.DeleteDataSourceConnectionAsync(indexName);
             return response.Status > 199 && response.Status < 300;
         }
 
+        /// <summary>
+        /// Updates the data in a RAG index, syncing with the corresponding SQL table.
+        /// </summary>
+        /// <param name="indexName">The name of the index.</param>
+        /// <returns>A boolean indicating success or failure of the operation.</returns>
         public async Task<bool> RunIndexer(string indexName)
         {
             var response = await _indexerClient.RunIndexerAsync(indexName + _indexerSuffix );
             return response.Status > 199 && response.Status < 300;
         }
 
+        /// <summary>
+        /// Creates or updates a RAG indexer.
+        /// </summary>
+        /// <param name="index">The new definition of the index.</param>
+        /// <returns>A boolean indicating success or failure of the operation.</returns>
         public async Task<bool> UpsertIndexer(IndexMetadata index)
         {
             // Define the indexer
@@ -234,6 +289,11 @@ namespace IntelligenceHub.Client.Implementations
             return true;
         }
 
+        /// <summary>
+        /// Creates or updates a RAG skillset.
+        /// </summary>
+        /// <param name="index">The definition of the index.</param>
+        /// <returns>The name of the skillset associated with the new index.</returns>
         private async Task<string> UpsertSkillset(IndexMetadata index)
         {
             var chunkingLengthInChars = 1312; // (avg chars per token = 3.5) * (average recommended chunk size = 375) = 1312.5
@@ -246,34 +306,13 @@ namespace IntelligenceHub.Client.Implementations
             var projectionInputMappings = new List<InputFieldMappingEntry>();
 
             // Add default skills and associated projections
-            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.chunk.ToString())
-            {
-                Source = "/document/pages/*"
-            });
-            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.title.ToString())
-            {
-                Source = "/document/title"
-            });
-            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.topic.ToString())
-            {
-                Source = "/document/topic"
-            });
-            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.keywords.ToString())
-            {
-                Source = "/document/keywords"
-            });
-            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.source.ToString())
-            {
-                Source = "/document/source"
-            });
-            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.created.ToString())
-            {
-                Source = "/document/created"
-            });
-            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.modified.ToString())
-            {
-                Source = "/document/modified"
-            });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.chunk.ToString()) { Source = "/document/pages/*" });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.title.ToString()) {  Source = "/document/title" });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.topic.ToString()) { Source = "/document/topic" });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.keywords.ToString()) { Source = "/document/keywords" });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.source.ToString()) { Source = "/document/source" });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.created.ToString()) { Source = "/document/created" });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.modified.ToString()) { Source = "/document/modified" });
 
             skills.Add(
                 new SplitSkill(
@@ -304,7 +343,6 @@ namespace IntelligenceHub.Client.Implementations
                         DeploymentName = index.EmbeddingModel
                     }
                 );
-
                 projectionInputMappings.Add(new InputFieldMappingEntry(RagField.contentVector.ToString()) { Source = "/document/pages/*/contentVector" });
             }
 
@@ -323,7 +361,6 @@ namespace IntelligenceHub.Client.Implementations
                         DeploymentName = index.EmbeddingModel
                     }
                 );
-
                 projectionInputMappings.Add(new InputFieldMappingEntry(RagField.titleVector.ToString()) { Source = "/document/pages/*/titleVector" });
             }
 
@@ -342,7 +379,6 @@ namespace IntelligenceHub.Client.Implementations
                         DeploymentName = index.EmbeddingModel
                     }
                 );
-
                 projectionInputMappings.Add(new InputFieldMappingEntry(RagField.topicVector.ToString()) { Source = "/document/pages/*/topicVector" });
             }
 
@@ -361,7 +397,6 @@ namespace IntelligenceHub.Client.Implementations
                         DeploymentName = index.EmbeddingModel
                     }
                 );
-
                 projectionInputMappings.Add(new InputFieldMappingEntry(RagField.keywordsVector.ToString()) { Source = "/document/pages/*/keywordsVector" });
             }
 
@@ -372,16 +407,18 @@ namespace IntelligenceHub.Client.Implementations
                     new SearchIndexerIndexProjectionSelector(index.Name, parentKeyFieldName: RagField.parent_id.ToString(), sourceContext: "/document/pages/*", mappings: projectionInputMappings)
                 })
                 {
-                    Parameters = new SearchIndexerIndexProjectionsParameters
-                    {
-                        ProjectionMode = IndexProjectionMode.SkipIndexingParentDocuments
-                    }
+                    Parameters = new SearchIndexerIndexProjectionsParameters { ProjectionMode = IndexProjectionMode.SkipIndexingParentDocuments }
                 }
             };
             var result = await _indexerClient.CreateOrUpdateSkillsetAsync(skillset);
             return skillsetName;
         }
 
+        /// <summary>
+        /// Creates a new SearchIndex to define the RAG index in Azure AI Search Services.
+        /// </summary>
+        /// <param name="index">The definition of the index.</param>
+        /// <returns>The SearchIndex object.</returns>
         private SearchIndex GetIndexDefinition(IndexMetadata index)
         {
             // Choose the appropriate rag dimensions for the given embedding model
@@ -392,14 +429,11 @@ namespace IntelligenceHub.Client.Implementations
             var searchIndex = new SearchIndex(index.Name)
             {
                 DefaultScoringProfile = index.ScoringProfile?.Name,
-                VectorSearch = new()
+                VectorSearch = new VectorSearch()
                 {
                     Profiles =
                     {
-                        new VectorSearchProfile(_defaultVectorSearchProfile, _defaultVectorAlgConfig)
-                        {
-                            VectorizerName = _defaultVectorizer,
-                        },
+                        new VectorSearchProfile(_defaultVectorSearchProfile, _defaultVectorAlgConfig) { VectorizerName = _defaultVectorizer, },
                         new VectorSearchProfile(_defaultKnnSearchProfile, _defaultKnnConfig)
                     },
                     Algorithms =
@@ -475,7 +509,6 @@ namespace IntelligenceHub.Client.Implementations
                     },
                 },
             };
-
             return searchIndex;
         }
     }

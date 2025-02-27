@@ -9,9 +9,19 @@ using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.DAL
 {
+    /// <summary>
+    /// Handles mapping between database entities and DTOs and sets defaults where appropriate.
+    /// </summary>
     public static class DbMappingHandler
     {
         #region Profiles
+
+        /// <summary>
+        /// Maps a database profile entity to a profile DTO.
+        /// </summary>
+        /// <param name="dbProfile">The database profile entity.</param>
+        /// <param name="tools">Optional list of tools associated with the profile.</param>
+        /// <returns>A profile DTO.</returns>
         public static Profile MapFromDbProfile(DbProfile dbProfile, List<Tool>? tools = null)
         {
             var profile = new Profile()
@@ -39,6 +49,13 @@ namespace IntelligenceHub.DAL
             return profile;
         }
 
+        /// <summary>
+        /// Maps a profile DTO to a database profile entity.
+        /// </summary>
+        /// <param name="profileName">The name of the profile.</param>
+        /// <param name="existingProfile">Optional existing database profile entity.</param>
+        /// <param name="profileUpdate">Optional profile DTO with updated values.</param>
+        /// <returns>A database profile entity.</returns>
         public static DbProfile MapToDbProfile(string profileName, DbProfile? existingProfile = null, Profile? profileUpdate = null)
         {
             return new DbProfile()
@@ -55,28 +72,28 @@ namespace IntelligenceHub.DAL
 
                 // Variables with default values during first database entry
                 Model = profileUpdate?.Model
-                    ?? existingProfile?.Model
-                    ?? GlobalVariables.DefaultAGIModel,
+                   ?? existingProfile?.Model
+                   ?? GlobalVariables.DefaultAGIModel,
 
                 Host = profileUpdate?.Host.ToString()
-                    ?? existingProfile?.Host.ToString()
-                    ?? AGIServiceHosts.OpenAI.ToString(),
+                   ?? existingProfile?.Host.ToString()
+                   ?? AGIServiceHosts.OpenAI.ToString(),
 
                 FrequencyPenalty = profileUpdate?.Frequency_Penalty
-                    ?? existingProfile?.FrequencyPenalty
-                    ?? 0,
+                   ?? existingProfile?.FrequencyPenalty
+                   ?? 0,
 
                 PresencePenalty = profileUpdate?.Presence_Penalty
-                    ?? existingProfile?.PresencePenalty
-                    ?? 0,
+                   ?? existingProfile?.PresencePenalty
+                   ?? 0,
 
                 Temperature = profileUpdate?.Temperature
-                    ?? existingProfile?.Temperature
-                    ?? 1,
+                   ?? existingProfile?.Temperature
+                   ?? 1,
 
                 TopP = profileUpdate?.Top_P
-                    ?? existingProfile?.TopP
-                    ?? 1,
+                   ?? existingProfile?.TopP
+                   ?? 1,
 
                 Stop = profileUpdate?.Stop?.ToCommaSeparatedString() ?? existingProfile?.Stop,
                 ReferenceProfiles = profileUpdate?.Reference_Profiles?.ToCommaSeparatedString() ?? existingProfile?.ReferenceProfiles,
@@ -85,6 +102,13 @@ namespace IntelligenceHub.DAL
         #endregion
 
         #region Tools
+
+        /// <summary>
+        /// Maps a database tool entity to a tool DTO.
+        /// </summary>
+        /// <param name="dbTool">The database tool entity.</param>
+        /// <param name="dbProperties">Optional list of database properties associated with the tool.</param>
+        /// <returns>A tool DTO.</returns>
         public static Tool MapFromDbTool(DbTool dbTool, List<DbProperty>? dbProperties = null)
         {
             var tool = new Tool()
@@ -101,7 +125,7 @@ namespace IntelligenceHub.DAL
             };
 
             if (dbProperties == null) dbProperties = new List<DbProperty>(); // To prevent null reference exceptions
-            foreach (var property in dbProperties) 
+            foreach (var property in dbProperties)
             {
                 var convertedProp = new Property()
                 {
@@ -115,6 +139,11 @@ namespace IntelligenceHub.DAL
             return tool;
         }
 
+        /// <summary>
+        /// Maps a tool DTO to a database tool entity.
+        /// </summary>
+        /// <param name="tool">The tool DTO.</param>
+        /// <returns>A database tool entity.</returns>
         public static DbTool MapToDbTool(Tool tool)
         {
             return new DbTool()
@@ -129,6 +158,12 @@ namespace IntelligenceHub.DAL
             };
         }
 
+        /// <summary>
+        /// Maps a property DTO to a database property entity.
+        /// </summary>
+        /// <param name="name">The name of the property.</param>
+        /// <param name="property">The property DTO.</param>
+        /// <returns>A database property entity.</returns>
         public static DbProperty MapToDbProperty(string name, Property property)
         {
             return new DbProperty()
@@ -143,6 +178,12 @@ namespace IntelligenceHub.DAL
         #endregion
 
         #region Messaging
+
+        /// <summary>
+        /// Maps a database message entity to a message DTO.
+        /// </summary>
+        /// <param name="dbMessage">The database message entity.</param>
+        /// <returns>A message DTO.</returns>
         public static Message MapFromDbMessage(DbMessage dbMessage)
         {
             return new Message()
@@ -155,6 +196,12 @@ namespace IntelligenceHub.DAL
             };
         }
 
+        /// <summary>
+        /// Maps a message DTO to a database message entity.
+        /// </summary>
+        /// <param name="message">The message DTO.</param>
+        /// <param name="conversationId">The conversation ID.</param>
+        /// <returns>A database message entity.</returns>
         public static DbMessage MapToDbMessage(Message message, Guid conversationId)
         {
             return new DbMessage()
@@ -171,6 +218,11 @@ namespace IntelligenceHub.DAL
 
         #region RAG Indexing
 
+        /// <summary>
+        /// Maps a database index document entity to an index document DTO.
+        /// </summary>
+        /// <param name="dbDocument">The database index document entity.</param>
+        /// <returns>An index document DTO.</returns>
         public static IndexDocument MapFromDbIndexDocument(DbIndexDocument dbDocument)
         {
             return new IndexDocument()
@@ -186,6 +238,11 @@ namespace IntelligenceHub.DAL
             };
         }
 
+        /// <summary>
+        /// Maps an index document DTO to a database index document entity.
+        /// </summary>
+        /// <param name="document">The index document DTO.</param>
+        /// <returns>A database index document entity.</returns>
         public static DbIndexDocument MapToDbIndexDocument(IndexDocument document)
         {
             return new DbIndexDocument()
@@ -201,6 +258,11 @@ namespace IntelligenceHub.DAL
             };
         }
 
+        /// <summary>
+        /// Maps a database index metadata entity to an index metadata DTO.
+        /// </summary>
+        /// <param name="dbIndexData">The database index metadata entity.</param>
+        /// <returns>An index metadata DTO.</returns>
         public static IndexMetadata MapFromDbIndexMetadata(DbIndexMetadata dbIndexData)
         {
             return new IndexMetadata()
@@ -231,6 +293,11 @@ namespace IntelligenceHub.DAL
             };
         }
 
+        /// <summary>
+        /// Maps an index metadata DTO to a database index metadata entity.
+        /// </summary>
+        /// <param name="indexData">The index metadata DTO.</param>
+        /// <returns>A database index metadata entity.</returns>
         public static DbIndexMetadata MapToDbIndexMetadata(IndexMetadata indexData)
         {
             if (indexData.ScoringProfile == null) indexData.ScoringProfile = new IndexScoringProfile();
@@ -260,12 +327,22 @@ namespace IntelligenceHub.DAL
             };
         }
 
+        /// <summary>
+        /// Deserializes a JSON string to a dictionary of weights.
+        /// </summary>
+        /// <param name="serializedWeights">The JSON string representing the weights.</param>
+        /// <returns>A dictionary of weights.</returns>
         private static Dictionary<string, double>? DeserializeDbWeights(string? serializedWeights)
         {
             if (string.IsNullOrEmpty(serializedWeights)) return null;
             return JsonSerializer.Deserialize<Dictionary<string, double>>(serializedWeights) ?? null;
         }
 
+        /// <summary>
+        /// Serializes a dictionary of weights to a JSON string.
+        /// </summary>
+        /// <param name="weights">The dictionary of weights.</param>
+        /// <returns>A JSON string representing the weights.</returns>
         private static string SerializeDbWeights(Dictionary<string, double> weights)
         {
             return JsonSerializer.Serialize(weights);

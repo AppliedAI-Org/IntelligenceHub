@@ -217,7 +217,7 @@ namespace IntelligenceHub.Host
             // Add role-based authorization policies
             builder.Services.AddAuthorization(options =>
             {
-                options.AddPolicy("AdminPolicy", policy =>
+                options.AddPolicy(ElevatedAuthPolicy, policy =>
                     policy.RequireAssertion(context =>
                         context.User.HasClaim(c => (c.Type == "scope" || c.Type == "permissions") && c.Value.Split(' ').Contains("all:admin"))));
             });

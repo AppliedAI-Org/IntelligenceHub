@@ -1,24 +1,37 @@
 ﻿using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
+using static IntelligenceHub.Common.GlobalVariables;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IntelligenceHub.Controllers
 {
+    /// <summary>
+    /// This controller is used to manage agent tools.
+    /// </summary>
     [Route("[controller]")]
     [ApiController]
-    [Authorize(Policy = "AdminPolicy")]
+    [Authorize(Policy = ElevatedAuthPolicy)]
     public class ToolController : ControllerBase
     {
         private readonly IProfileLogic _profileLogic;
 
+        /// <summary>
+        /// This controller is used to manage agent tools.
+        /// </summary>
+        /// <param name="profileLogic"></param>
         public ToolController(IProfileLogic profileLogic)
         {
             _profileLogic = profileLogic;
         }
 
+        /// <summary>
+        /// This endpoint is used to get a tool by name.
+        /// </summary>
+        /// <param name="name">The name of the tool.</param>
+        /// <returns>An ObjectResult containing the tool.</returns>
         [HttpGet]
         [Route("get/{name}")]
         [ProducesResponseType(typeof(Tool), StatusCodes.Status200OK)]
@@ -34,12 +47,16 @@ namespace IntelligenceHub.Controllers
                 if (tool == null) return NotFound($"No tool with the name {name} exists");
                 else return Ok(tool);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to get all tools.
+        /// </summary>
+        /// <returns></returns>
         [HttpGet]
         [Route("get/all")]
         [ProducesResponseType(typeof(IEnumerable<Tool>), StatusCodes.Status200OK)]
@@ -54,12 +71,17 @@ namespace IntelligenceHub.Controllers
                 if (tools == null || tools.Count() < 1) return NotFound($"No tools exist. Make a post request to add some.");
                 else return Ok(tools);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to get the profiles associated with a tool.
+        /// </summary>
+        /// <param name="name">The name of the tool.</param>
+        /// <returns>An array of profile names that use the tool.</returns>
         [HttpGet]
         [Route("get/{name}/profiles")]
         [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
@@ -75,12 +97,17 @@ namespace IntelligenceHub.Controllers
                 if (tool == null) return NotFound($"The tool '{name}' is not associated with any profiles, or does not exist.");
                 else return Ok(tool);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to create or update a tool.
+        /// </summary>
+        /// <param name="toolList">An array of tool definitions to add or update.</param>
+        /// <returns>An empty ResponseObject.</returns>
         [HttpPost]
         [Route("upsert")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -95,12 +122,18 @@ namespace IntelligenceHub.Controllers
                 if (errorMessage != null) return BadRequest(errorMessage);
                 else return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to associate a tool with profiles that already exist in the database.
+        /// </summary>
+        /// <param name="name">The name of the tool.</param>
+        /// <param name="profiles">An array of profile names.</param>
+        /// <returns>An array of profile names that were successfully associated.</returns>
         [HttpPost]
         [Route("associate/{name}")]
         [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
@@ -117,12 +150,18 @@ namespace IntelligenceHub.Controllers
                 if (errorMessage == null) return Ok(await _profileLogic.GetToolProfileAssociations(name));
                 else return NotFound(errorMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to dissociate a tool from profiles that already exist in the database.
+        /// </summary>
+        /// <param name="name">The name of the tool.</param>
+        /// <param name="profiles">An array of profile names.</param>
+        /// <returns>An ObjectResult containing a list of profiles that were successfully dissasociated.</returns>
         [HttpPost]
         [Route("dissociate/{name}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -139,12 +178,17 @@ namespace IntelligenceHub.Controllers
                 if (errorMessage == null) return NoContent();
                 else return NotFound(errorMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to delete a tool.
+        /// </summary>
+        /// <param name="name">The name of the tool.</param>
+        /// <returns>An empty ObjectResult.</returns>
         [HttpDelete]
         [Route("delete/{name}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -160,7 +204,7 @@ namespace IntelligenceHub.Controllers
                 if (success) return NoContent();
                 else return NotFound($"No tool with the name {name} exists");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }

@@ -2,14 +2,6 @@
 {
     public static class GlobalVariables
     {
-        public enum ClientPolicies
-        {
-            AzureAIClientPolicy,
-            OpenAIClientPolicy,
-            AnthropicAIClientPolicy,
-            ToolClientPolicy
-        }
-
         public enum ResponseFormat
         {
             Json,
@@ -76,6 +68,16 @@
             Maximum,
             FirstMatching
         }
+
+        public enum ClientPolicies
+        {
+            AzureAIClientPolicy,
+            OpenAIClientPolicy,
+            AnthropicAIClientPolicy,
+            ToolClientPolicy
+        }
+
+        public const string ElevatedAuthPolicy = "AdminPolicy";
 
         public const string RagRequestSystemMessage =
             "You are part of an API that chunks documents for retrieval augmented generation tasks. Your job " +

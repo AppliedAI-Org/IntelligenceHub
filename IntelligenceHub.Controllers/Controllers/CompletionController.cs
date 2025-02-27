@@ -11,6 +11,9 @@ using System.Text;
 
 namespace IntelligenceHub.Controllers
 {
+    /// <summary>
+    /// This controller is used to send chat requests to the API.
+    /// </summary>
     [Route("[controller]")]
     [ApiController]
     [Authorize]
@@ -19,12 +22,23 @@ namespace IntelligenceHub.Controllers
         private readonly ICompletionLogic _completionLogic;
         private readonly IValidationHandler _validationLogic;
 
+        /// <summary>
+        /// This controller is used to send chat requests to the API.
+        /// </summary>
+        /// <param name="completionLogic">The business logic for completions.</param>
+        /// <param name="validationHandler">A class that validates incoming API request payloads.</param>
         public CompletionController(ICompletionLogic completionLogic, IValidationHandler validationHandler)
         {
             _completionLogic = completionLogic;
             _validationLogic = validationHandler;
         }
 
+        /// <summary>
+        /// This endpoint is used to send a chat request to the API.
+        /// </summary>
+        /// <param name="name">The name of the profile that will be used to construct the request.</param>
+        /// <param name="completionRequest">The request body. Only the messages array is required.</param>
+        /// <returns>The chat completion response.</returns>
         [HttpPost]
         [Route("Chat/{name}")]
         [ProducesResponseType(typeof(CompletionResponse), StatusCodes.Status200OK)]
@@ -42,12 +56,18 @@ namespace IntelligenceHub.Controllers
                 if (response is not null) return Ok(response);
                 else return BadRequest("Invalid request. Please check your request body.");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
+        /// <summary>
+        /// This endpoint is used to send a chat request to the API that returns the result via SSE.
+        /// </summary>
+        /// <param name="name">The name of the profile that will be used to construct the request.</param>
+        /// <param name="completionRequest">The request body. Only the messages array is required.</param>
+        /// <returns>The chat completion response.</returns>
         [HttpPost]
         [Route("SSE/{name}")]
         [ProducesResponseType(typeof(CompletionStreamChunk), StatusCodes.Status200OK)]
@@ -77,7 +97,7 @@ namespace IntelligenceHub.Controllers
                 }
                 return new EmptyResult();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
