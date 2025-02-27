@@ -117,7 +117,7 @@ namespace IntelligenceHub.Common.Extensions
         /// <param name="hostString">The host name to convert.</param>
         /// <returns>The converted AGIServicesHosts enum.</returns>
         /// <exception cref="ArgumentException">Thrown if the provided string is null.</exception>
-        public static AGIServiceHosts? ToServiceHost(this string hostString)
+        public static AGIServiceHosts? ConvertToServiceHost(this string hostString)
         {
             if (hostString == null) throw new ArgumentException(nameof(hostString));
 

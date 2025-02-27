@@ -23,7 +23,7 @@ namespace IntelligenceHub.Client.Implementations
     {
         private readonly string _gpt4o = "gpt-4o";
         private readonly string _gpt4oMini = "gpt-4o-mini";
-        private readonly string _dalle3 = "dall-e-3";
+        private readonly string _dalle3 = DefaultImageGenModel;
         private readonly string _dalle2 = "dall-e-2";
 
         private readonly ChatClient _gpt4oAIClient;

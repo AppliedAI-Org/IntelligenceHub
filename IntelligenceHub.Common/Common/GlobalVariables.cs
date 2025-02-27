@@ -95,6 +95,7 @@
 
         public const string DefaultAGIModel = "gpt-4o-mini";
         public const string DefaultEmbeddingModel = "text-embedding-3-large";
+        public const string DefaultImageGenModel = "dall-e-3";
 
         public const string DefaultExceptionMessage = "Internal Server Error, please reattempt. If this issue persists please contact the system administrator.";
 

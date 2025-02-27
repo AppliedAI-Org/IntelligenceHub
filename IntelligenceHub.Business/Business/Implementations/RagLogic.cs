@@ -435,7 +435,7 @@ namespace IntelligenceHub.Business.Implementations
                 Messages = new List<Message>() { new Message() { Role = Role.User, Content = completion } }
             };
 
-            var aiClient = _agiClientFactory.GetClient(profile.Host.ToServiceHost());
+            var aiClient = _agiClientFactory.GetClient(profile.Host.ConvertToServiceHost());
             var response = await aiClient.PostCompletion(completionRequest); // create a seperate method for internal API completions
             var content = response?.Messages.Last(m => m.Role == Role.Assistant).Content ?? string.Empty;
             return content.Length > 255 ? content.Substring(0, 255) : content; // If content exceeds SQL column size, truncate.

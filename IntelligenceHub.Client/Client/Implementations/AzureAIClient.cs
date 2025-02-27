@@ -19,8 +19,6 @@ namespace IntelligenceHub.Client.Implementations
     /// </summary>
     public class AzureAIClient : IAGIClient
     {
-        private readonly string _dalle3 = "dall-e-3";
-
         private AzureOpenAIClient _azureOpenAIClient;
 
         /// <summary>
@@ -52,7 +50,7 @@ namespace IntelligenceHub.Client.Implementations
         /// <returns>A Base64 representation of the returned image, or null if the request fails.</returns>
         public async Task<string?> GenerateImage(string prompt)
         {
-            var imageClient = _azureOpenAIClient.GetImageClient(_dalle3);
+            var imageClient = _azureOpenAIClient.GetImageClient(DefaultImageGenModel);
             if (imageClient == null) return null;
 
             var options = new ImageGenerationOptions()

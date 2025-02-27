@@ -29,7 +29,7 @@ namespace IntelligenceHub.DAL
                 Id = dbProfile.Id,
                 Name = dbProfile.Name,
                 Model = dbProfile.Model,
-                Host = dbProfile.Host.ToServiceHost(),
+                Host = dbProfile.Host.ConvertToServiceHost(),
                 Frequency_Penalty = (float?)dbProfile.FrequencyPenalty,
                 Presence_Penalty = (float?)dbProfile.PresencePenalty,
                 Temperature = (float?)dbProfile.Temperature,
