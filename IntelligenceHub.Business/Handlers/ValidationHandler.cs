@@ -83,13 +83,13 @@ namespace IntelligenceHub.Business.Handlers
         public string? ValidateBaseDTO(Profile profile)
         {
             if (profile.Model != null && _validModels.Contains(profile.Model.ToLower()) == false) return "The model name must match and existing AI model";
-            if (profile.Frequency_Penalty < -2.0 || profile.Frequency_Penalty > 2.0) return "Frequency_Penalty must be a value between -2 and 2";
-            if (profile.Presence_Penalty < -2.0 || profile.Presence_Penalty > 2.0) return "Presence_Penalty must be a value between -2 and 2";
+            if (profile.FrequencyPenalty < -2.0 || profile.FrequencyPenalty > 2.0) return "Frequency_Penalty must be a value between -2 and 2";
+            if (profile.PresencePenalty < -2.0 || profile.PresencePenalty > 2.0) return "Presence_Penalty must be a value between -2 and 2";
             if (profile.Temperature < 0 || profile.Temperature > 2) return "Temperature must be a value between 0 and 2";
-            if (profile.Top_P < 0 || profile.Top_P > 1) return "Top_P must be a value between 0 and 1";
-            if (profile.Max_Tokens < 1 || profile.Max_Tokens > 1000000) return "Max_Tokens must be a value between 1 and 1,000,000"; // check this value for Azure and other services
-            if (profile.Top_Logprobs < 0 || profile.Top_Logprobs > 5) return "Top_Logprobs must be a value between 0 and 5";
-            if (profile.Response_Format != null && profile.Response_Format != "text" && profile.Response_Format != GlobalVariables.ResponseFormat.Json.ToString()) return $"If Response_Type is set, it must either be equal to '{GlobalVariables.ResponseFormat.Text}' or '{GlobalVariables.ResponseFormat.Json}'";
+            if (profile.TopP < 0 || profile.TopP > 1) return "Top_P must be a value between 0 and 1";
+            if (profile.MaxTokens < 1 || profile.MaxTokens > 1000000) return "Max_Tokens must be a value between 1 and 1,000,000"; // check this value for Azure and other services
+            if (profile.TopLogprobs < 0 || profile.TopLogprobs > 5) return "Top_Logprobs must be a value between 0 and 5";
+            if (profile.ResponseFormat != null && profile.ResponseFormat != "text" && profile.ResponseFormat != GlobalVariables.ResponseFormat.Json.ToString()) return $"If Response_Type is set, it must either be equal to '{GlobalVariables.ResponseFormat.Text}' or '{GlobalVariables.ResponseFormat.Json}'";
 
             if (profile.Tools != null)
             {

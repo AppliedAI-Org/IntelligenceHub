@@ -187,7 +187,7 @@ namespace IntelligenceHub.Client.Implementations
         /// <returns>A list of ChatMessages to be used when generating a completion from the Azure OpenAI client.</returns>
         private List<ChatMessage> BuildCompletionMessages(CompletionRequest completionRequest)
         {
-            var systemMessage = completionRequest.ProfileOptions.System_Message;
+            var systemMessage = completionRequest.ProfileOptions.SystemMessage;
             var completionMessages = new List<ChatMessage>();
 
             if (!string.IsNullOrWhiteSpace(systemMessage)) completionMessages.Add(new SystemChatMessage(systemMessage));
@@ -229,11 +229,11 @@ namespace IntelligenceHub.Client.Implementations
         {
             var options = new ChatCompletionOptions()
             {
-                MaxOutputTokenCount = completion.ProfileOptions.Max_Tokens ?? null,
+                MaxOutputTokenCount = completion.ProfileOptions.MaxTokens ?? null,
                 Temperature = completion.ProfileOptions.Temperature,
-                TopP = completion.ProfileOptions.Top_P,
-                FrequencyPenalty = completion.ProfileOptions.Frequency_Penalty,
-                PresencePenalty = completion.ProfileOptions.Presence_Penalty,
+                TopP = completion.ProfileOptions.TopP,
+                FrequencyPenalty = completion.ProfileOptions.FrequencyPenalty,
+                PresencePenalty = completion.ProfileOptions.PresencePenalty,
                 IncludeLogProbabilities = completion.ProfileOptions.Logprobs,
                 EndUserId = completion.ProfileOptions.User,
             };
@@ -242,11 +242,11 @@ namespace IntelligenceHub.Client.Implementations
             //options.LogitBiases
 
             // set response format
-            if (completion.ProfileOptions.Response_Format == ResponseFormat.Json.ToString()) options.ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat();
-            else if (completion.ProfileOptions.Response_Format == ResponseFormat.Text.ToString()) options.ResponseFormat = ChatResponseFormat.CreateTextFormat();
+            if (completion.ProfileOptions.ResponseFormat == ResponseFormat.Json.ToString()) options.ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat();
+            else if (completion.ProfileOptions.ResponseFormat == ResponseFormat.Text.ToString()) options.ResponseFormat = ChatResponseFormat.CreateTextFormat();
 
             // set log probability
-            if (options.IncludeLogProbabilities == true) options.TopLogProbabilityCount = completion.ProfileOptions.Top_Logprobs;
+            if (options.IncludeLogProbabilities == true) options.TopLogProbabilityCount = completion.ProfileOptions.TopLogprobs;
 
             // set stop messages
             if (completion.ProfileOptions.Stop != null && completion.ProfileOptions.Stop.Length > 0)
@@ -268,10 +268,10 @@ namespace IntelligenceHub.Client.Implementations
             {
                 if (completion.ProfileOptions.Tools.Count > 1) options.AllowParallelToolCalls = true;
 
-                if (completion.ProfileOptions.Tool_Choice == null || completion.ProfileOptions.Tool_Choice == ToolExecutionRequirement.Auto.ToString()) options.ToolChoice = ChatToolChoice.CreateAutoChoice();
-                else if (completion.ProfileOptions.Tool_Choice == ToolExecutionRequirement.None.ToString()) options.ToolChoice = ChatToolChoice.CreateNoneChoice();
-                else if (completion.ProfileOptions.Tool_Choice == ToolExecutionRequirement.Required.ToString()) options.ToolChoice = ChatToolChoice.CreateRequiredChoice();
-                else options.ToolChoice = ChatToolChoice.CreateFunctionChoice(completion.ProfileOptions.Tool_Choice);
+                if (completion.ProfileOptions.ToolChoice == null || completion.ProfileOptions.ToolChoice == ToolExecutionRequirement.Auto.ToString()) options.ToolChoice = ChatToolChoice.CreateAutoChoice();
+                else if (completion.ProfileOptions.ToolChoice == ToolExecutionRequirement.None.ToString()) options.ToolChoice = ChatToolChoice.CreateNoneChoice();
+                else if (completion.ProfileOptions.ToolChoice == ToolExecutionRequirement.Required.ToString()) options.ToolChoice = ChatToolChoice.CreateRequiredChoice();
+                else options.ToolChoice = ChatToolChoice.CreateFunctionChoice(completion.ProfileOptions.ToolChoice);
             }
             // Tools and RAG DBs are not supported simultaneously, therefore RAG data is being attached at the business logic level via a direct query for now
             //if (!string.IsNullOrEmpty(completion.ProfileOptions.RagDatabase)) options = AttachDatabaseOptions(completion.ProfileOptions.RagDatabase, options);

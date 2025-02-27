@@ -30,11 +30,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="wwwroot\TestHubClient\lib\signalr.js" />
-    <None Include="wwwroot\TestHubClient\lib\signalr.min.js" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="Azure.Search.Documents" Version="11.6.0" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />

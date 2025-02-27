@@ -30,22 +30,22 @@ namespace IntelligenceHub.DAL
                 Name = dbProfile.Name,
                 Model = dbProfile.Model,
                 Host = dbProfile.Host.ConvertToServiceHost(),
-                Frequency_Penalty = (float?)dbProfile.FrequencyPenalty,
-                Presence_Penalty = (float?)dbProfile.PresencePenalty,
+                FrequencyPenalty = (float?)dbProfile.FrequencyPenalty,
+                PresencePenalty = (float?)dbProfile.PresencePenalty,
                 Temperature = (float?)dbProfile.Temperature,
-                Top_P = (float?)dbProfile.TopP,
-                Max_Tokens = dbProfile.MaxTokens,
-                Top_Logprobs = dbProfile.TopLogprobs,
-                Response_Format = dbProfile.ResponseFormat,
+                TopP = (float?)dbProfile.TopP,
+                MaxTokens = dbProfile.MaxTokens,
+                TopLogprobs = dbProfile.TopLogprobs,
+                ResponseFormat = dbProfile.ResponseFormat,
                 User = dbProfile.User,
-                System_Message = dbProfile.SystemMessage,
+                SystemMessage = dbProfile.SystemMessage,
                 Stop = dbProfile.Stop?.ToStringArray(),
-                Reference_Profiles = dbProfile.ReferenceProfiles?.ToStringArray(),
+                ReferenceProfiles = dbProfile.ReferenceProfiles?.ToStringArray(),
                 Tools = tools,
                 MaxMessageHistory = dbProfile.MaxMessageHistory,
                 ReferenceDescription = dbProfile.ReferenceDescription,
             };
-            profile.Logprobs = profile.Top_Logprobs > 0 ? true : false;
+            profile.Logprobs = profile.TopLogprobs > 0 ? true : false;
             return profile;
         }
 
@@ -63,12 +63,12 @@ namespace IntelligenceHub.DAL
                 // update or set existing value
                 Id = existingProfile?.Id ?? 0,
                 Name = profileName, // this value should not be null when this method is called, so it is required as an argument
-                ResponseFormat = profileUpdate?.Response_Format ?? existingProfile?.ResponseFormat,
+                ResponseFormat = profileUpdate?.ResponseFormat ?? existingProfile?.ResponseFormat,
                 User = profileUpdate?.User ?? existingProfile?.User,
-                SystemMessage = profileUpdate?.System_Message ?? existingProfile?.SystemMessage,
-                TopLogprobs = profileUpdate?.Top_Logprobs ?? existingProfile?.TopLogprobs,
+                SystemMessage = profileUpdate?.SystemMessage ?? existingProfile?.SystemMessage,
+                TopLogprobs = profileUpdate?.TopLogprobs ?? existingProfile?.TopLogprobs,
                 ReferenceDescription = profileUpdate?.ReferenceDescription ?? profileUpdate?.ReferenceDescription ?? string.Empty,
-                MaxTokens = profileUpdate?.Max_Tokens ?? existingProfile?.MaxTokens,
+                MaxTokens = profileUpdate?.MaxTokens ?? existingProfile?.MaxTokens,
 
                 // Variables with default values during first database entry
                 Model = profileUpdate?.Model
@@ -79,11 +79,11 @@ namespace IntelligenceHub.DAL
                    ?? existingProfile?.Host.ToString()
                    ?? AGIServiceHosts.OpenAI.ToString(),
 
-                FrequencyPenalty = profileUpdate?.Frequency_Penalty
+                FrequencyPenalty = profileUpdate?.FrequencyPenalty
                    ?? existingProfile?.FrequencyPenalty
                    ?? 0,
 
-                PresencePenalty = profileUpdate?.Presence_Penalty
+                PresencePenalty = profileUpdate?.PresencePenalty
                    ?? existingProfile?.PresencePenalty
                    ?? 0,
 
@@ -91,12 +91,12 @@ namespace IntelligenceHub.DAL
                    ?? existingProfile?.Temperature
                    ?? 1,
 
-                TopP = profileUpdate?.Top_P
+                TopP = profileUpdate?.TopP
                    ?? existingProfile?.TopP
                    ?? 1,
 
                 Stop = profileUpdate?.Stop?.ToCommaSeparatedString() ?? existingProfile?.Stop,
-                ReferenceProfiles = profileUpdate?.Reference_Profiles?.ToCommaSeparatedString() ?? existingProfile?.ReferenceProfiles,
+                ReferenceProfiles = profileUpdate?.ReferenceProfiles?.ToCommaSeparatedString() ?? existingProfile?.ReferenceProfiles,
             };
         }
         #endregion

@@ -250,7 +250,7 @@ namespace IntelligenceHub.Business.Implementations
         public async Task<Profile> BuildCompletionOptions(Profile profile, Profile? profileOptions = null)
         {
             // adds the profile references to the tools
-            var profileReferences = profileOptions?.Reference_Profiles ?? profile.Reference_Profiles ?? Array.Empty<string>();
+            var profileReferences = profileOptions?.ReferenceProfiles ?? profile.ReferenceProfiles ?? Array.Empty<string>();
             if (profile.Tools == null) profile.Tools = new List<Tool>();
 
             // add image gen system tool if appropriate - Anthropic does not support image gen currently
@@ -274,21 +274,21 @@ namespace IntelligenceHub.Business.Implementations
                 Model = profileOptions?.Model ?? profile.Model,
                 RagDatabase = profileOptions?.RagDatabase ?? profile.RagDatabase,
                 MaxMessageHistory = profileOptions?.MaxMessageHistory ?? profile.MaxMessageHistory,
-                Max_Tokens = profileOptions?.Max_Tokens ?? profile.Max_Tokens,
+                MaxTokens = profileOptions?.MaxTokens ?? profile.MaxTokens,
                 Temperature = profileOptions?.Temperature ?? profile.Temperature,
-                Top_P = profileOptions?.Top_P ?? profile.Top_P,
-                Frequency_Penalty = profileOptions?.Frequency_Penalty ?? profile.Frequency_Penalty,
-                Presence_Penalty = profileOptions?.Presence_Penalty ?? profile.Presence_Penalty,
+                TopP = profileOptions?.TopP ?? profile.TopP,
+                FrequencyPenalty = profileOptions?.FrequencyPenalty ?? profile.FrequencyPenalty,
+                PresencePenalty = profileOptions?.PresencePenalty ?? profile.PresencePenalty,
                 Stop = profileOptions?.Stop ?? profile.Stop,
                 Logprobs = profileOptions?.Logprobs ?? profile.Logprobs,
-                Top_Logprobs = profileOptions?.Top_Logprobs ?? profile.Top_Logprobs,
-                Response_Format = profileOptions?.Response_Format ?? profile.Response_Format,
+                TopLogprobs = profileOptions?.TopLogprobs ?? profile.TopLogprobs,
+                ResponseFormat = profileOptions?.ResponseFormat ?? profile.ResponseFormat,
                 User = profileOptions?.User ?? profile.User,
                 Tools = profileOptions?.Tools ?? profile.Tools,
-                System_Message = profileOptions?.System_Message ?? profile.System_Message,
-                Reference_Profiles = profileReferences,
+                SystemMessage = profileOptions?.SystemMessage ?? profile.SystemMessage,
+                ReferenceProfiles = profileReferences,
                 Host = profileOptions?.Host ?? profile.Host,
-                Tool_Choice = profileOptions?.Tool_Choice ?? profile.Tool_Choice,
+                ToolChoice = profileOptions?.ToolChoice ?? profile.ToolChoice,
                 ReferenceDescription = profileOptions?.ReferenceDescription ?? profile.ReferenceDescription
             };
         }

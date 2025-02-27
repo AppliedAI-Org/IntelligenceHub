@@ -148,8 +148,8 @@ namespace IntelligenceHub.Client.Implementations
             }
 
             ToolChoiceType? toolChoiceType = null;
-            if (request.ProfileOptions.Tool_Choice?.ToString().ToLower() == ToolExecutionRequirement.Auto.ToString().ToLower()) toolChoiceType = ToolChoiceType.Auto;
-            else if (request.ProfileOptions.Tool_Choice?.ToString().ToLower() == ToolExecutionRequirement.Required.ToString().ToLower()) toolChoiceType = ToolChoiceType.Tool;
+            if (request.ProfileOptions.ToolChoice?.ToString().ToLower() == ToolExecutionRequirement.Auto.ToString().ToLower()) toolChoiceType = ToolChoiceType.Auto;
+            else if (request.ProfileOptions.ToolChoice?.ToString().ToLower() == ToolExecutionRequirement.Required.ToString().ToLower()) toolChoiceType = ToolChoiceType.Tool;
             var messageParams = new MessageParameters()
             {
                 Messages = anthropicMessages,
@@ -161,10 +161,10 @@ namespace IntelligenceHub.Client.Implementations
                 Metadata = new Dictionary<string, string> { { AnthropicSpecificStrings.user_id.ToString(), request.ProfileOptions.User ?? string.Empty } },
             };
 
-            if (request.ProfileOptions.Max_Tokens.HasValue) messageParams.MaxTokens = request.ProfileOptions.Max_Tokens.Value;
+            if (request.ProfileOptions.MaxTokens.HasValue) messageParams.MaxTokens = request.ProfileOptions.MaxTokens.Value;
             if (request.ProfileOptions.Temperature.HasValue) messageParams.Temperature = (decimal?)request.ProfileOptions.Temperature.Value;
-            if (request.ProfileOptions.Top_P.HasValue) messageParams.TopP = (decimal?)request.ProfileOptions.Top_P.Value;
-            if (toolChoiceType.HasValue) messageParams.ToolChoice = new ToolChoice() { Name = request.ProfileOptions.Tool_Choice, Type = (ToolChoiceType)toolChoiceType };
+            if (request.ProfileOptions.TopP.HasValue) messageParams.TopP = (decimal?)request.ProfileOptions.TopP.Value;
+            if (toolChoiceType.HasValue) messageParams.ToolChoice = new ToolChoice() { Name = request.ProfileOptions.ToolChoice, Type = (ToolChoiceType)toolChoiceType };
             return messageParams;
         }
 
