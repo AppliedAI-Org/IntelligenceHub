@@ -54,8 +54,8 @@ namespace IntelligenceHub.Host
                 options.UseSqlServer(settings.DbConnectionString, sqlOptions =>
                 {
                     sqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        maxRetryCount: settings.MaxDbRetries,
+                        maxRetryDelay: TimeSpan.FromSeconds(settings.MaxDbRetryDelay),
                         errorNumbersToAdd: null // Provide specific codes here if desired
                     );
                 })
@@ -69,7 +69,7 @@ namespace IntelligenceHub.Host
 
             // Clients and Client Factory
             builder.Services.AddSingleton<IAGIClientFactory, AGIClientFactory>();
-            builder.Services.AddSingleton<IAGIClient, AzureAIClient>(); // default client
+            builder.Services.AddSingleton<IAGIClient, AzureAIClient>();
             builder.Services.AddSingleton<OpenAIClient>();
             builder.Services.AddSingleton<AzureAIClient>();
             builder.Services.AddSingleton<AnthropicAIClient>();
@@ -101,25 +101,23 @@ namespace IntelligenceHub.Host
             #endregion
 
             #region Configure Client Policies
-            // Function Calling Client Policies:
 
             // Define the ToolClient policy
             builder.Services.AddHttpClient(ClientPolicies.ToolClientPolicy.ToString()).AddPolicyHandler(
                 HttpPolicyExtensions
                 .HandleTransientHttpError()
-                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))));
-
-            // AGI Completion Policies
+                .WaitAndRetryAsync(settings.ToolClientMaxRetries, retryAttempt => TimeSpan.FromSeconds(Math.Pow(settings.ToolClientInitialRetryDelay, retryAttempt))));
 
             // Define the Completion retry policy
             var retryPolicy = HttpPolicyExtensions
                 .HandleTransientHttpError()
                 .OrResult(r => r.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-                .WaitAndRetryAsync(5, _ =>
+                .WaitAndRetryAsync(settings.AGIClientMaxRetries, _ =>
                 {
                     // Add random jitter up to 5 seconds.
-                    var jitter = TimeSpan.FromMilliseconds(new Random().Next(0, 5000));
-                    return TimeSpan.FromSeconds(10) + jitter;
+                    var maxJitter = settings.AGIClientMaxJitter * 1000; // convert to milliseconds
+                    var jitter = TimeSpan.FromMilliseconds(new Random().Next(0, maxJitter));
+                    return TimeSpan.FromSeconds(settings.AGIClientInitialRetryDelay) + jitter;
                 });
 
             // Define the Completion circuit breaker policy if more than one service exists.
@@ -136,8 +134,8 @@ namespace IntelligenceHub.Host
                     .Handle<HttpRequestException>()
                     .OrResult<HttpResponseMessage>(r => (int)r.StatusCode >= 500)
                     .CircuitBreakerAsync(
-                        handledEventsAllowedBeforeBreaking: 3,  // Break after 3 consecutive failures.
-                        durationOfBreak: TimeSpan.FromSeconds(30), // Open the circuit for 30 seconds.
+                        handledEventsAllowedBeforeBreaking: settings.MaxCircuitBreakerFailures,
+                        durationOfBreak: TimeSpan.FromSeconds(settings.CircuitBreakerBreakDuration),
                         onBreak: (result, breakDelay) =>
                         {
                             Console.WriteLine($"Circuit opened for {breakDelay.TotalSeconds} seconds.");
@@ -275,7 +273,7 @@ namespace IntelligenceHub.Host
 
                 app.UseCors(policy =>
                 {
-                    policy.WithOrigins("http://localhost:3000", "https://localhost:7228", "https://localhost:44483", "https://intelligencehub-dev.azurewebsites.net") // Specify allowed origin explicitly
+                    policy.WithOrigins(settings.ValidOrigins) // Specify allowed origin explicitly
                       .AllowAnyMethod()
                       .AllowAnyHeader()
                       .AllowCredentials()

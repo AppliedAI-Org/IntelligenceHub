@@ -15,7 +15,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\IntelligenceHub\IntelligenceHub.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.API\IntelligenceHub.API.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Business\IntelligenceHub.Business.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Client\IntelligenceHub.Client.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Common\IntelligenceHub.Common.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Controllers\IntelligenceHub.Controllers.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.DAL\IntelligenceHub.DAL.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Host\IntelligenceHub.Host.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Hubs\IntelligenceHub.Hubs.csproj" />
   </ItemGroup>
 
 </Project>

@@ -35,8 +35,8 @@
     <ProjectReference Include="..\IntelligenceHub.Common\IntelligenceHub.Common.csproj" />
     <ProjectReference Include="..\IntelligenceHub.Controllers\IntelligenceHub.Controllers.csproj" />
     <ProjectReference Include="..\IntelligenceHub.DAL\IntelligenceHub.DAL.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Host\IntelligenceHub.Host.csproj" />
     <ProjectReference Include="..\IntelligenceHub.Hubs\IntelligenceHub.Hubs.csproj" />
-    <ProjectReference Include="..\IntelligenceHub\IntelligenceHub.csproj" />
   </ItemGroup>
 
 </Project>

@@ -8,17 +8,22 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\IntelligenceHub.API\IntelligenceHub.API.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Business\IntelligenceHub.Business.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Client\IntelligenceHub.Client.csproj" />
     <ProjectReference Include="..\IntelligenceHub.Common\IntelligenceHub.Common.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Controllers\IntelligenceHub.Controllers.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.DAL\IntelligenceHub.DAL.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Host\IntelligenceHub.Host.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Hubs\IntelligenceHub.Hubs.csproj" />
     <ProjectReference Include="..\IntelligenceHub.Tests.Common\IntelligenceHub.Tests.Common.csproj" />
-    <ProjectReference Include="..\IntelligenceHub\IntelligenceHub.csproj" />
   </ItemGroup>
 
   <ItemGroup>
