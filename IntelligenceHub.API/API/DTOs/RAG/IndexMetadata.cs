@@ -6,7 +6,7 @@ namespace IntelligenceHub.API.DTOs.RAG
     {
         public string Name { get; set; }
         public QueryType QueryType { get; set; }
-        public string GenerationProfile { get; set; } = string.Empty;
+        public AGIServiceHosts? GenerationHost { get; set; }
         public TimeSpan? IndexingInterval { get; set; }
         public string? EmbeddingModel { get; set; }
         public int? MaxRagAttachments { get; set; }

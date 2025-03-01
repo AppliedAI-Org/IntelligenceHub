@@ -4,7 +4,6 @@ using IntelligenceHub.Common.Extensions;
 using IntelligenceHub.DAL.Models;
 using IntelligenceHub.API.DTOs.RAG;
 using System.Text.Json;
-using IntelligenceHub.Common;
 using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.DAL
@@ -30,6 +29,7 @@ namespace IntelligenceHub.DAL
                 Name = dbProfile.Name,
                 Model = dbProfile.Model,
                 Host = dbProfile.Host.ConvertToServiceHost(),
+                ImageHost = dbProfile.ImageHost?.ConvertToServiceHost(), 
                 FrequencyPenalty = (float?)dbProfile.FrequencyPenalty,
                 PresencePenalty = (float?)dbProfile.PresencePenalty,
                 Temperature = (float?)dbProfile.Temperature,
@@ -53,11 +53,21 @@ namespace IntelligenceHub.DAL
         /// Maps a profile DTO to a database profile entity.
         /// </summary>
         /// <param name="profileName">The name of the profile.</param>
+        /// /// <param name="defaultAzureModel">The default azure model, passed in since this 
+        /// class is static, and the value is retrieved from the appsettings.</param>
         /// <param name="existingProfile">Optional existing database profile entity.</param>
         /// <param name="profileUpdate">Optional profile DTO with updated values.</param>
         /// <returns>A database profile entity.</returns>
-        public static DbProfile MapToDbProfile(string profileName, DbProfile? existingProfile = null, Profile? profileUpdate = null)
+        public static DbProfile MapToDbProfile(string profileName, string defaultAzureModel, DbProfile? existingProfile = null, Profile? profileUpdate = null)
         {
+            var host = profileUpdate?.Host ?? existingProfile?.Host.ConvertToServiceHost() ?? AGIServiceHosts.OpenAI;
+            var model = profileUpdate?.Model ?? existingProfile?.Model ?? null;
+            if (string.IsNullOrEmpty(model))
+            {
+                if (host == AGIServiceHosts.Azure) model = defaultAzureModel;
+                if (host == AGIServiceHosts.Anthropic) model = DefaultAnthropicModel;
+                if (host == AGIServiceHosts.OpenAI) model = DefaultOpenAIModel;
+            }
             return new DbProfile()
             {
                 // update or set existing value
@@ -71,29 +81,28 @@ namespace IntelligenceHub.DAL
                 MaxTokens = profileUpdate?.MaxTokens ?? existingProfile?.MaxTokens,
 
                 // Variables with default values during first database entry
-                Model = profileUpdate?.Model
-                   ?? existingProfile?.Model
-                   ?? GlobalVariables.DefaultAGIModel,
+                Model = model,
+                Host = host.ToString(),
 
-                Host = profileUpdate?.Host.ToString()
-                   ?? existingProfile?.Host.ToString()
-                   ?? AGIServiceHosts.OpenAI.ToString(),
-
+                ImageHost = profileUpdate?.ImageHost.ToString()
+                    ?? existingProfile?.ImageHost?.ToString()
+                    ?? host.ToString(),
+    
                 FrequencyPenalty = profileUpdate?.FrequencyPenalty
-                   ?? existingProfile?.FrequencyPenalty
-                   ?? 0,
+                    ?? existingProfile?.FrequencyPenalty
+                    ?? 0,
 
                 PresencePenalty = profileUpdate?.PresencePenalty
-                   ?? existingProfile?.PresencePenalty
-                   ?? 0,
+                    ?? existingProfile?.PresencePenalty
+                    ?? 0,
 
                 Temperature = profileUpdate?.Temperature
-                   ?? existingProfile?.Temperature
-                   ?? 1,
+                    ?? existingProfile?.Temperature
+                    ?? 1,
 
                 TopP = profileUpdate?.TopP
-                   ?? existingProfile?.TopP
-                   ?? 1,
+                    ?? existingProfile?.TopP
+                    ?? 1,
 
                 Stop = profileUpdate?.Stop?.ToCommaSeparatedString() ?? existingProfile?.Stop,
                 ReferenceProfiles = profileUpdate?.ReferenceProfiles?.ToCommaSeparatedString() ?? existingProfile?.ReferenceProfiles,
@@ -269,7 +278,7 @@ namespace IntelligenceHub.DAL
             {
                 Name = dbIndexData.Name,
                 QueryType = dbIndexData.QueryType?.ConvertStringToQueryType() ?? QueryType.Simple,
-                GenerationProfile = dbIndexData.GenerationProfile ?? string.Empty,
+                GenerationHost = dbIndexData.GenerationHost.ConvertToServiceHost(),
                 ChunkOverlap = dbIndexData.ChunkOverlap ?? DefaultChunkOverlap, // make this a global variable
                 IndexingInterval = dbIndexData.IndexingInterval,
                 MaxRagAttachments = dbIndexData.MaxRagAttachments ?? DefaultRagAttachmentNumber, // make this a global variable
@@ -306,7 +315,7 @@ namespace IntelligenceHub.DAL
             {
                 Name = indexData.Name,
                 QueryType = indexData.QueryType.ToString(),
-                GenerationProfile = indexData.GenerationProfile ?? string.Empty,
+                GenerationHost = indexData.GenerationHost.ToString() ?? AGIServiceHosts.None.ToString(),
                 ChunkOverlap = chunkOverlap ?? DefaultChunkOverlap,
                 IndexingInterval = indexData.IndexingInterval ?? TimeSpan.FromHours(23.99), // only slightly under 1 day is supported
                 MaxRagAttachments = indexData.MaxRagAttachments ?? DefaultRagAttachmentNumber, // make this a global variable,

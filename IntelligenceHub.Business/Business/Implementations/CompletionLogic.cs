@@ -227,7 +227,7 @@ namespace IntelligenceHub.Business.Implementations
         private async Task<List<Message>> BuildMessageHistory(Guid conversationId, List<Message> requestMessages, int? maxMessageHistory = null)
         {
             var allMessages = new List<Message>();
-            var messageHistory = await _messageHistoryRepository.GetConversationAsync(conversationId, maxMessageHistory ?? _defaultMessageHistory);
+            var messageHistory = await _messageHistoryRepository.GetConversationAsync(conversationId, maxMessageHistory ?? _defaultMessageHistory, 1);
             if (messageHistory == null || messageHistory.Count < 1) return requestMessages; // no conversation found, return original data and create conversation entry later
 
             var mappedMessageHistory = new List<Message>();
@@ -254,8 +254,8 @@ namespace IntelligenceHub.Business.Implementations
             if (profile.Tools == null) profile.Tools = new List<Tool>();
 
             // add image gen system tool if appropriate - Anthropic does not support image gen currently
-            var host = profileOptions?.Host ?? profile.Host;
-            if (host != AGIServiceHosts.Anthropic) profile.Tools.Add(new ImageGenSystemTool());
+            var host = profileOptions?.ImageHost ?? profile.ImageHost ?? profileOptions?.Host ?? profile.Host; // if an image host is provided use that, otherwise default to the primary host
+            if (host != AGIServiceHosts.Anthropic && host != AGIServiceHosts.None) profile.Tools.Add(new ImageGenSystemTool());
 
             // add recursive chat system tool if appropriate
             if (profileReferences != null && profileReferences.Any())
@@ -332,7 +332,7 @@ namespace IntelligenceHub.Business.Implementations
             foreach (var tool in toolCalls)
             {
                 if (tool.Key.ToLower().Equals(SystemTools.Chat_Recursion.ToString().ToLower()) || currentRecursionDepth > maxDepth) messages = await HandleRecursiveChat(tool.Value, messages, options, conversationId, currentRecursionDepth + 1);
-                else if (tool.Key.ToLower().Equals(SystemTools.Image_Gen.ToString().ToLower()) || currentRecursionDepth > maxDepth) messages = await GenerateImage(tool.Value, options?.Host, messages);
+                else if (tool.Key.ToLower().Equals(SystemTools.Image_Gen.ToString().ToLower()) || currentRecursionDepth > maxDepth) messages = await GenerateImage(tool.Value, options?.ImageHost ?? options?.Host, messages);
                 else
                 {
                     var dbTool = await _toolDb.GetByNameAsync(tool.Key);

@@ -28,11 +28,12 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="id">The ID associated with the conversation to be retrieved.</param>
         /// <param name="count">The number of messages to retrieve from the repository.</param>
+        /// <param name="page">The number of pages to offset</param>
         /// <returns>A list of messages assocaited with the conversation.</returns>
-        public async Task<List<Message>> GetConversationHistory(Guid id, int count)
+        public async Task<List<Message>> GetConversationHistory(Guid id, int count, int page)
         {
             var messages = new List<Message>();
-            var dbMessages = await _messageHistoryRepository.GetConversationAsync(id, count);
+            var dbMessages = await _messageHistoryRepository.GetConversationAsync(id, count, page);
             foreach (var dbMessage in dbMessages) messages.Add(DbMappingHandler.MapFromDbMessage(dbMessage));
             return messages;
         }
@@ -75,7 +76,7 @@ namespace IntelligenceHub.Business.Implementations
         public async Task<DbMessage?> AddMessage(Guid conversationId, Message message)
         {
             var dbMessage = DbMappingHandler.MapToDbMessage(message, conversationId);
-            var conversation = await _messageHistoryRepository.GetConversationAsync(conversationId, 1);
+            var conversation = await _messageHistoryRepository.GetConversationAsync(conversationId, 1, 1);
             if (conversation == null) return null;
             return await _messageHistoryRepository.AddAsync(dbMessage);
         }

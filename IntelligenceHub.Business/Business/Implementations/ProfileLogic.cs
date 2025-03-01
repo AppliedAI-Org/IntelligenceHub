@@ -2,8 +2,10 @@
 using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Interfaces;
+using IntelligenceHub.Common.Config;
 using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Interfaces;
+using Microsoft.Extensions.Options;
 
 namespace IntelligenceHub.Business.Implementations
 {
@@ -18,6 +20,8 @@ namespace IntelligenceHub.Business.Implementations
         private readonly IPropertyRepository _propertyDb;
         private readonly IValidationHandler _validationLogic;
 
+        private readonly string _defaulAzureModel;
+
         private readonly string _unknownErroMessage = "something went wrong...";
         private readonly string _missingProfileMessage = "No profile with the specified name was found. Name: "; // make sure to use interpolation here
         private readonly string _missingToolMessage = "No tool with the specified name was found. Name: "; // make sure to use interpolation here
@@ -30,8 +34,9 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="toolDb">The repository used to retrieve tool data.</param>
         /// <param name="propertyDb">The repository used to retrieve property data, which are associated with tools.</param>
         /// <param name="validationLogic">The validation class used to assess the validity of request properties.</param>
-        public ProfileLogic(IProfileRepository profileDb, IProfileToolsAssociativeRepository profileToolsDb, IToolRepository toolDb, IPropertyRepository propertyDb, IValidationHandler validationLogic)
+        public ProfileLogic(IOptionsMonitor<Settings> settings, IProfileRepository profileDb, IProfileToolsAssociativeRepository profileToolsDb, IToolRepository toolDb, IPropertyRepository propertyDb, IValidationHandler validationLogic)
         {
+            _defaulAzureModel = settings.CurrentValue.ValidAGIModels.FirstOrDefault() ?? string.Empty;
             _profileDb = profileDb;
             _profileToolsDb = profileToolsDb;
             _toolDb = toolDb;
@@ -73,10 +78,12 @@ namespace IntelligenceHub.Business.Implementations
         /// <summary>
         /// Retrieves all profiles.
         /// </summary>
+        /// <param name="page">The page number to retrieve.</param>
+        /// <param name="count">The amount of profiles to retrieve.</param>
         /// <returns>An list of all existing profiles.</returns>
-        public async Task<IEnumerable<Profile>> GetAllProfiles()
+        public async Task<IEnumerable<Profile>> GetAllProfiles(int page, int count)
         {
-            var response = await _profileDb.GetAllAsync();
+            var response = await _profileDb.GetAllAsync(page, count);
             var apiResponseList = new List<Profile>();
             if (response != null)
             {
@@ -112,13 +119,13 @@ namespace IntelligenceHub.Business.Implementations
             var success = true;
             if (existingProfile != null)
             {
-                var updateProfileDto = DbMappingHandler.MapToDbProfile(existingProfile.Name, existingProfile, profileDto);
-                var rows = await _profileDb.UpdateAsync(existingProfile, updateProfileDto);
+                var updateProfileDto = DbMappingHandler.MapToDbProfile(existingProfile.Name, _defaulAzureModel, existingProfile, profileDto);
+                var rows = await _profileDb.UpdateAsync(updateProfileDto);
                 if (rows != 1) success = false;
             }
             else
             {
-                var updateProfileDto = DbMappingHandler.MapToDbProfile(profileDto.Name, null, profileDto);
+                var updateProfileDto = DbMappingHandler.MapToDbProfile(profileDto.Name, _defaulAzureModel, null, profileDto);
                 var newTool = await _profileDb.AddAsync(updateProfileDto);
                 if (newTool == null) success = false;
             }
@@ -203,11 +210,13 @@ namespace IntelligenceHub.Business.Implementations
         /// <summary>
         /// Retrieves all tools in the database.
         /// </summary>
+        /// <param name="page">The page number to retrieve.</param>
+        /// <param name="count">The amount of tools to retrieve.</param>
         /// <returns>A list of all existing tools.</returns>
-        public async Task<IEnumerable<Tool>> GetAllTools()
+        public async Task<IEnumerable<Tool>> GetAllTools(int page, int count)
         {
             var returnList = new List<Tool>();
-            var dbTools = await _toolDb.GetAllAsync();
+            var dbTools = await _toolDb.GetAllAsync(page, count);
             foreach (var dbTool in dbTools)
             {
                 var properties = await _propertyDb.GetToolProperties(dbTool.Id);
@@ -262,7 +271,7 @@ namespace IntelligenceHub.Business.Implementations
                 if (existingToolDTO != null)
                 {
                     var existingTool = DbMappingHandler.MapToDbTool(existingToolDTO);
-                    await _toolDb.UpdateAsync(existingTool, dbToolDTO);
+                    await _toolDb.UpdateAsync(dbToolDTO);
                     await AddOrUpdateToolProperties(existingToolDTO, tool.Function.Parameters.properties);
                 }
                 else

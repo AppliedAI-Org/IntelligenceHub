@@ -4,6 +4,9 @@ using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Common;
 using static IntelligenceHub.Common.GlobalVariables;
 using System.Text.RegularExpressions;
+using IntelligenceHub.Common.Config;
+using Microsoft.Extensions.Options;
+using IntelligenceHub.Common.Extensions;
 
 namespace IntelligenceHub.Business.Handlers
 {
@@ -14,15 +17,9 @@ namespace IntelligenceHub.Business.Handlers
     {
         #region Profile And Tool Validation
 
-        public List<string> _validModels = new List<string>()
-        {
-            // ensure these are lowercase when making additions
-            "gpt-4o",
-            "gpt-4o-mini",
-            "claude"
-        };
+        private readonly string[] _validModels;
 
-        public List<string> _validToolArgTypes = new List<string>()
+        public string[] _validToolArgTypes = new string[]
         {
             // verify these
             "char",
@@ -42,7 +39,10 @@ namespace IntelligenceHub.Business.Handlers
         /// <summary>
         /// Default constructor for the ValidationHandler class.
         /// </summary>
-        public ValidationHandler() { }
+        public ValidationHandler(IOptionsMonitor<Settings> settings) 
+        {
+            _validModels = settings.CurrentValue.ValidAGIModels;
+        }
 
         /// <summary>
         /// Validates the API chat request DTO.
@@ -82,7 +82,14 @@ namespace IntelligenceHub.Business.Handlers
         /// <returns>An error message string, or null if validation passes.</returns>
         public string? ValidateBaseDTO(Profile profile)
         {
-            if (profile.Model != null && _validModels.Contains(profile.Model.ToLower()) == false) return "The model name must match and existing AI model";
+            if (profile.Model == null) return "The model parameter is required.";
+            if (profile.Host == null || profile.Host == AGIServiceHosts.None) return "The host parameter is required.";
+            if (!string.IsNullOrEmpty(profile.Model))
+            {
+                if (profile.Host == AGIServiceHosts.Azure && _validModels.Contains(profile.Model.ToLower()) == false) return $"The provided model name is not supported by Azure. Supported models names include: {_validModels.ToCommaSeparatedString()}";
+                if (profile.Host == AGIServiceHosts.OpenAI && ValidOpenAIModels.Contains(profile.Model.ToLower()) == false) return $"The provided model name is not supported by OpenAI. Supported model names include: {ValidOpenAIModels.ToCommaSeparatedString()}";
+                if (profile.Host == AGIServiceHosts.Anthropic && ValidAnthropicModels.Contains(profile.Model.ToLower()) == false) return $"The provided model name is not supported by Anthropic. Supported model names include: {ValidAnthropicModels.ToCommaSeparatedString()}";
+            }
             if (profile.FrequencyPenalty < -2.0 || profile.FrequencyPenalty > 2.0) return "Frequency_Penalty must be a value between -2 and 2";
             if (profile.PresencePenalty < -2.0 || profile.PresencePenalty > 2.0) return "Presence_Penalty must be a value between -2 and 2";
             if (profile.Temperature < 0 || profile.Temperature > 2) return "Temperature must be a value between 0 and 2";
@@ -157,10 +164,12 @@ namespace IntelligenceHub.Business.Handlers
         {
             // Validate Name
             if (string.IsNullOrWhiteSpace(index.Name)) return "The provided index name is invalid.";
-            if (string.IsNullOrEmpty(index.GenerationProfile)) return "The GenerationProfile is required.";
+
+            var includesContentSummarization = index.GenerateKeywords ?? index.GenerateTopic ?? false;
+            if (index.GenerationHost == null && includesContentSummarization) return "The GenerationProfile is required if 'GenerateKeywords' or 'GenerateTopic' are set to true.";
             if (index.Name.Length > 255) return "The index name exceeds the maximum allowed length of 255 characters.";
             if (index.IndexingInterval <= TimeSpan.Zero) return "IndexingInterval must be a positive value.";
-            if (index.IndexingInterval > TimeSpan.FromDays(1)) return "The indexing interval cannot exceed 1 day.";
+            if (index.IndexingInterval >= TimeSpan.FromDays(1)) return "The indexing interval must be less than 1 day.";
             if (!string.IsNullOrWhiteSpace(index.EmbeddingModel) && index.EmbeddingModel.Length > 255) return "The EmbeddingModel exceeds the maximum allowed length of 255 characters.";
             if (index.MaxRagAttachments < 0) return "MaxRagAttachments must be a non-negative integer.";
             if (index.ChunkOverlap < 0 || index.ChunkOverlap > 1) return "ChunkOverlap must be between 0 and 1 (inclusive).";

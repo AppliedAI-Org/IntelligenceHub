@@ -24,10 +24,9 @@
         /// <summary>
         /// Updates an existing entity of type T in the database.
         /// </summary>
-        /// <param name="existingEntity">A definition of the existing entity.</param>
         /// <param name="entity">The updated entity.</param>
         /// <returns>An int representing the number of rows affected.</returns>
-        Task<int> UpdateAsync(T existingEntity, T entity);
+        Task<int> UpdateAsync(T entity);
 
         /// <summary>
         /// Deletes an entity of type T from the database.

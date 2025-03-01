@@ -22,11 +22,13 @@ namespace IntelligenceHub.DAL.Implementations
         /// </summary>
         /// <param name="conversationId">The ID of the conversation.</param>
         /// <param name="maxMessages">The maximum number of messages to return.</param>
+        /// <param name="pageNumber">The number of pages to offset</param>
         /// <returns>A list of messages.</returns>
-        public async Task<List<DbMessage>> GetConversationAsync(Guid conversationId, int maxMessages)
+        public async Task<List<DbMessage>> GetConversationAsync(Guid conversationId, int maxMessages, int pageNumber)
         {
             return await _dbSet.Where(m => m.ConversationId == conversationId)
                 .OrderBy(m => m.TimeStamp)
+                .Skip((pageNumber - 1) * maxMessages)
                 .Take(maxMessages)
                 .ToListAsync();
         }

@@ -72,10 +72,10 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         public async Task GetAllTools_ReturnsNotFound_WhenNoToolsExist()
         {
             // Arrange
-            _profileLogicMock.Setup(p => p.GetAllTools()).ReturnsAsync(Enumerable.Empty<Tool>());
+            _profileLogicMock.Setup(p => p.GetAllTools(1, 10)).ReturnsAsync(Enumerable.Empty<Tool>());
 
             // Act
-            var result = await _controller.GetAllTools();
+            var result = await _controller.GetAllTools(1, 10);
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -87,10 +87,10 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var tools = new List<Tool> { new Tool { Function = new Function() { Name = "tool1" } }, new Tool { Function = new Function() { Name = "tool2" } } };
-            _profileLogicMock.Setup(p => p.GetAllTools()).ReturnsAsync(tools);
+            _profileLogicMock.Setup(p => p.GetAllTools(1, 10)).ReturnsAsync(tools);
 
             // Act
-            var result = await _controller.GetAllTools();
+            var result = await _controller.GetAllTools(1, 10);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);

@@ -51,33 +51,22 @@ namespace IntelligenceHub.DAL.Implementations
         {
             await _dbSet.AddAsync(entity);
             await _context.SaveChangesAsync();
+            await _context.Entry(entity).ReloadAsync();
             return entity;
         }
 
         /// <summary>
         /// Updates an existing entity of type T in the database.
         /// </summary>
-        /// <param name="existingEntity">A definition of the existing entity.</param>
         /// <param name="entity">The updated entity.</param>
         /// <returns>An int representing the number of rows affected.</returns>
-        public async Task<int> UpdateAsync(T existingEntity, T entity) // Refactor this after removing 'existingEntity' parameter
+        public async Task<int> UpdateAsync(T entity)
         {
-            // Get the entry for the existing entity
-            var entry = _context.Entry(existingEntity);
-
-            foreach (var property in entry.Properties)
-            {
-                if (property.Metadata.IsPrimaryKey())
-                {
-                    continue; // Skip primary key properties
-                }
-
-                var newValue = property.Metadata.PropertyInfo?.GetValue(entity);
-                property.CurrentValue = newValue;
-            }
-
+            _dbSet.Attach(entity);
+            _context.Entry(entity).State = EntityState.Modified;
             return await _context.SaveChangesAsync();
         }
+
 
         /// <summary>
         /// Deletes an entity of type T from the database.

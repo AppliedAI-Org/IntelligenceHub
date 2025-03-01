@@ -13,5 +13,7 @@
         public int MaxDbRetryDelay { get; set; }
         public int MaxCircuitBreakerFailures { get; set; }
         public int CircuitBreakerBreakDuration { get; set; }
+        public string[] ValidAGIModels { get; set; } = Array.Empty<string>();
+        public string DefaultImageGenHost { get; set; } = string.Empty;
     }
 }

@@ -1,8 +1,10 @@
 using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Implementations;
+using IntelligenceHub.Common.Config;
 using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
+using Microsoft.Extensions.Options;
 using Moq;
 using static IntelligenceHub.Common.GlobalVariables;
 
@@ -15,6 +17,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         private readonly Mock<IToolRepository> _mockToolRepository;
         private readonly Mock<IPropertyRepository> _mockPropertyRepository;
         private readonly Mock<IValidationHandler> _mockValidationHandler;
+        private readonly Mock<IOptionsMonitor<Settings>> _mockIOptions;
         private readonly ProfileLogic _profileLogic;
 
         public ProfileLogicTests()
@@ -24,7 +27,10 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockToolRepository = new Mock<IToolRepository>();
             _mockPropertyRepository = new Mock<IPropertyRepository>();
             _mockValidationHandler = new Mock<IValidationHandler>();
+            _mockIOptions = new Mock<IOptionsMonitor<Settings>>();
+
             _profileLogic = new ProfileLogic(
+                _mockIOptions.Object,
                 _mockProfileRepository.Object,
                 _mockProfileToolsRepository.Object,
                 _mockToolRepository.Object,
@@ -128,7 +134,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockProfileRepository.Setup(repo => repo.GetAllAsync(null, null)).ReturnsAsync(new List<DbProfile>());
 
             // Act
-            var result = await _profileLogic.GetAllProfiles();
+            var result = await _profileLogic.GetAllProfiles(1, 10);
 
             // Assert
             Assert.Empty(result);
@@ -143,7 +149,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockProfileToolsRepository.Setup(repo => repo.GetToolAssociationsAsync(It.IsAny<int>())).ReturnsAsync(new List<DbProfileTool>());
 
             // Act
-            var result = await _profileLogic.GetAllProfiles();
+            var result = await _profileLogic.GetAllProfiles(1, 10);
 
             // Assert
             Assert.NotEmpty(result);

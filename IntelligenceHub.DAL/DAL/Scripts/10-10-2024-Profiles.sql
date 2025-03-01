@@ -16,4 +16,5 @@
     ReferenceProfiles NVARCHAR(2040),
     ReferenceDescription NVARCHAR(2040),
     Host NVARCHAR(255) NOT NULL,
+    ImageHost NVARCHAR(255),
 );

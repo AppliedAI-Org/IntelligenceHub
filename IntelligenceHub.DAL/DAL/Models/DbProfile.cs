@@ -12,9 +12,10 @@ namespace IntelligenceHub.DAL.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         [Required]
-        public string Name { get; set; }
-        public string Model { get; set; }
-        public string Host { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Model { get; set; } = string.Empty;
+        public string Host { get; set; } = string.Empty;
+        public string? ImageHost { get; set; }
         public double? FrequencyPenalty { get; set; }
         public double? PresencePenalty { get; set; }
         public double? Temperature { get; set; }

@@ -29,7 +29,7 @@ namespace IntelligenceHub.DAL.Interfaces
         /// <param name="existingProfile">The definition of the existing profile.</param>
         /// <param name="updateProfileDto">The new definition of the profile.</param>
         /// <returns>The number of rows affected.</returns>
-        Task<int> UpdateAsync(DbProfile existingProfile, DbProfile updateProfileDto);
+        Task<int> UpdateAsync(DbProfile updateProfileDto);
 
         /// <summary>
         /// Adds a new profile to the database.

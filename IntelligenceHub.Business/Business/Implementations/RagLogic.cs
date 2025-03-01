@@ -34,6 +34,8 @@ namespace IntelligenceHub.Business.Implementations
         private readonly IBackgroundTaskQueueHandler _backgroundTaskQueue;
         private readonly IntelligenceHubDbContext _dbContext;
 
+        private readonly string _defaultAzureModel;
+
         /// <summary>
         /// Constructor for the RAG logic class that is resolved by the DI container.
         /// </summary>
@@ -46,8 +48,9 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="validationHandler">A class that can be used to validate DTO bodies passed to the API.</param>
         /// <param name="backgroundTaskQueue">A background task handler useful for performing operations without tying up resources.</param>
         /// <param name="context">DAL context from EFCore used for some more specialized scenarios.</param>
-        public RagLogic(IAGIClientFactory agiFactory, IProfileRepository profileRepository, IAISearchServiceClient aISearchServiceClient, IIndexMetaRepository metaRepository, IIndexRepository indexRepository, IValidationHandler validationHandler, IBackgroundTaskQueueHandler backgroundTaskQueue, IntelligenceHubDbContext context)
+        public RagLogic(IOptionsMonitor<Settings> settings, IAGIClientFactory agiFactory, IProfileRepository profileRepository, IAISearchServiceClient aISearchServiceClient, IIndexMetaRepository metaRepository, IIndexRepository indexRepository, IValidationHandler validationHandler, IBackgroundTaskQueueHandler backgroundTaskQueue, IntelligenceHubDbContext context)
         {
+            _defaultAzureModel = settings.CurrentValue.ValidAGIModels.FirstOrDefault() ?? string.Empty;
             _agiClientFactory = agiFactory;
             _profileRepository = profileRepository;
             _searchClient = aISearchServiceClient;
@@ -96,9 +99,6 @@ namespace IntelligenceHub.Business.Implementations
             var existing = await _metaRepository.GetByNameAsync(indexDefinition.Name);
             if (existing != null) return false;
 
-            var profile = _profileRepository.GetByNameAsync(indexDefinition.GenerationProfile);
-            if (profile == null) return false;
-
             // add index entry for metadata
             var newDbIndex = DbMappingHandler.MapToDbIndexMetadata(indexDefinition);
             var response = await _metaRepository.AddAsync(newDbIndex);
@@ -134,10 +134,6 @@ namespace IntelligenceHub.Business.Implementations
             var existingDefinition = await _metaRepository.GetByNameAsync(indexDefinition.Name);
             if (existingDefinition == null) return false;
 
-            // Ensure the generation profile exists
-            var profile = _profileRepository.GetByNameAsync(indexDefinition.GenerationProfile);
-            if (profile == null) return false;
-
             var success = await _searchClient.UpsertIndex(indexDefinition);
             if (!success) return false;
 
@@ -158,7 +154,7 @@ namespace IntelligenceHub.Business.Implementations
             else if (!existingDefinition.GenerateKeywords && newDefinition.GenerateKeywords) generateMissingFields = true;
             
             // Update the SQL entry
-            var rows = await _metaRepository.UpdateAsync(existingDefinition, newDefinition);
+            var rows = await _metaRepository.UpdateAsync(newDefinition);
 
             // Create missing generative data if required
             if (updateAllDocs)
@@ -215,8 +211,8 @@ namespace IntelligenceHub.Business.Implementations
         private async Task RunBackgroundDocumentUpdate(IndexMetadata index, DbIndexDocument document)
         {
             var documentDto = DbMappingHandler.MapFromDbIndexDocument(document);
-            if (index.GenerateTopic ?? false && string.IsNullOrEmpty(document.Topic)) document.Topic = await GenerateDocumentMetadata("a topic", documentDto, index.GenerationProfile);
-            if (index.GenerateKeywords ?? false && string.IsNullOrEmpty(document.Keywords)) document.Keywords = await GenerateDocumentMetadata("a comma separated list of keywords", documentDto, index.GenerationProfile);
+            if (index.GenerateTopic ?? false && string.IsNullOrEmpty(document.Topic)) document.Topic = await GenerateDocumentMetadata("a topic", documentDto, index.GenerationHost ?? AGIServiceHosts.None);
+            if (index.GenerateKeywords ?? false && string.IsNullOrEmpty(document.Keywords)) document.Keywords = await GenerateDocumentMetadata("a comma separated list of keywords", documentDto, index.GenerationHost ?? AGIServiceHosts.None);
 
             // Use EF Core execution strategy
             var strategy = _dbContext.Database.CreateExecutionStrategy();
@@ -361,8 +357,8 @@ namespace IntelligenceHub.Business.Implementations
 
             foreach (var document in documentUpsertRequest.Documents)
             {
-                if (indexData.GenerateTopic) document.Topic = await GenerateDocumentMetadata("a topic", document, indexData.GenerationProfile);
-                if (indexData.GenerateKeywords) document.Keywords = await GenerateDocumentMetadata("a comma seperated list of keywords", document, indexData.GenerationProfile);
+                if (indexData.GenerateTopic) document.Topic = await GenerateDocumentMetadata("a topic", document, indexData.GenerationHost.ConvertToServiceHost());
+                if (indexData.GenerateKeywords) document.Keywords = await GenerateDocumentMetadata("a comma seperated list of keywords", document, indexData.GenerationHost.ConvertToServiceHost());
 
                 var newDbDocument = DbMappingHandler.MapToDbIndexDocument(document);
 
@@ -413,8 +409,10 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="document">The document to generate the data for.</param>
         /// <param name="profileName">The name of the profile that will be used to generate.</param>
         /// <returns>The string generated by the AGI client based on the provided document.</returns>
-        private async Task<string> GenerateDocumentMetadata(string dataFormat, IndexDocument document, string profileName)
+        private async Task<string> GenerateDocumentMetadata(string dataFormat, IndexDocument document, AGIServiceHosts host)
         {
+            if (host == AGIServiceHosts.None) return string.Empty;
+
             var completion = $"Please create {dataFormat} summarizing the below data delimited by triple " +
                 $"backticks. Your response should only contain {dataFormat} and absolutely no other textual " +
                 $"data.\n\n";
@@ -425,17 +423,17 @@ namespace IntelligenceHub.Business.Implementations
             completion += $"\ncontent: {document.Content}";
             completion += $"\n```";
 
-            // retrieve the generation profile from the database
-            var profile = await _profileRepository.GetByNameAsync(profileName);
-            if (profile == null) return string.Empty;
+            var model = DefaultOpenAIModel;
+            if (host == AGIServiceHosts.Azure) model = _defaultAzureModel;
+            else if (host == AGIServiceHosts.Anthropic) model = DefaultAnthropicModel;
 
             var completionRequest = new CompletionRequest()
             {
-                ProfileOptions = DbMappingHandler.MapFromDbProfile(profile),
+                ProfileOptions = new Profile() { Model = model, ImageHost = AGIServiceHosts.None },
                 Messages = new List<Message>() { new Message() { Role = Role.User, Content = completion } }
             };
 
-            var aiClient = _agiClientFactory.GetClient(profile.Host.ConvertToServiceHost());
+            var aiClient = _agiClientFactory.GetClient(host);
             var response = await aiClient.PostCompletion(completionRequest); // create a seperate method for internal API completions
             var content = response?.Messages.Last(m => m.Role == Role.Assistant).Content ?? string.Empty;
             return content.Length > 255 ? content.Substring(0, 255) : content; // If content exceeds SQL column size, truncate.

@@ -15,7 +15,7 @@ namespace IntelligenceHub.DAL.Models
         public string Name { get; set; } = string.Empty;
         public string? QueryType { get; set; }
         [Required]
-        public string GenerationProfile { get; set; } = string.Empty;
+        public string GenerationHost { get; set; } = string.Empty;
         [Required]
         public TimeSpan IndexingInterval { get; set; }
         public string? EmbeddingModel { get; set; }

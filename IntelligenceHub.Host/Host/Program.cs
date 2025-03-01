@@ -86,12 +86,10 @@ namespace IntelligenceHub.Host
             builder.Services.AddScoped<IIndexMetaRepository, IndexMetaRepository>();
 
             // Handlers
-            var serviceUrls = new Dictionary<string, string[]>
-                {
-                    { ClientPolicies.AzureAIClientPolicy.ToString(), agiClientSettings.AzureServices.Select(service => service.Endpoint).ToArray() },
-                    { ClientPolicies.OpenAIClientPolicy.ToString(), agiClientSettings.OpenAIServices.Select(service => service.Endpoint).ToArray() },
-                    { ClientPolicies.AnthropicAIClientPolicy.ToString(), agiClientSettings.AnthropicServices.Select(service => service.Endpoint).ToArray() }
-                };
+            var serviceUrls = new Dictionary<string, string[]>();
+            if (agiClientSettings?.AzureOpenAIServices != null) serviceUrls.Add(ClientPolicies.AzureAIClientPolicy.ToString(), agiClientSettings.AzureOpenAIServices.Select(service => service.Endpoint).ToArray());
+            if (agiClientSettings?.OpenAIServices != null) serviceUrls.Add(ClientPolicies.OpenAIClientPolicy.ToString(), agiClientSettings.OpenAIServices.Select(service => service.Endpoint).ToArray());
+            if (agiClientSettings?.AnthropicServices != null) serviceUrls.Add(ClientPolicies.AnthropicAIClientPolicy.ToString(), agiClientSettings.AnthropicServices.Select(service => service.Endpoint).ToArray());
 
             builder.Services.AddSingleton(new LoadBalancingSelector(serviceUrls));
             builder.Services.AddSingleton<IValidationHandler, ValidationHandler>();
@@ -152,7 +150,7 @@ namespace IntelligenceHub.Host
             }
 
             // Register policies for each service type
-            RegisterClientPolicy(builder.Services, ClientPolicies.AzureAIClientPolicy.ToString(), ClientPolicies.AzureAIClientPolicy.ToString(), agiClientSettings.AzureServices.Count);
+            RegisterClientPolicy(builder.Services, ClientPolicies.AzureAIClientPolicy.ToString(), ClientPolicies.AzureAIClientPolicy.ToString(), agiClientSettings.AzureOpenAIServices.Count);
             RegisterClientPolicy(builder.Services, ClientPolicies.OpenAIClientPolicy.ToString(), ClientPolicies.OpenAIClientPolicy.ToString(), agiClientSettings.OpenAIServices.Count);
             RegisterClientPolicy(builder.Services, ClientPolicies.AnthropicAIClientPolicy.ToString(), ClientPolicies.AnthropicAIClientPolicy.ToString(), agiClientSettings.AnthropicServices.Count);
 
@@ -224,6 +222,7 @@ namespace IntelligenceHub.Host
             #region Swagger
             builder.Services.AddSwaggerGen(options =>
             {
+                options.EnableAnnotations(); // Enable annotations for Swagger, allowing for method renaming and custom descriptions
                 options.SwaggerDoc("v1", new OpenApiInfo
                 {
                     Title = "Intelligence Hub API",
@@ -285,7 +284,6 @@ namespace IntelligenceHub.Host
                 // configure prod cors policy
             }
 
-            app.UseFileServer();
             app.UseRouting();
 
             app.UseMiddleware<LoggingMiddleware>();

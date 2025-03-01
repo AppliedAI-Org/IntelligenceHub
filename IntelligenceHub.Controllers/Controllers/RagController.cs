@@ -7,6 +7,7 @@ using static IntelligenceHub.Common.GlobalVariables;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace IntelligenceHub.Controllers
 {
@@ -36,6 +37,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>The definition of the new index.</returns>
         [HttpGet]
         [Route("Index/{index}")]
+        [SwaggerOperation(OperationId = "GetIndexAsync")]
         [ProducesResponseType(typeof(IndexMetadata), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -62,6 +64,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>A list of index definitions.</returns>
         [HttpGet]
         [Route("Index/All")]
+        [SwaggerOperation(OperationId = "GetAllIndexesAsync")]
         [ProducesResponseType(typeof(IEnumerable<IndexMetadata>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -87,6 +90,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An empty ObjectResult.</returns>
         [HttpPost]
         [Route("Index")]
+        [SwaggerOperation(OperationId = "CreateIndexAsync")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -114,6 +118,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An empty ObjectResult.</returns>
         [HttpPost]
         [Route("Index/Configure/{index}")]
+        [SwaggerOperation(OperationId = "ConfigureIndexAsync")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -141,6 +146,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing a collection of documents.</returns>
         [HttpGet]
         [Route("Index/{index}/Query/{query}")]
+        [SwaggerOperation(OperationId = "QueryIndexAsync")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -167,6 +173,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An empty ObjectResult.</returns>
         [HttpPost]
         [Route("Index/{index}/Run")]
+        [SwaggerOperation(OperationId = "RunIndexUpdateAsync")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -194,6 +201,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An empty ObjectResult.</returns>
         [HttpDelete]
         [Route("Index/Delete/{index}")]
+        [SwaggerOperation(OperationId = "DeleteIndexAsync")]
         [ProducesResponseType(typeof(CompletionResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -223,6 +231,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing a collection of documents.</returns>
         [HttpGet]
         [Route("Index/{index}/Document/{count}/Page/{page}")]
+        [SwaggerOperation(OperationId = "GetIndexDocumentsAsync")]
         [ProducesResponseType(typeof(IEnumerable<IndexDocument>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -253,6 +262,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing the document.</returns>
         [HttpGet]
         [Route("index/{index}/document/{document}")]
+        [SwaggerOperation(OperationId = "GetDocumentAsync")]
         [ProducesResponseType(typeof(IndexDocument), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -279,6 +289,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing a boolean to indicate success or failure.</returns>
         [HttpPost]
         [Route("index/{index}/Document")]
+        [SwaggerOperation(OperationId = "UpsertDocumentAsync")]
         [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -307,6 +318,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing an int indicating the number of documents that were deleted.</returns>
         [HttpDelete]
         [Route("index/{index}/Document/{commaDelimitedDocNames}")]
+        [SwaggerOperation(OperationId = "DeleteDocumentsAsync")]
         [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

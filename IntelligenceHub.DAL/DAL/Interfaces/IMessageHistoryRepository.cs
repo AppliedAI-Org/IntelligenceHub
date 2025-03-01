@@ -12,8 +12,9 @@ namespace IntelligenceHub.DAL.Interfaces
         /// </summary>
         /// <param name="conversationId">The ID of the conversation.</param>
         /// <param name="maxMessages">The maximum number of messages to return.</param>
+        /// /// <param name="pageNumber">The number of pages to offset</param>
         /// <returns>A list of messages.</returns>
-        Task<List<DbMessage>> GetConversationAsync(Guid conversationId, int count);
+        Task<List<DbMessage>> GetConversationAsync(Guid conversationId, int maxMessages, int pageNumber);
 
         /// <summary>
         /// Deletes a conversation by its ID.

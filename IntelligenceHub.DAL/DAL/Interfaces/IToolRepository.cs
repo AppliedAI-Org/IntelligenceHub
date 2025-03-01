@@ -50,7 +50,7 @@ namespace IntelligenceHub.DAL.Interfaces
         /// <param name="existingTool">The current definition of the tool.</param>
         /// <param name="updateToolDto">The new definition of the tool.</param>
         /// <returns>The number of rows affected.</returns>
-        Task<int> UpdateAsync(DbTool existingTool, DbTool updateToolDto);
+        Task<int> UpdateAsync(DbTool updateToolDto);
 
         /// <summary>
         /// Adds a new tool to the database.

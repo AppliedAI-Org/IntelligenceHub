@@ -16,7 +16,6 @@ namespace IntelligenceHub.Client.Implementations
     /// </summary>
     public class AnthropicAIClient : IAGIClient
     {
-        private readonly string _aiModelName = "claude-3-5-sonnet-20241022";
         private enum AnthropicSpecificStrings 
         {
             user_id,
@@ -153,7 +152,7 @@ namespace IntelligenceHub.Client.Implementations
             var messageParams = new MessageParameters()
             {
                 Messages = anthropicMessages,
-                Model = _aiModelName, // only one model is supported from anthropic
+                Model = request.ProfileOptions.Model, // only one model is supported from anthropic
                 Stream = false,
                 StopSequences = request.ProfileOptions.Stop,
                 System = systemMessages,
@@ -162,8 +161,8 @@ namespace IntelligenceHub.Client.Implementations
             };
 
             if (request.ProfileOptions.MaxTokens.HasValue) messageParams.MaxTokens = request.ProfileOptions.MaxTokens.Value;
-            if (request.ProfileOptions.Temperature.HasValue) messageParams.Temperature = (decimal?)request.ProfileOptions.Temperature.Value;
-            if (request.ProfileOptions.TopP.HasValue) messageParams.TopP = (decimal?)request.ProfileOptions.TopP.Value;
+            if (request.ProfileOptions.Temperature.HasValue) messageParams.Temperature = Convert.ToDecimal(request.ProfileOptions.Temperature.Value);
+            if (request.ProfileOptions.TopP.HasValue) messageParams.TopP = Convert.ToDecimal(request.ProfileOptions.TopP.Value);
             if (toolChoiceType.HasValue) messageParams.ToolChoice = new ToolChoice() { Name = request.ProfileOptions.ToolChoice, Type = (ToolChoiceType)toolChoiceType };
             return messageParams;
         }

@@ -4,6 +4,7 @@ using IntelligenceHub.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Controllers
@@ -34,6 +35,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>The profile object.</returns>
         [HttpGet]
         [Route("get/{name}")]
+        [SwaggerOperation(OperationId = "GetProfileAsync")]
         [ProducesResponseType(typeof(Profile), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -56,18 +58,21 @@ namespace IntelligenceHub.Controllers
         /// <summary>
         /// This endpoint is used to get all profiles.
         /// </summary>
+        /// <param name="page">The page number to retrieve.</param>
+        /// <param name="count">The amount of profiles to retrieve.</param>
         /// <returns>An ObjectResult containing list of profile objects.</returns>
         [HttpGet]
-        [Route("get/all")]
+        [Route("get/all/page/{page}/count/{count}")]
+        [SwaggerOperation(OperationId = "GetAllProfilesAsync")]
         [ProducesResponseType(typeof(IEnumerable<Profile>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAllProfiles()
+        public async Task<IActionResult> GetAllProfiles([FromRoute] int page, [FromRoute] int count)
         {
             try
             {
-                var result = await _profileLogic.GetAllProfiles();
+                var result = await _profileLogic.GetAllProfiles(page, count);
                 if (result is null || result.Count() < 1) return NotFound("No profiles exist. Make a post request to add some.");
                 else return Ok(result);
             }
@@ -85,6 +90,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing the new definition of the profile.</returns>
         [HttpPost]
         [Route("upsert")]
+        [SwaggerOperation(OperationId = "UpsertProfileAsync")]
         [ProducesResponseType(typeof(Profile), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -111,6 +117,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing the tools that were successfully associated with the profile.</returns>
         [HttpPost]
         [Route("associate/{name}")]
+        [SwaggerOperation(OperationId = "AssociateProfileWithToolsAsync")]
         [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -139,6 +146,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing a list of tools that were successfully dissociated from the profile.</returns>
         [HttpPost]
         [Route("dissociate/{name}")]
+        [SwaggerOperation(OperationId = "DissociateProfileFromToolsAsync")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -166,6 +174,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An empty ObjectResult.</returns>
         [HttpDelete]
         [Route("delete/{name}")]
+        [SwaggerOperation(OperationId = "DeleteProfileAsync")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -13,8 +13,9 @@ namespace IntelligenceHub.Business.Interfaces
         /// </summary>
         /// <param name="id">The ID associated with the conversation to be retrieved.</param>
         /// <param name="count">The number of messages to retrieve from the repository.</param>
+        /// <param name="page">The number of pages to offset</param>
         /// <returns>A list of messages assocaited with the conversation.</returns>
-        Task<List<Message>> GetConversationHistory(Guid id, int count);
+        Task<List<Message>> GetConversationHistory(Guid id, int count, int page);
 
         /// <summary>
         /// Updates or creates a conversation with the given messages.

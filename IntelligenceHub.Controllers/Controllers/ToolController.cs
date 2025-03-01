@@ -5,6 +5,7 @@ using static IntelligenceHub.Common.GlobalVariables;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace IntelligenceHub.Controllers
 {
@@ -34,6 +35,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing the tool.</returns>
         [HttpGet]
         [Route("get/{name}")]
+        [SwaggerOperation(OperationId = "GetToolAsync")]
         [ProducesResponseType(typeof(Tool), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -56,18 +58,21 @@ namespace IntelligenceHub.Controllers
         /// <summary>
         /// This endpoint is used to get all tools.
         /// </summary>
+        /// /// <param name="page">The page number to retrieve.</param>
+        /// <param name="count">The amount of tools to retrieve.</param>
         /// <returns></returns>
         [HttpGet]
-        [Route("get/all")]
+        [Route("get/all/page/{page}/count/{count}")]
+        [SwaggerOperation(OperationId = "GetAllToolsAsync")]
         [ProducesResponseType(typeof(IEnumerable<Tool>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAllTools()
+        public async Task<IActionResult> GetAllTools([FromRoute] int page, [FromRoute] int count)
         {
             try
             {
-                var tools = await _profileLogic.GetAllTools();
+                var tools = await _profileLogic.GetAllTools(page, count);
                 if (tools == null || tools.Count() < 1) return NotFound($"No tools exist. Make a post request to add some.");
                 else return Ok(tools);
             }
@@ -84,6 +89,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An array of profile names that use the tool.</returns>
         [HttpGet]
         [Route("get/{name}/profiles")]
+        [SwaggerOperation(OperationId = "GetToolProfilesAsync")]
         [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -110,6 +116,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An empty ResponseObject.</returns>
         [HttpPost]
         [Route("upsert")]
+        [SwaggerOperation(OperationId = "UpsertToolAsync")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -136,6 +143,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An array of profile names that were successfully associated.</returns>
         [HttpPost]
         [Route("associate/{name}")]
+        [SwaggerOperation(OperationId = "AssociateToolWithProfilesAsync")]
         [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -164,6 +172,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing a list of profiles that were successfully dissasociated.</returns>
         [HttpPost]
         [Route("dissociate/{name}")]
+        [SwaggerOperation(OperationId = "DissociateToolFromProfilesAsync")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -191,12 +200,13 @@ namespace IntelligenceHub.Controllers
         /// <returns>An empty ObjectResult.</returns>
         [HttpDelete]
         [Route("delete/{name}")]
+        [SwaggerOperation(OperationId = "DeleteToolAsync")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteTool([FromRoute] string name)
-        {
+        {   
             try
             {
                 if (string.IsNullOrEmpty(name)) return BadRequest($"Invalid request. Please check the route parameter for the profile name.");

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using Swashbuckle.AspNetCore.Annotations;
 using System.Text;
 
 
@@ -41,6 +42,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>The chat completion response.</returns>
         [HttpPost]
         [Route("Chat/{name}")]
+        [SwaggerOperation(OperationId = "ChatAsync")]
         [ProducesResponseType(typeof(CompletionResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -53,8 +55,12 @@ namespace IntelligenceHub.Controllers
                 var errorMessage = _validationLogic.ValidateChatRequest(completionRequest);
                 if (errorMessage is not null) return BadRequest(errorMessage);
                 var response = await _completionLogic.ProcessCompletion(completionRequest);
-                if (response is not null) return Ok(response);
-                else return BadRequest("Invalid request. Please check your request body.");
+                if (response is not null)
+                {
+                    if (response.FinishReason != GlobalVariables.FinishReason.Error) return Ok(response);
+                    else return BadRequest(response);
+                }
+                else return BadRequest("Invalid request. Please check your request body and ensure the profile you are calling exists.");
             }
             catch (Exception)
             {
@@ -70,6 +76,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>The chat completion response.</returns>
         [HttpPost]
         [Route("SSE/{name}")]
+        [SwaggerOperation(OperationId = "ChatSSEAsync")]
         [ProducesResponseType(typeof(CompletionStreamChunk), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -84,9 +91,9 @@ namespace IntelligenceHub.Controllers
                 var response = _completionLogic.StreamCompletion(completionRequest);
 
                 // set headers to return SSE
-                Response.Headers.Add("Content-Type", "text/event-stream");
-                Response.Headers.Add("Cache-Control", "no-cache");
-                Response.Headers.Add("Connection", "keep-alive");
+                Response.Headers["Content-Type"] = "text/event-stream";
+                Response.Headers["Cache-Control"] = "no-cache";
+                Response.Headers["Connection"] = "keep-alive";
                 await foreach (var chunk in response)
                 {
                     var jsonChunk = JsonConvert.SerializeObject(chunk);

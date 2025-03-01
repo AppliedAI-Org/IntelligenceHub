@@ -24,10 +24,9 @@ namespace IntelligenceHub.DAL.Interfaces
         /// <summary>
         /// Updates an existing index metadata entity in the database.
         /// </summary>
-        /// <param name="existingEntity">The definition of the existing entity.</param>
         /// <param name="entity">The new definition of the entity.</param>
         /// <returns>The new entity.</returns>
-        Task<int> UpdateAsync(DbIndexMetadata existingEntity, DbIndexMetadata entity);
+        Task<int> UpdateAsync(DbIndexMetadata entity);
 
         /// <summary>
         /// Retrieves all index metadata entities from the database.

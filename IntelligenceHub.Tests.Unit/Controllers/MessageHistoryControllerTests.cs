@@ -25,9 +25,10 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var id = Guid.NewGuid();
             var count = 0;
+            var page = 1;
 
             // Act
-            var result = await _controller.GetConversation(id, count);
+            var result = await _controller.GetConversation(id, page, count);
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -40,10 +41,11 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var id = Guid.NewGuid();
             var count = 1;
-            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, count)).ReturnsAsync((List<Message>)null);
+            var page = 1;
+            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, page, count)).ReturnsAsync((List<Message>)null);
 
             // Act
-            var result = await _controller.GetConversation(id, count);
+            var result = await _controller.GetConversation(id, count, page);
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -56,11 +58,12 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var id = Guid.NewGuid();
             var count = 1;
+            var page = 1;
             var messages = new List<Message> { new Message { Role = IntelligenceHub.Common.GlobalVariables.Role.User, Content = "Test" } };
-            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, count)).ReturnsAsync(messages);
+            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, page, count)).ReturnsAsync(messages);
 
             // Act
-            var result = await _controller.GetConversation(id, count);
+            var result = await _controller.GetConversation(id, page, count);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);

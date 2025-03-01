@@ -5,6 +5,7 @@ using static IntelligenceHub.Common.GlobalVariables;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace IntelligenceHub.Controllers
 {
@@ -31,20 +32,22 @@ namespace IntelligenceHub.Controllers
         /// This endpoint is used to get the conversation history for a given conversation ID.
         /// </summary>
         /// <param name="id">The ID of the conversation.</param>
+        /// <param name="page">The page number to retrieve.</param>
         /// <param name="count">The amount of messages to retrieve.</param>
         /// <returns>An ObjectResult containing List of messages.</returns>
         [HttpGet]
-        [Route("conversation/{id}/count/{count}")]
+        [Route("conversation/{id}/page/{page}/count/{count}")]
+        [SwaggerOperation(OperationId = "GetConversationAsync")]
         [ProducesResponseType(typeof(List<Message>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetConversation([FromRoute] Guid id, [FromRoute] int count) // get this to work with either a string or an int
+        public async Task<IActionResult> GetConversation([FromRoute] Guid id, [FromRoute] int page, [FromRoute] int count)
         {
             try
             {
                 if (count < 1) return BadRequest("count must be greater than 1");
-                var conversation = await _messageHistoryLogic.GetConversationHistory(id, count);
+                var conversation = await _messageHistoryLogic.GetConversationHistory(id, count, page);
                 if (conversation is null || conversation.Count < 1) return NotFound($"The conversation '{id}' does not exist or is empty...");
                 else return Ok(conversation);
             }
@@ -62,6 +65,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing the newly added messages.</returns>
         [HttpPost]
         [Route("conversation/{id}")]
+        [SwaggerOperation(OperationId = "UpsertConversationAsync")]
         [ProducesResponseType(typeof(List<Message>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -90,6 +94,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing a boolean to indicate success or failure.</returns>
         [HttpDelete]
         [Route("conversation/{id}")]
+        [SwaggerOperation(OperationId = "DeleteConversationAsync")]
         [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -116,6 +121,7 @@ namespace IntelligenceHub.Controllers
         /// <returns>An ObjectResult containing a boolean indicating success or fialure.</returns>
         [HttpDelete]
         [Route("conversation/{conversationId}/message/{messageId}")]
+        [SwaggerOperation(OperationId = "DeleteMessageAsync")]
         [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

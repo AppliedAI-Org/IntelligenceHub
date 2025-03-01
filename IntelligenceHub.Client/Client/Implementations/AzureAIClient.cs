@@ -31,7 +31,7 @@ namespace IntelligenceHub.Client.Implementations
         {
             var policyClient = policyFactory.CreateClient(ClientPolicies.AzureAIClientPolicy.ToString());
 
-            var service = settings.CurrentValue.AzureServices.Find(service => service.Endpoint == policyClient.BaseAddress?.ToString())
+            var service = settings.CurrentValue.AzureOpenAIServices.Find(service => service.Endpoint == policyClient.BaseAddress?.ToString())
                 ?? throw new InvalidOperationException("service key failed to be retrieved when attempting to generate a completion.");
 
             var apiKey = service.Key;
@@ -273,8 +273,6 @@ namespace IntelligenceHub.Client.Implementations
                 else if (completion.ProfileOptions.ToolChoice == ToolExecutionRequirement.Required.ToString()) options.ToolChoice = ChatToolChoice.CreateRequiredChoice();
                 else options.ToolChoice = ChatToolChoice.CreateFunctionChoice(completion.ProfileOptions.ToolChoice);
             }
-            // Tools and RAG DBs are not supported simultaneously, therefore RAG data is being attached at the business logic level via a direct query for now
-            //if (!string.IsNullOrEmpty(completion.ProfileOptions.RagDatabase)) options = AttachDatabaseOptions(completion.ProfileOptions.RagDatabase, options);
             return options;
         }
 
