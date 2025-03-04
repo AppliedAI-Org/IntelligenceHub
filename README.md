@@ -1,5 +1,5 @@
 # The Intelligence Hub 
-## A Powerful API Wrapper for AGI Services Designed to Simplify Consuming Common AI Services such as Chat Completions, RAG Databases, Image Generation, and More.
+### A powerful API wrapper for common AGI services, designed to simplify application AI powered app development.
 
 ### Table of Contents
 - [Overview](#overview)
@@ -13,19 +13,18 @@
 - [Acknowledgements](#acknowledgements)
 
 ### Overview
-The main goal of this project is to enable rapid setup and development for AI-powered applications. It provides a structured approach to organizing code, data, and documentation, and includes tools for data preprocessing, model training, and deployment. The project is flexible and extensible, allowing easy addition of new features.
+The main goal of this project is to enable rapid setup and development for AI-powered applications.
 
 Key capabilities include:
-- Simplified requests to AGI clients
+- Simplified request payloads to AGI clients using pre-configured agent/completion 'profiles'
 - Saving and loading conversation history
-- Tool execution (returning arguments or executing against external APIs)
-- RAG database creation and utilization
-- Basic load balancing and retry policies
-- A front-end template application for interacting with the API
+- Tool execution at external APIs
+- RAG database creation and consumption
+- Conversation persistence
 
-AI clients are resolved using a custom client factory, allowing new clients to be added easily by implementing the IAGIClient interface. This design also supports image generation from various clients, decoupling the image generation client from the API client.
+AI clients are resolved using a custom client factory, allowing new clients to be added easily by implementing the IAGIClient interface. This design also supports image generation from various clients, decoupling the image generation client from the API client. A similar design could also be used to provide support for multiple RAG services.
 
-For more information, please refer to the '[Features](#features)' section below.
+For more information, please refer to the [Features](#features) section below.
 
 ### Features
 1. **Saving agentic chat 'profiles'** to simplify client requests, and create preset configurations related to prompting and AI model configs.
@@ -53,12 +52,12 @@ List and describe the available API endpoints, including request and response fo
 
 ### Contributing
 Contributions are welcome! Please follow the steps below to contribute to the project:
-1. (Optional) If you would like to ensure your changes will be merged, please open an issue to determine if your desired changes align with the project's goals, or choose from an existing issue. Otherwise, feel free to skip this step.
+1. (Optional) If you would like to gaurentee your changes will be merged, please open an issue to determine if your desired changes align with the project's goals, or choose from an existing issue. Otherwise, feel free to skip this step.
 2. Fork the project, create a new branch, and make your changes. 
-3. Ensure that any changes include relevant unit tests and IntelliSense documentation, or update existing tests as needed.
+3. Ensure that any changes include relevant unit tests and IntelliSense documentation, or update existing tests/documentation as needed.
 4. Push your changes to your fork, and raise a pull request.
 
-If for whatever reason we miss your request, please feel free to notify us on the pull request itself, at the email provided in the 'Contact' section, or any other method you have at your disposal.
+If for whatever reason we miss your request, please feel free to notify us on the pull request itself, at the email provided in the [Contact](#contact) section, or any other method you have at your disposal.
 
 ### Contact
 For any questions comments or concerns, please reach out to Applied.AI.Help@gmail.com, or open an issue in the repository.
