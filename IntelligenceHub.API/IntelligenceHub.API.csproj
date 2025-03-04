@@ -7,25 +7,25 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="IntelligenceHub.API\API\DTOs\Message.cs" />
-    <Compile Remove="IntelligenceHub.API\API\DTOs\Profile.cs" />
-    <Compile Remove="IntelligenceHub.API\API\DTOs\RAG\IndexDocument.cs" />
-    <Compile Remove="IntelligenceHub.API\API\DTOs\Tools\Function.cs" />
-    <Compile Remove="IntelligenceHub.API\API\DTOs\Tools\Parameters.cs" />
-    <Compile Remove="IntelligenceHub.API\API\DTOs\Tools\ProfileReferenceTool.cs" />
-    <Compile Remove="IntelligenceHub.API\API\DTOs\Tools\Property.cs" />
-    <Compile Remove="IntelligenceHub.API\API\DTOs\Tools\Tool.cs" />
+    <Compile Remove="IntelligenceHub.API\DTOs\Message.cs" />
+    <Compile Remove="IntelligenceHub.API\DTOs\Profile.cs" />
+    <Compile Remove="IntelligenceHub.API\DTOs\RAG\IndexDocument.cs" />
+    <Compile Remove="IntelligenceHub.API\DTOs\Tools\Function.cs" />
+    <Compile Remove="IntelligenceHub.API\DTOs\Tools\Parameters.cs" />
+    <Compile Remove="IntelligenceHub.API\DTOs\Tools\ProfileReferenceTool.cs" />
+    <Compile Remove="IntelligenceHub.API\DTOs\Tools\Property.cs" />
+    <Compile Remove="IntelligenceHub.API\DTOs\Tools\Tool.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="IntelligenceHub.API\API\DTOs\Message.cs" />
-    <Content Include="IntelligenceHub.API\API\DTOs\Profile.cs" />
-    <Content Include="IntelligenceHub.API\API\DTOs\RAG\IndexDocument.cs" />
-    <Content Include="IntelligenceHub.API\API\DTOs\Tools\Function.cs" />
-    <Content Include="IntelligenceHub.API\API\DTOs\Tools\Parameters.cs" />
-    <Content Include="IntelligenceHub.API\API\DTOs\Tools\ProfileReferenceTool.cs" />
-    <Content Include="IntelligenceHub.API\API\DTOs\Tools\Property.cs" />
-    <Content Include="IntelligenceHub.API\API\DTOs\Tools\Tool.cs" />
+    <Content Include="IntelligenceHub.API\DTOs\Message.cs" />
+    <Content Include="IntelligenceHub.API\DTOs\Profile.cs" />
+    <Content Include="IntelligenceHub.API\DTOs\RAG\IndexDocument.cs" />
+    <Content Include="IntelligenceHub.API\DTOs\Tools\Function.cs" />
+    <Content Include="IntelligenceHub.API\DTOs\Tools\Parameters.cs" />
+    <Content Include="IntelligenceHub.API\DTOs\Tools\ProfileReferenceTool.cs" />
+    <Content Include="IntelligenceHub.API\DTOs\Tools\Property.cs" />
+    <Content Include="IntelligenceHub.API\DTOs\Tools\Tool.cs" />
   </ItemGroup>
 
   <ItemGroup>

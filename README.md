@@ -1,5 +1,16 @@
 # The Intelligence Hub - A Powerful API Wrapper for AGI Services Designed to Simplify Consuming Common AI Services such as Chat Completions, RAG Databases, Image Generation, and More.
 
+### Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [Setup](#setup)
+- [Usage](#usage)
+- [API Reference](#api-reference)
+- [Contributing](#contributing)
+- [Contact](#contact)
+- [License](#license)
+- [Acknowledgements](#acknowledgements)
+
 ### Overview
 The main goal of this project is to enable rapid setup and development for AI-powered applications. It is designed as a template for AI projects, providing a structured approach to organizing code, data, and documentation. The project includes a set of tools and utilities to assist with common tasks such as data preprocessing, model training, and deployment. It is built to be flexible and extensible, allowing developers to easily add new features and functionality.
 

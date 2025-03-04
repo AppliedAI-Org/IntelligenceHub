@@ -7,19 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="IntelligenceHub.DAL\DAL\Models\DbMessage.cs" />
-    <Compile Remove="IntelligenceHub.DAL\DAL\Models\DbProfile.cs" />
-    <Compile Remove="IntelligenceHub.DAL\DAL\Models\DbProfileTool.cs" />
-    <Compile Remove="IntelligenceHub.DAL\DAL\Models\DbProperty.cs" />
-    <Compile Remove="IntelligenceHub.DAL\DAL\Models\DbTool.cs" />
+    <Compile Remove="IntelligenceHub.DAL\Models\DbMessage.cs" />
+    <Compile Remove="IntelligenceHub.DAL\Models\DbProfile.cs" />
+    <Compile Remove="IntelligenceHub.DAL\Models\DbProfileTool.cs" />
+    <Compile Remove="IntelligenceHub.DAL\Models\DbProperty.cs" />
+    <Compile Remove="IntelligenceHub.DAL\Models\DbTool.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="IntelligenceHub.DAL\DAL\Models\DbMessage.cs" />
-    <Content Include="IntelligenceHub.DAL\DAL\Models\DbProfile.cs" />
-    <Content Include="IntelligenceHub.DAL\DAL\Models\DbProfileTool.cs" />
-    <Content Include="IntelligenceHub.DAL\DAL\Models\DbProperty.cs" />
-    <Content Include="IntelligenceHub.DAL\DAL\Models\DbTool.cs" />
+    <Content Include="IntelligenceHub.DAL\Models\DbMessage.cs" />
+    <Content Include="IntelligenceHub.DAL\Models\DbProfile.cs" />
+    <Content Include="IntelligenceHub.DAL\Models\DbProfileTool.cs" />
+    <Content Include="IntelligenceHub.DAL\Models\DbProperty.cs" />
+    <Content Include="IntelligenceHub.DAL\Models\DbTool.cs" />
   </ItemGroup>
 
   <ItemGroup>
