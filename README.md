@@ -28,18 +28,18 @@ AI clients are resolved using a custom client factory, allowing new clients to b
 For more information, please refer to the '[Features](#features)' section below.
 
 ### Features
-1. **Saving agentic chat profiles**: Simplify client requests, including configurations related to prompting and model settings such as temperature, top-p, system messages, and more.
-2. **Chat completions**: Includes streaming via a SignalR web socket or through SSE.
-3. **Automatic load balancing**: Retry logic and other resiliency considerations.
-4. **Logging**: Via Application Insights.
-5. **RAG database creation**: Document ingestion and utilization across AGI service providers. Currently, only Azure AI is supported, but an interface is provided for easy extensibility.
-6. **Mixing and matching models**: Image generation models and chat completion models with any AGI provider, including custom models deployed in Azure AI Studio.
-7. **Tool execution**: Either returning the tool arguments to the client or executing them against an external API and returning the result of that request.
-8. **Conversation history**: Saving and loading.
-9. **Support for multiple AGI providers**: Current providers include Azure AI, OpenAI, and Anthropic.
-10. **Model recursion**: Use multiple models in a single conversation, dialogues between models, or passing off complex processes to more specialized agent profiles and models.
-11. **Front-end application**: For interacting with the API and as a template for building custom applications.
-12. **Testing utilities**: Including unit tests, stress tests, and an AI competency testing module.
+1. **Saving agentic chat 'profiles'** to simplify client requests, and create preset configurations related to prompting and AI model configs.
+2. **Chat completions** including streaming via a SignalR web socket or via server side events, and support for custom models deployed in Azure AI Studio.
+3. **RAG database support**, including database creation, document ingestion, and the ability to perform RAG operations across AGI service providers. (Currently, only Azure AI is supported, but an interface is provided for easy extensibility.)
+4. **Multimodality and image generation** including the ability to mix and match image generation models accross AGI service providers.
+5. **Tool execution** via returning the tool arguments to the client, or executing them against an external API, and returning the resulting http response data.
+6. **Conversation history** saving and loading from the database.
+7. **Support for multiple AGI providers**, which currently includes Azure AI, OpenAI, and Anthropic.
+8. **Chat recursion** allowing LLM models to continue dialogues between themselves and other agent profiles, pass off complex processes to more specialized profiles, and generate additional content that would otherwise surpass the output window.
+9. **Resilient design** including automatic load balancing, and retry policies.
+10. **Automatic logging** via Application Insights.
+11. **Front-end template** to jump start the process of building custom applications to consume the API.
+12. **Testing utilities** including unit tests, stress tests, and an AI competency testing module.
 
 ### Setup - TO DO
 1. Prerequisites: List any prerequisites needed to run the project.
