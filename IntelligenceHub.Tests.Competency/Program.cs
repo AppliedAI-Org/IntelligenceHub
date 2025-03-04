@@ -147,7 +147,7 @@ namespace IntelligenceHub.Tests.Competency
         private static bool IsSuccessfulResponse(string? responseMessage, CompletionResponse completionData)
         {
             var isFailure = completionData?.FinishReason != null && completionData.FinishReason.HasValue &&
-                   completionData.FinishReason.Value == IntelligenceHub.Common.GlobalVariables.FinishReason.Error;
+                   completionData.FinishReason.Value == IntelligenceHub.Common.GlobalVariables.FinishReasons.Error;
 
             if (string.IsNullOrEmpty(responseMessage)) isFailure = true;
 

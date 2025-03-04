@@ -25,7 +25,7 @@ namespace IntelligenceHub.DAL.Interfaces
         /// Deletes a property from the database.
         /// </summary>
         /// <param name="property">The property to delete.</param>
-        /// <returns>The number of rows affected.</returns>
-        Task<int> DeleteAsync(DbProperty property);
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        Task<bool> DeleteAsync(DbProperty property);
     }
 }

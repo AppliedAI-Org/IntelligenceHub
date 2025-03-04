@@ -85,44 +85,51 @@ namespace IntelligenceHub.Client.Implementations
         /// <returns>The completion response.</returns>
         public async Task<CompletionResponse> PostCompletion(CompletionRequest completionRequest)
         {
-            var options = BuildCompletionOptions(completionRequest);
-            var messages = BuildCompletionMessages(completionRequest);
-
-            ChatCompletion completion;
-            if (completionRequest.ProfileOptions.Model?.ToLower() == _gpt4o) completion = await _gpt4oAIClient.CompleteChatAsync(messages, options);
-            else if (completionRequest.ProfileOptions.Model?.ToLower() == _gpt4oMini) completion = await _gpt4ominiAIClient.CompleteChatAsync(messages, options);
-            else return new CompletionResponse() { FinishReason = FinishReason.Error };
-
-            var content = string.Empty;
-            var base64Image = string.Empty;
-            foreach (var contentChunk in completion.Content)
+            try
             {
-                content += contentChunk.Text ?? contentChunk.Refusal;
-                if (contentChunk.ImageBytes != null && contentChunk.ImageBytes.ToArray().Length > 0) Convert.ToBase64String(contentChunk.ImageBytes);
+                var options = BuildCompletionOptions(completionRequest);
+                var messages = BuildCompletionMessages(completionRequest);
+
+                ChatCompletion completion;
+                if (completionRequest.ProfileOptions.Model?.ToLower() == _gpt4o) completion = await _gpt4oAIClient.CompleteChatAsync(messages, options);
+                else if (completionRequest.ProfileOptions.Model?.ToLower() == _gpt4oMini) completion = await _gpt4ominiAIClient.CompleteChatAsync(messages, options);
+                else return new CompletionResponse() { FinishReason = FinishReasons.Error };
+
+                var content = string.Empty;
+                var base64Image = string.Empty;
+                foreach (var contentChunk in completion.Content)
+                {
+                    content += contentChunk.Text ?? contentChunk.Refusal;
+                    if (contentChunk.ImageBytes != null && contentChunk.ImageBytes.ToArray().Length > 0) Convert.ToBase64String(contentChunk.ImageBytes);
+                }
+
+                var updatedMessages = completionRequest.Messages;
+                var message = new Message()
+                {
+                    Role = completion.Role.ToString().ConvertStringToRole(),
+                    Content = content,
+                    Base64Image = base64Image,
+                };
+                updatedMessages.Add(message);
+
+                var toolCalls = new Dictionary<string, string>();
+                foreach (var tool in completion.ToolCalls)
+                {
+                    if (tool.FunctionName.ToLower() != SystemTools.Chat_Recursion.ToString().ToLower()) toolCalls.Add(tool.FunctionName, tool.FunctionArguments.ToString());
+                    else toolCalls.Add(SystemTools.Chat_Recursion.ToString().ToLower(), string.Empty);
+                }
+
+                return new CompletionResponse()
+                {
+                    Messages = updatedMessages,
+                    ToolCalls = toolCalls,
+                    FinishReason = completion.FinishReason.ToString().ConvertStringToFinishReason()
+                };
             }
-
-            var updatedMessages = completionRequest.Messages;
-            var message = new Message()
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
             {
-                Role = completion.Role.ToString().ConvertStringToRole(),
-                Content = content,
-                Base64Image = base64Image,
-            };
-            updatedMessages.Add(message);
-
-            var toolCalls = new Dictionary<string, string>();
-            foreach (var tool in completion.ToolCalls)
-            {
-                if (tool.FunctionName.ToLower() != SystemTools.Chat_Recursion.ToString().ToLower()) toolCalls.Add(tool.FunctionName, tool.FunctionArguments.ToString());
-                else toolCalls.Add(SystemTools.Chat_Recursion.ToString().ToLower(), string.Empty);
+                return new CompletionResponse() { FinishReason = FinishReasons.TooManyRequests };
             }
-
-            return new CompletionResponse()
-            {
-                Messages = updatedMessages,
-                ToolCalls = toolCalls,
-                FinishReason = completion.FinishReason.ToString().ConvertStringToFinishReason()
-            };
         }
 
         /// <summary>

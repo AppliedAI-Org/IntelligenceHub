@@ -4,6 +4,7 @@ using IntelligenceHub.DAL.Models;
 using IntelligenceHub.Common.Config;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.DAL.Interfaces;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Business.Implementations
 {
@@ -28,14 +29,14 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="id">The ID associated with the conversation to be retrieved.</param>
         /// <param name="count">The number of messages to retrieve from the repository.</param>
-        /// <param name="page">The number of pages to offset</param>
-        /// <returns>A list of messages assocaited with the conversation.</returns>
-        public async Task<List<Message>> GetConversationHistory(Guid id, int count, int page)
+        /// <param name="page">The number of pages to offset.</param>
+        /// <returns>An <see cref="APIResponseWrapper{List{Message}}"/> containing a list of messages associated with the conversation.</returns>
+        public async Task<APIResponseWrapper<List<Message>>> GetConversationHistory(Guid id, int count, int page)
         {
             var messages = new List<Message>();
             var dbMessages = await _messageHistoryRepository.GetConversationAsync(id, count, page);
             foreach (var dbMessage in dbMessages) messages.Add(DbMappingHandler.MapFromDbMessage(dbMessage));
-            return messages;
+            return APIResponseWrapper<List<Message>>.Success(messages);
         }
 
         /// <summary>
@@ -43,28 +44,29 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="conversationId">The ID of the conversation.</param>
         /// <param name="messages">The messages to add to the conversation history.</param>
-        /// <returns>The messages that were successfully added.</returns>
-        public async Task<List<Message>> UpdateOrCreateConversation(Guid conversationId, List<Message> messages)
+        /// <returns>An <see cref="APIResponseWrapper{List{Message}}"/> containing the messages that were successfully added.</returns>
+        public async Task<APIResponseWrapper<List<Message>>> UpdateOrCreateConversation(Guid conversationId, List<Message> messages)
         {
             var addedMessages = new List<Message>();
             foreach (var message in messages)
             {
                 var dbMessage = DbMappingHandler.MapToDbMessage(message, conversationId);
                 var addedMessage = await _messageHistoryRepository.AddAsync(dbMessage);
-                if (addedMessage is null) return addedMessages;
                 addedMessages.Add(message);
             }
-            return addedMessages;
+            return APIResponseWrapper<List<Message>>.Success(addedMessages);
         }
 
         /// <summary>
         /// Deletes a conversation from the repository.
         /// </summary>
         /// <param name="id">The ID of the conversation to delete.</param>
-        /// <returns>A boolean indicating the success of the operation.</returns>
-        public async Task<bool> DeleteConversation(Guid id)
+        /// <returns>An <see cref="APIResponseWrapper{bool}"/> indicating the success of the operation.</returns>
+        public async Task<APIResponseWrapper<bool>> DeleteConversation(Guid id)
         {
-            return await _messageHistoryRepository.DeleteConversationAsync(id);
+            var success = await _messageHistoryRepository.DeleteConversationAsync(id);
+            if (success) return APIResponseWrapper<bool>.Success(true);
+            return APIResponseWrapper<bool>.Failure($"No conversation with ID '{id}' exists.", APIResponseStatusCodes.NotFound);
         }
 
         /// <summary>
@@ -72,13 +74,14 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="conversationId">The ID of the conversation.</param>
         /// <param name="message">The message to be added to the conversation.</param>
-        /// <returns>The new message as its represented in the database.</returns>
-        public async Task<DbMessage?> AddMessage(Guid conversationId, Message message)
+        /// <returns>An <see cref="APIResponseWrapper{DbMessage}"/> containing the new message as it is represented in the database.</returns>
+        public async Task<APIResponseWrapper<DbMessage>> AddMessage(Guid conversationId, Message message)
         {
             var dbMessage = DbMappingHandler.MapToDbMessage(message, conversationId);
             var conversation = await _messageHistoryRepository.GetConversationAsync(conversationId, 1, 1);
-            if (conversation == null) return null;
-            return await _messageHistoryRepository.AddAsync(dbMessage);
+            if (conversation == null) return APIResponseWrapper<DbMessage>.Failure($"No conversation with the id '{conversationId}' was found", APIResponseStatusCodes.NotFound);
+            var updatedDbMessage = await _messageHistoryRepository.AddAsync(dbMessage);
+            return APIResponseWrapper<DbMessage>.Success(updatedDbMessage);
         }
 
         /// <summary>
@@ -86,10 +89,12 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="conversationId">The ID of the conversation.</param>
         /// <param name="messageId">The ID of the message.</param>
-        /// <returns>A boolean representing the success or failure of the operation.</returns>
-        public async Task<bool> DeleteMessage(Guid conversationId, int messageId)
+        /// <returns>An <see cref="APIResponseWrapper{bool}"/> representing the success or failure of the operation.</returns>
+        public async Task<APIResponseWrapper<bool>> DeleteMessage(Guid conversationId, int messageId)
         {
-            return await _messageHistoryRepository.DeleteAsync(conversationId, messageId);
+            var success = await _messageHistoryRepository.DeleteAsync(conversationId, messageId);
+            if (success) return APIResponseWrapper<bool>.Success(true);
+            return APIResponseWrapper<bool>.Failure($"No conversation with id '{conversationId}' was found.", APIResponseStatusCodes.NotFound);
         }
     }
 }

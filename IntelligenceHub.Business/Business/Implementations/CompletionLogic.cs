@@ -33,7 +33,7 @@ namespace IntelligenceHub.Business.Implementations
         /// <summary>
         /// A constructor utilized to resolve dependencies for the completion logic via dependency injection.
         /// </summary>
-        /// <param name="agiClientFactory">Client factory used to retieve the client associated with request's host parameter.</param>
+        /// <param name="agiClientFactory">Client factory used to retrieve the client associated with request's host parameter.</param>
         /// <param name="searchClient">Search service client used for requests requiring RAG retrieval.</param>
         /// <param name="toolClient">HttpClient that can be used to send requests to tools that have an associated endpoint.</param>
         /// <param name="toolRepository">DAL repository to retrieve tool information.</param>
@@ -64,12 +64,22 @@ namespace IntelligenceHub.Business.Implementations
         /// Streams completion updates to the requesting client.
         /// </summary>
         /// <param name="completionRequest">The body of the completion request.</param>
-        /// <returns>An asyncronous enumerable that contain the completion response generated from an AGI client.</returns>
-        public async IAsyncEnumerable<CompletionStreamChunk> StreamCompletion(CompletionRequest completionRequest)
+        /// <returns>An asynchronous enumerable that contains the completion response generated from an AGI client.</returns>
+        public async IAsyncEnumerable<APIResponseWrapper<CompletionStreamChunk>> StreamCompletion(CompletionRequest completionRequest)
         {
-            if (completionRequest.ProfileOptions == null || string.IsNullOrEmpty(completionRequest.ProfileOptions.Name)) yield break;
+            if (completionRequest.ProfileOptions == null || string.IsNullOrEmpty(completionRequest.ProfileOptions.Name))
+            {
+                yield return APIResponseWrapper<CompletionStreamChunk>.Failure("The required property 'Name' was not found in the ProfileOptions.", APIResponseStatusCodes.BadRequest);
+                yield break;
+            }
 
             var profile = await _profileDb.GetByNameAsync(completionRequest.ProfileOptions.Name);
+            if (profile == null)
+            {
+                yield return APIResponseWrapper<CompletionStreamChunk>.Failure($"The profile '{completionRequest.ProfileOptions.Name}' was not found in the database.", APIResponseStatusCodes.NotFound);
+                yield break;
+            }
+
             var mappedProfile = DbMappingHandler.MapFromDbProfile(profile);
             completionRequest.ProfileOptions = await BuildCompletionOptions(mappedProfile, completionRequest.ProfileOptions);
 
@@ -83,14 +93,22 @@ namespace IntelligenceHub.Business.Implementations
             }
 
             // construct AGI Client based on the required host
-            if (completionRequest.ProfileOptions.Host == null) yield break;
+            if (completionRequest.ProfileOptions?.Host == null)
+            {
+                yield return APIResponseWrapper<CompletionStreamChunk>.Failure("The required property 'Host' was not found in the Profile or ProfileOptions.", APIResponseStatusCodes.BadRequest);
+                yield break;
+            }
             var agiClient = _agiClientFactory.GetClient(completionRequest.ProfileOptions.Host);
 
             // Add data retrieved from RAG indexing
             if (!string.IsNullOrEmpty(completionRequest.ProfileOptions.RagDatabase))
             {
                 var completionMessage = completionRequest.Messages.LastOrDefault();
-                if (completionMessage == null) yield break;
+                if (completionMessage == null)
+                {
+                    yield return APIResponseWrapper<CompletionStreamChunk>.Failure("The completion request must contain a message, but none were found.", APIResponseStatusCodes.BadRequest);
+                    yield break;
+                }
 
                 var completionMessageWithRagData = await RetrieveRagData(completionRequest.ProfileOptions.RagDatabase, completionRequest, agiClient);
                 if (completionMessageWithRagData != null)
@@ -101,7 +119,11 @@ namespace IntelligenceHub.Business.Implementations
             }
 
             var completionCollection = agiClient.StreamCompletion(completionRequest);
-            if (completionCollection == null) yield break;
+            if (completionCollection == null)
+            {
+                yield return APIResponseWrapper<CompletionStreamChunk>.Failure("An unknown error was encountered when trying to generate a completion. Please validate your API credentials, and rate limits.", APIResponseStatusCodes.InternalError);
+                yield break;
+            }
 
             Role? dbMessageRole;
             var allCompletionChunks = string.Empty;
@@ -119,23 +141,28 @@ namespace IntelligenceHub.Business.Implementations
                     dbMessageRole = roleString.ConvertStringToRole();
                     update.Role = dbMessageRole;
                 }
-                yield return update;
+                yield return APIResponseWrapper<CompletionStreamChunk>.Success(update);
             }
 
             if (toolCallDictionary.Any())
             {
                 if (!string.IsNullOrEmpty(allCompletionChunks)) completionRequest.Messages.Add(new Message() { Content = allCompletionChunks, Role = Role.Assistant, User = _defaultUser, TimeStamp = DateTime.UtcNow });
-                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(toolCallDictionary, completionRequest.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId);
+                var wrappedResponse = await ExecuteTools(toolCallDictionary, completionRequest.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId);
+                var (toolExecutionResponses, recursiveMessages) = wrappedResponse.Data;
 
                 var completionString = string.Empty;
                 if (recursiveMessages.Any()) foreach (var message in recursiveMessages) completionString += $"{message.User}: {message.Content}\n;";
-                if (toolExecutionResponses.Any()) yield return new CompletionStreamChunk()
+                if (toolExecutionResponses.Any())
                 {
-                    CompletionUpdate = completionString,
-                    ToolCalls = toolCallDictionary,
-                    ToolExecutionResponses = toolExecutionResponses,
-                    FinishReason = FinishReason.ToolCalls,
-                };
+                    var responseChunk = new CompletionStreamChunk()
+                    {
+                        CompletionUpdate = completionString,
+                        ToolCalls = toolCallDictionary,
+                        ToolExecutionResponses = toolExecutionResponses,
+                        FinishReason = FinishReasons.ToolCalls,
+                    };
+                    yield return APIResponseWrapper<CompletionStreamChunk>.Success(responseChunk);
+                }
             }
 
             // save new messages to database
@@ -158,13 +185,14 @@ namespace IntelligenceHub.Business.Implementations
         /// Processes a completion request and returns the completion response.
         /// </summary>
         /// <param name="completionRequest">The body of the completion request.</param>
-        /// <returns>A completion generated by an AGI client.</returns>
-        public async Task<CompletionResponse?> ProcessCompletion(CompletionRequest completionRequest)
+        /// <returns>An <see cref="APIResponseWrapper{CompletionResponse}"/> containing a completion generated by an AGI client.</returns>
+        public async Task<APIResponseWrapper<CompletionResponse>> ProcessCompletion(CompletionRequest completionRequest)
         {
-            if (!completionRequest.Messages.Any() || string.IsNullOrEmpty(completionRequest.ProfileOptions.Name)) return null;
+            if (string.IsNullOrEmpty(completionRequest.ProfileOptions.Name)) APIResponseWrapper<CompletionResponse>.Failure($"The required property ProfileOptions.Name is required.", APIResponseStatusCodes.BadRequest);
+            if (!completionRequest.Messages.Any() && completionRequest.Messages.Exists(x => x.Role == Role.User)) APIResponseWrapper<CompletionResponse>.Failure($"The messages array contain at least one User message.", APIResponseStatusCodes.BadRequest);
 
             var profile = await _profileDb.GetByNameAsync(completionRequest.ProfileOptions.Name);
-            if (profile == null) return null;
+            if (profile == null) return APIResponseWrapper<CompletionResponse>.Failure($"The profile '{completionRequest.ProfileOptions.Name}' was not found in the database.", APIResponseStatusCodes.NotFound);
 
             var mappedProfile = DbMappingHandler.MapFromDbProfile(profile);
             completionRequest.ProfileOptions = await BuildCompletionOptions(mappedProfile, completionRequest.ProfileOptions);
@@ -178,7 +206,7 @@ namespace IntelligenceHub.Business.Implementations
             }
 
             // construct AGI Client based on the required host
-            if (completionRequest.ProfileOptions.Host == null) return null;
+            if (completionRequest.ProfileOptions?.Host == null) return APIResponseWrapper<CompletionResponse>.Failure($"The required property 'Host' was not found in the Profile or ProfileOptions.", APIResponseStatusCodes.BadRequest);
             var agiClient = _agiClientFactory.GetClient(completionRequest.ProfileOptions.Host);
 
             if (!string.IsNullOrEmpty(completionRequest.ProfileOptions.RagDatabase))
@@ -193,7 +221,8 @@ namespace IntelligenceHub.Business.Implementations
             }
 
             var completion = await agiClient.PostCompletion(completionRequest);
-            if (completion.FinishReason == FinishReason.Error) return completion;
+            if (completion.FinishReason == FinishReasons.Error) return APIResponseWrapper<CompletionResponse>.Failure(completion, "An error was encountered when trying to generate a completion.", APIResponseStatusCodes.InternalError);
+            if (completion.FinishReason == FinishReasons.TooManyRequests) return APIResponseWrapper<CompletionResponse>.Failure(completion, $"The Host service quota has been exceeded. Please check your API quota details for '{completionRequest.ProfileOptions.Host}'.", APIResponseStatusCodes.TooManyRequests);
 
             if (completionRequest.ConversationId is Guid id)
             {
@@ -208,13 +237,14 @@ namespace IntelligenceHub.Business.Implementations
                 await _messageHistoryRepository.AddAsync(dbMessage);
             }
 
-            if (completion.FinishReason == FinishReason.ToolCalls)
+            if (completion.FinishReason == FinishReasons.ToolCalls)
             {
-                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId);
+                var wrappedResponse = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId);
+                var (toolExecutionResponses, recursiveMessages) = wrappedResponse.Data;
                 if (toolExecutionResponses.Any()) completion.ToolExecutionResponses.AddRange(toolExecutionResponses);
                 if (recursiveMessages.Any()) completion.Messages = recursiveMessages;
             }
-            return completion;
+            return APIResponseWrapper<CompletionResponse>.Success(completion);
         }
 
         /// <summary>
@@ -246,7 +276,7 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="profile">The profile as stored in the database.</param>
         /// <param name="profileOptions">The profile options in the request body that can be used to override existing settings.</param>
-        /// <returns>The profile updated with any existing, or overridden values.</returns>
+        /// <returns>An updated <see cref="Profile"/> with any existing, or overridden values.</returns>
         public async Task<Profile> BuildCompletionOptions(Profile profile, Profile? profileOptions = null)
         {
             // adds the profile references to the tools
@@ -300,7 +330,7 @@ namespace IntelligenceHub.Business.Implementations
         /// Builds a recursive chat system tool based on the profile references parameter.
         /// </summary>
         /// <param name="profileNames">The profiles used to create a recursive chat tool.</param>
-        /// <returns>A Recursive Chat System tool that can be called by AGI client models.</returns>
+        /// <returns>A <see cref="RecursiveChatSystemTool"/> that can be called by AGI client models.</returns>
         private async Task<RecursiveChatSystemTool> BuildProfileReferenceTool(string[] profileNames)
         {
             var referenceProfiles = new List<Profile>();
@@ -316,16 +346,15 @@ namespace IntelligenceHub.Business.Implementations
         /// <summary>
         /// Processes and executes any tool calls that are present in a completion response.
         /// </summary>
-        /// <param name="toolCalls">A dictionary of function names, and their arguemnts.</param>
+        /// <param name="toolCalls">A dictionary of function names, and their arguments.</param>
         /// <param name="messages">The conversation history used as context for the Chat Recursion system tool.</param>
         /// <param name="options">The AI client profile options associated with the request being processed.</param>
         /// <param name="conversationId">The Id of the conversation being processed.</param>
-        /// <param name="streaming">Boolean to indicate the request is streamed.</param>
         /// <param name="currentRecursionDepth">The current depth of recursion used to prevent infinite looping
         /// resulting from the Chat Recursion system tool.</param>
-        /// <returns>A tuple of the http responses assiciated with tools executed by the tool client, and any 
+        /// <returns>An <see cref="APIResponseWrapper{Tuple}"/> containing a tuple of the HTTP responses associated with tools executed by the tool client, and any 
         /// new messages generated from the Chat Recursion system tool.</returns>
-        public async Task<(List<HttpResponseMessage>, List<Message>)> ExecuteTools(Dictionary<string, string> toolCalls, List<Message> messages, Profile? options = null, Guid? conversationId = null, int currentRecursionDepth = 0)
+        public async Task<APIResponseWrapper<(List<HttpResponseMessage>, List<Message>)>> ExecuteTools(Dictionary<string, string> toolCalls, List<Message> messages, Profile? options = null, Guid? conversationId = null, int currentRecursionDepth = 0)
         {
             var functionResults = new List<HttpResponseMessage>();
             var maxDepth = options?.MaxMessageHistory ?? _defaultMaxRecursionMessageHistory;
@@ -339,7 +368,7 @@ namespace IntelligenceHub.Business.Implementations
                     if (dbTool != null && !string.IsNullOrEmpty(dbTool.ExecutionUrl)) functionResults.Add(await _ToolClient.CallFunction(tool.Key, tool.Value, dbTool.ExecutionUrl, dbTool.ExecutionMethod, dbTool.ExecutionBase64Key));
                 }
             }
-            return (functionResults, messages);
+            return APIResponseWrapper<(List<HttpResponseMessage>, List<Message>)>.Success((functionResults, messages));
         }
 
         /// <summary>
@@ -352,7 +381,7 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="conversationId">The Id of the conversation if the conversation is being saved.</param>
         /// <param name="currentRecursionDepth">The current depth of recursion used to prevent infinite looping
         /// resulting from the Chat Recursion system tool.</param>
-        /// <returns>An updated list of messages representing the conversation context.</returns>
+        /// <returns>An updated <see cref="List{Message}"/> representing the conversation context.</returns>
         private async Task<List<Message>> HandleRecursiveChat(string toolCall, List<Message> messages, Profile? options = null, Guid? conversationId = null, int currentRecursionDepth = 0)
         {
             var toolExecutionCall = JsonSerializer.Deserialize<RecursiveChatSystemToolExecutionCall>(toolCall);
@@ -385,7 +414,7 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="completionRequest">The request body for the request.</param>
         /// <param name="currentRecursionDepth">The current depth of recursion used to prevent infinite loops.</param>
-        /// <returns>A completion containing the AGI client's response.</returns>
+        /// <returns>A <see cref="CompletionResponse?"> containing the AGI client's response.</returns>
         private async Task<CompletionResponse?> ProcessRecursiveCompletion(CompletionRequest completionRequest, int currentRecursionDepth)
         {
             if (!completionRequest.Messages.Any() || string.IsNullOrEmpty(completionRequest.ProfileOptions.Name)) return null;
@@ -437,7 +466,7 @@ namespace IntelligenceHub.Business.Implementations
             }
 
             var completion = await agiClient.PostCompletion(completionRequest);
-            if (completion.FinishReason == FinishReason.Error) return completion;
+            if (completion.FinishReason == FinishReasons.Error) return completion;
 
             if (completionRequest.ConversationId is Guid id)
             {
@@ -451,9 +480,10 @@ namespace IntelligenceHub.Business.Implementations
             completion.Messages = originalMessageDistribution;
             completion.Messages.Last().User = completionRequest.ProfileOptions.Name;
             
-            if (completion.FinishReason == FinishReason.ToolCalls)
+            if (completion.FinishReason == FinishReasons.ToolCalls)
             {
-                var (toolExecutionResponses, recursiveMessages) = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, currentRecursionDepth: currentRecursionDepth);
+                var wrappedResponse = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, currentRecursionDepth: currentRecursionDepth);
+                var (toolExecutionResponses, recursiveMessages) = wrappedResponse.Data;
                 if (toolExecutionResponses.Any()) completion.ToolExecutionResponses.AddRange(toolExecutionResponses);
                 if (recursiveMessages.Any()) completion.Messages = recursiveMessages;
             }
@@ -466,7 +496,7 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="indexName">The name of the RAG index to search.</param>
         /// <param name="originalRequest">The original completion request used to generate a search intent.</param>
         /// <param name="agiClient">The AGI client that will be used to generate a search intent.</param>
-        /// <returns>The original message with any relevant RAG documents attached in the content.</returns>
+        /// <returns>The original <see cref="Message?"> with any relevant RAG documents attached in the content.</returns>
         private async Task<Message?> RetrieveRagData(string indexName, CompletionRequest originalRequest, IAGIClient agiClient)
         {
             var dbIndex = await _ragMetaRepository.GetByNameAsync(indexName);
@@ -538,10 +568,10 @@ namespace IntelligenceHub.Business.Implementations
         /// <summary>
         /// Generates an image based on the prompt provided in the completion request.
         /// </summary>
-        /// <param name="imageGenArgs">The arguments assocaited with an image generation tool call.</param>
+        /// <param name="imageGenArgs">The arguments associated with an image generation tool call.</param>
         /// <param name="host">The name of the AGI client that will be used to generate the image.</param>
         /// <param name="messages">A list of messages representing the current conversation context.</param>
-        /// <returns>A list of messages representing the current conversation context with the generated 
+        /// <returns>A <see cref="List{Message}"> representing the current conversation context with the generated 
         /// image attached.</returns>
         private async Task<List<Message>> GenerateImage(string imageGenArgs, AGIServiceHosts? host, List<Message> messages)
         {
@@ -562,6 +592,6 @@ namespace IntelligenceHub.Business.Implementations
             else if (!string.IsNullOrEmpty(base64Image)) messages.Add(new Message() { Content = string.Empty, Role = Role.Assistant, TimeStamp = DateTime.UtcNow, Base64Image = base64Image ?? string.Empty });
             return messages;
         }
-#endregion
+        #endregion
     }
 }

@@ -31,7 +31,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10, 1);
 
             // Assert
-            Assert.Collection(result, message =>
+            Assert.Collection(result.Data, message =>
             {
                 Assert.Equal("Test message", message.Content);
                 Assert.Equal(timeStamp, message.TimeStamp);
@@ -51,7 +51,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10, 1);
 
             // Assert
-            Assert.Empty(result);
+            Assert.Empty(result.Data);
         }
 
         [Fact]
@@ -67,8 +67,8 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.UpdateOrCreateConversation(conversationId, messages);
 
             // Assert
-            Assert.Single(result);
-            Assert.Equal(messages[0].Content, result[0].Content);
+            Assert.Single(result.Data);
+            Assert.Equal(messages[0].Content, result.Data[0].Content);
         }
 
         [Fact]
@@ -83,7 +83,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.UpdateOrCreateConversation(conversationId, messages);
 
             // Assert
-            Assert.Empty(result);
+            Assert.Empty(result.Data);
         }
 
         [Fact]
@@ -97,7 +97,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.DeleteConversation(conversationId);
 
             // Assert
-            Assert.True(result);
+            Assert.True(result.Data);
         }
 
         [Fact]
@@ -111,7 +111,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.DeleteConversation(conversationId);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -129,7 +129,7 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(dbMessage.Content, result.Content);
+            Assert.Equal(dbMessage.Content, result.Data.Content);
         }
 
         [Fact]
@@ -159,7 +159,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.DeleteMessage(conversationId, messageId);
 
             // Assert
-            Assert.True(result);
+            Assert.True(result.Data);
         }
 
         [Fact]
@@ -174,7 +174,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.DeleteMessage(conversationId, messageId);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
     }
 }

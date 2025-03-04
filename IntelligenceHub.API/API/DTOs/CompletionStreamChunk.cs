@@ -12,7 +12,7 @@ namespace IntelligenceHub.API.DTOs
         public Role? Role { get; set; }
         [JsonIgnore]
         public string? User { get; set; }
-        public FinishReason? FinishReason { get; set; }
+        public FinishReasons? FinishReason { get; set; }
         public Dictionary<string, string> ToolCalls { get; set; } = new Dictionary<string, string>();
         public List<HttpResponseMessage> ToolExecutionResponses { get; set; } = new List<HttpResponseMessage>();
         

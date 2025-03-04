@@ -162,7 +162,7 @@ namespace IntelligenceHub.Tests.Stress
 
                 // ensure response did not include an error message
                 if (response.IsSuccessStatusCode || (completionData?.FinishReason != null && completionData.FinishReason.HasValue 
-                    && completionData.FinishReason.Value != IntelligenceHub.Common.GlobalVariables.FinishReason.Error)) 
+                    && completionData.FinishReason.Value != IntelligenceHub.Common.GlobalVariables.FinishReasons.Error)) 
                     Interlocked.Increment(ref _successCount);
                 else 
                     Interlocked.Increment(ref _failureCount);

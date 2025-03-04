@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Newtonsoft.Json;
 using System.Text;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Tests.Unit.Controllers
 {
@@ -38,14 +39,16 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var name = "testProfile";
             var completionRequest = new CompletionRequest { ProfileOptions = new Profile { Name = name }, ConversationId = Guid.NewGuid(), };
-            var expectedResponse = new CompletionResponse
+            var completionRepsonse = new CompletionResponse
             {
-                FinishReason = GlobalVariables.FinishReason.Stop,
+                FinishReason = GlobalVariables.FinishReasons.Stop,
                 Messages = new List<Message>
                 {
                     new Message { Role = GlobalVariables.Role.Assistant, Content = "The AI generated string goes here" }
                 }
             };
+
+            var expectedResponse = APIResponseWrapper<CompletionResponse>.Success(completionRepsonse);
 
             _mockCompletionLogic.Setup(x => x.ProcessCompletion(completionRequest))
                                 .ReturnsAsync(expectedResponse);
@@ -87,7 +90,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var completionRequest = new CompletionRequest { ProfileOptions = new Profile { Name = name } };
 
             _mockCompletionLogic.Setup(x => x.ProcessCompletion(completionRequest))
-                                .ReturnsAsync((CompletionResponse)null);
+                                .ReturnsAsync(APIResponseWrapper<CompletionResponse>.Failure(string.Empty, APIResponseStatusCodes.BadRequest));
 
             // Act
             var result = await _controller.CompletionStandard(name, completionRequest);
@@ -125,10 +128,9 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var name = "testProfile";
             var completionRequest = new CompletionRequest { ProfileOptions = new Profile { Name = name } };
-            var responseChunks = new List<CompletionStreamChunk>
-            {
-                new CompletionStreamChunk { FinishReason = GlobalVariables.FinishReason.Stop, CompletionUpdate = "" }
-            };
+            var responseChunks = new List<APIResponseWrapper<CompletionStreamChunk>>();
+            var data = APIResponseWrapper<CompletionStreamChunk>.Success(new CompletionStreamChunk { FinishReason = GlobalVariables.FinishReasons.Stop, CompletionUpdate = "" } );
+            responseChunks.Add(data);
 
             // Mock the streaming completion response
             _mockCompletionLogic.Setup(x => x.StreamCompletion(completionRequest))
@@ -201,7 +203,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             Assert.Equal(GlobalVariables.DefaultExceptionMessage, objectResult.Value);
         }
 
-        private async IAsyncEnumerable<CompletionStreamChunk> GetAsyncStream(List<CompletionStreamChunk> chunks)
+        private async IAsyncEnumerable<APIResponseWrapper<CompletionStreamChunk>> GetAsyncStream(List<APIResponseWrapper<CompletionStreamChunk>> chunks)
         {
             foreach (var chunk in chunks)
             {

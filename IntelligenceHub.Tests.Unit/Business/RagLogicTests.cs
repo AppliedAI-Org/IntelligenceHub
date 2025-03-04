@@ -58,8 +58,8 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.GetRagIndex(indexName);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(indexName, result.Name);
+            Assert.NotNull(result.Data);
+            Assert.Equal(indexName, result.Data.Name);
         }
 
         [Fact]
@@ -73,7 +73,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.GetRagIndex(indexName);
 
             // Assert
-            Assert.Null(result);
+            Assert.Null(result.Data);
         }
 
         [Fact]
@@ -91,10 +91,10 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.GetAllIndexesAsync();
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(2, result.Count());
-            Assert.Contains(result, index => index.Name == "index1");
-            Assert.Contains(result, index => index.Name == "index2");
+            Assert.NotNull(result.Data);
+            Assert.Equal(2, result.Data.Count());
+            Assert.Contains(result.Data, index => index.Name == "index1");
+            Assert.Contains(result.Data, index => index.Name == "index2");
         }
 
         [Fact]
@@ -108,8 +108,8 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.GetAllIndexesAsync();
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Empty(result);
+            Assert.NotNull(result.Data);
+            Assert.Empty(result.Data);
         }
 
         [Fact]
@@ -141,7 +141,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.CreateIndex(indexMetadata);
 
             // Assert
-            Assert.True(result);
+            Assert.True(result.Data);
         }
 
         [Fact]
@@ -154,7 +154,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.CreateIndex(indexMetadata);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -169,7 +169,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.CreateIndex(indexMetadata);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -183,7 +183,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.ConfigureIndex(indexMetadata);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -198,7 +198,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.ConfigureIndex(indexMetadata);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -215,7 +215,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.ConfigureIndex(indexMetadata);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -233,7 +233,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.ConfigureIndex(indexMetadata);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -246,14 +246,14 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexMetadata.Name)).ReturnsAsync(dbIndexMetadata);
             _mockSearchClient.Setup(client => client.UpsertIndex(indexMetadata)).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.UpsertIndexer(indexMetadata)).ReturnsAsync(true);
-            _mockMetaRepository.Setup(repo => repo.UpdateAsync(It.IsAny<DbIndexMetadata>())).ReturnsAsync(1);
+            _mockMetaRepository.Setup(repo => repo.UpdateAsync(It.IsAny<DbIndexMetadata>())).ReturnsAsync(dbIndexMetadata);
             _mockSearchClient.Setup(repo => repo.RunIndexer(indexMetadata.Name)).ReturnsAsync(true);
 
             // Act
             var result = await _ragLogic.ConfigureIndex(indexMetadata);
 
             // Assert
-            Assert.True(result);
+            Assert.True(result.Data);
         }
 
         [Fact]
@@ -266,7 +266,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexMetadata.Name)).ReturnsAsync(dbIndexMetadata);
             _mockSearchClient.Setup(client => client.UpsertIndex(indexMetadata)).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.UpsertIndexer(indexMetadata)).ReturnsAsync(true);
-            _mockMetaRepository.Setup(repo => repo.UpdateAsync(It.IsAny<DbIndexMetadata>())).ReturnsAsync(1);
+            _mockMetaRepository.Setup(repo => repo.UpdateAsync(It.IsAny<DbIndexMetadata>())).ReturnsAsync(dbIndexMetadata);
             _mockRagRepository.Setup(repo => repo.MarkIndexForUpdateAsync(indexMetadata.Name)).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.RunIndexer(indexMetadata.Name)).ReturnsAsync(true);
 
@@ -274,7 +274,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.ConfigureIndex(indexMetadata);
 
             // Assert
-            Assert.True(result);
+            Assert.True(result.Data);
             _mockRagRepository.Verify(repo => repo.MarkIndexForUpdateAsync(indexMetadata.Name), Times.Once);
             _mockSearchClient.Verify(client => client.RunIndexer(indexMetadata.Name), Times.Once);
         }
@@ -290,7 +290,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.RunIndexUpdate(indexName);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -305,7 +305,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.RunIndexUpdate(indexName);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -322,7 +322,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.RunIndexUpdate(indexName);
 
             // Assert
-            Assert.True(result);
+            Assert.True(result.Data);
         }
 
         [Fact]
@@ -339,7 +339,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.RunIndexUpdate(indexName);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -406,9 +406,9 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.QueryIndex(indexName, query);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Single(result);
-            var doc = result.First();
+            Assert.NotNull(result.Data);
+            Assert.Single(result.Data);
+            var doc = result.Data.First();
             Assert.Equal("doc1", doc.Title);
             Assert.Equal("keyword1", doc.Keywords);
             Assert.Equal("topic1", doc.Topic);
@@ -434,9 +434,9 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.QueryIndex(indexName, query);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Single(result);
-            var doc = result.First();
+            Assert.NotNull(result.Data);
+            Assert.Single(result.Data);
+            var doc = result.Data.First();
             Assert.Equal("doc1", doc.Title);
             Assert.Equal("keyword1", doc.Keywords);
             Assert.Equal("topic1", doc.Topic);
@@ -548,13 +548,13 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockSearchClient.Setup(client => client.DeleteIndexer(indexName)).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.DeleteDatasource(indexName)).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.DeleteIndex(indexName)).ReturnsAsync(true);
-            _mockMetaRepository.Setup(repo => repo.DeleteAsync(dbIndexMetadata)).ReturnsAsync(1);
+            _mockMetaRepository.Setup(repo => repo.DeleteAsync(dbIndexMetadata)).ReturnsAsync(true);
 
             // Act
             var result = await _ragLogic.DeleteIndex(indexName);
 
             // Assert
-            Assert.True(result);
+            Assert.True(result.Data);
         }
 
         [Fact]
@@ -567,7 +567,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.DeleteIndex(indexName);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -581,7 +581,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.DeleteIndex(indexName);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -602,7 +602,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.UpsertDocuments(indexName, upsertRequest);
 
             // Assert
-            Assert.True(result);
+            Assert.True(result.Data);
         }
 
         [Fact]
@@ -616,7 +616,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.UpsertDocuments(indexName, upsertRequest);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -631,7 +631,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.UpsertDocuments(indexName, upsertRequest);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -648,9 +648,9 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.GetDocument(indexName, documentName);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(documentName, result.Title);
-            Assert.Equal("testContent", result.Content);
+            Assert.NotNull(result.Data);
+            Assert.Equal(documentName, result.Data.Title);
+            Assert.Equal("testContent", result.Data.Content);
         }
 
         [Fact]
@@ -665,7 +665,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.GetDocument(indexName, documentName);
 
             // Assert
-            Assert.Null(result);
+            Assert.Null(result.Data);
         }
 
         [Fact]
@@ -680,7 +680,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.GetDocument(indexName, documentName);
 
             // Assert
-            Assert.Null(result);
+            Assert.Null(result.Data);
         }
 
         [Fact]
@@ -696,7 +696,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.GetDocument(indexName, documentName);
 
             // Assert
-            Assert.Null(result);
+            Assert.Null(result.Data);
         }
 
         [Fact]
@@ -720,10 +720,10 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.GetAllDocuments(indexName, count, page);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(expectedDocuments.Count, result.Count());
-            Assert.Equal(expectedDocuments.First().Title, result.First().Title);
-            Assert.Equal(expectedDocuments.First().Content, result.First().Content);
+            Assert.NotNull(result.Data);
+            Assert.Equal(expectedDocuments.Count, result.Data.Count());
+            Assert.Equal(expectedDocuments.First().Title, result.Data.First().Title);
+            Assert.Equal(expectedDocuments.First().Content, result.Data.First().Content);
         }
 
         [Fact]
@@ -740,7 +740,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.GetAllDocuments(indexName, count, page);
 
             // Assert
-            Assert.Null(result);
+            Assert.Null(result.Data);
         }
 
         [Fact]
@@ -759,8 +759,8 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.GetAllDocuments(indexName, count, page);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Empty(result);
+            Assert.NotNull(result.Data);
+            Assert.Empty(result.Data);
         }
 
         [Fact]
@@ -787,13 +787,13 @@ namespace IntelligenceHub.Tests.Unit.Business
             var dbDocument = new DbIndexDocument();
             _mockValidationHandler.Setup(repo => repo.IsValidIndexName(indexName)).Returns(true);
             _mockRagRepository.Setup(repo => repo.GetDocumentAsync(indexName, It.IsAny<string>())).ReturnsAsync(dbDocument);
-            _mockRagRepository.Setup(repo => repo.DeleteAsync(dbDocument, indexName)).ReturnsAsync(1);
+            _mockRagRepository.Setup(repo => repo.DeleteAsync(dbDocument, indexName)).ReturnsAsync(true);
 
             // Act
             var result = await _ragLogic.DeleteDocuments(indexName, documentNames);
 
             // Assert
-            Assert.Equal(2, result);
+            Assert.Equal(2, result.Data);
         }
 
         [Fact]
@@ -807,7 +807,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.DeleteDocuments(indexName, documentNames);
 
             // Assert
-            Assert.Equal(-1, result);
+            Assert.Equal(-1, result.Data);
         }
     }
 }

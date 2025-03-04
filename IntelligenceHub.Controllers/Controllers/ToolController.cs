@@ -20,9 +20,9 @@ namespace IntelligenceHub.Controllers
         private readonly IProfileLogic _profileLogic;
 
         /// <summary>
-        /// This controller is used to manage agent tools.
+        /// Initializes a new instance of the <see cref="ToolController"/> class.
         /// </summary>
-        /// <param name="profileLogic"></param>
+        /// <param name="profileLogic">The profile logic.</param>
         public ToolController(IProfileLogic profileLogic)
         {
             _profileLogic = profileLogic;
@@ -32,7 +32,7 @@ namespace IntelligenceHub.Controllers
         /// This endpoint is used to get a tool by name.
         /// </summary>
         /// <param name="name">The name of the tool.</param>
-        /// <returns>An ObjectResult containing the tool.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing the tool.</returns>
         [HttpGet]
         [Route("get/{name}")]
         [SwaggerOperation(OperationId = "GetToolAsync")]
@@ -40,14 +40,15 @@ namespace IntelligenceHub.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetTool([FromRoute] string name) // get this to work with either a string or an int
+        public async Task<IActionResult> GetTool([FromRoute] string name)
         {
             try
             {
-                if (string.IsNullOrEmpty(name)) return BadRequest($"Invalid request. Please check the route parameter for the profile name.");
-                var tool = await _profileLogic.GetTool(name);
-                if (tool == null) return NotFound($"No tool with the name {name} exists");
-                else return Ok(tool);
+                if (string.IsNullOrEmpty(name)) return BadRequest("Invalid request. Please check the route parameter for the profile name.");
+                var response = await _profileLogic.GetTool(name);
+
+                if (response.IsSuccess) return Ok(response.Data);
+                else return NotFound(response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -58,23 +59,23 @@ namespace IntelligenceHub.Controllers
         /// <summary>
         /// This endpoint is used to get all tools.
         /// </summary>
-        /// /// <param name="page">The page number to retrieve.</param>
+        /// <param name="page">The page number to retrieve.</param>
         /// <param name="count">The amount of tools to retrieve.</param>
-        /// <returns></returns>
+        /// <returns>An <see cref="IActionResult"/> containing a list of tools.</returns>
         [HttpGet]
         [Route("get/all/page/{page}/count/{count}")]
         [SwaggerOperation(OperationId = "GetAllToolsAsync")]
         [ProducesResponseType(typeof(IEnumerable<Tool>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllTools([FromRoute] int page, [FromRoute] int count)
         {
             try
             {
+                if (page < 1) return BadRequest("The page must be greater than 0.");
+                if (count < 1) return BadRequest("The count must be greater than 0.");
                 var tools = await _profileLogic.GetAllTools(page, count);
-                if (tools == null || tools.Count() < 1) return NotFound($"No tools exist. Make a post request to add some.");
-                else return Ok(tools);
+                return Ok(tools.Data ?? new List<Tool>());
             }
             catch (Exception)
             {
@@ -86,22 +87,20 @@ namespace IntelligenceHub.Controllers
         /// This endpoint is used to get the profiles associated with a tool.
         /// </summary>
         /// <param name="name">The name of the tool.</param>
-        /// <returns>An array of profile names that use the tool.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing a list of profile names that use the tool.</returns>
         [HttpGet]
         [Route("get/{name}/profiles")]
         [SwaggerOperation(OperationId = "GetToolProfilesAsync")]
         [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetToolProfiles(string name)
         {
             try
             {
-                if (string.IsNullOrEmpty(name)) return BadRequest($"Invalid request. Please check the route parameter for the profile name.");
-                var tool = await _profileLogic.GetToolProfileAssociations(name);
-                if (tool == null) return NotFound($"The tool '{name}' is not associated with any profiles, or does not exist.");
-                else return Ok(tool);
+                if (string.IsNullOrEmpty(name)) return BadRequest("Invalid request. Please check the route parameter for the profile name.");
+                var response = await _profileLogic.GetToolProfileAssociations(name);
+                return Ok(response.Data ?? new List<string>());
             }
             catch (Exception)
             {
@@ -113,21 +112,20 @@ namespace IntelligenceHub.Controllers
         /// This endpoint is used to create or update a tool.
         /// </summary>
         /// <param name="toolList">An array of tool definitions to add or update.</param>
-        /// <returns>An empty ResponseObject.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing the updated list of tools.</returns>
         [HttpPost]
         [Route("upsert")]
         [SwaggerOperation(OperationId = "UpsertToolAsync")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(List<Tool>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> AddOrUpdateTool([FromBody] List<Tool> toolList)
         {
             try
             {
-                var errorMessage = await _profileLogic.CreateOrUpdateTools(toolList);
-                if (errorMessage != null) return BadRequest(errorMessage);
-                else return NoContent();
+                var response = await _profileLogic.CreateOrUpdateTools(toolList);
+                if (!response.IsSuccess) return BadRequest(response.ErrorMessage);
+                else return Ok(toolList);
             }
             catch (Exception)
             {
@@ -140,7 +138,7 @@ namespace IntelligenceHub.Controllers
         /// </summary>
         /// <param name="name">The name of the tool.</param>
         /// <param name="profiles">An array of profile names.</param>
-        /// <returns>An array of profile names that were successfully associated.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing a list of profile names that were successfully associated.</returns>
         [HttpPost]
         [Route("associate/{name}")]
         [SwaggerOperation(OperationId = "AssociateToolWithProfilesAsync")]
@@ -152,11 +150,17 @@ namespace IntelligenceHub.Controllers
         {
             try
             {
-                if (string.IsNullOrEmpty(name)) return BadRequest($"Invalid request. Please check the route parameter for the profile name.");
-                if (profiles == null || profiles.Count < 1) return BadRequest($"Invalid request. 'Profiles' property cannot be null or empty.");
-                var errorMessage = await _profileLogic.AddToolToProfiles(name, profiles);
-                if (errorMessage == null) return Ok(await _profileLogic.GetToolProfileAssociations(name));
-                else return NotFound(errorMessage);
+                if (string.IsNullOrEmpty(name)) return BadRequest("Invalid request. Please check the route parameter for the profile name.");
+                if (profiles == null || profiles.Count < 1) return BadRequest("Invalid request. 'Profiles' property cannot be null or empty.");
+                var response = await _profileLogic.AddToolToProfiles(name, profiles);
+                if (response.IsSuccess)
+                {
+                    var newProfileToolsResponse = await _profileLogic.GetToolProfileAssociations(name);
+                    if (newProfileToolsResponse.IsSuccess) return Ok(newProfileToolsResponse.Data ?? new List<string>());
+                    return StatusCode(StatusCodes.Status500InternalServerError, newProfileToolsResponse.ErrorMessage);
+                }
+                else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
+                return StatusCode(StatusCodes.Status500InternalServerError, response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -169,11 +173,11 @@ namespace IntelligenceHub.Controllers
         /// </summary>
         /// <param name="name">The name of the tool.</param>
         /// <param name="profiles">An array of profile names.</param>
-        /// <returns>An ObjectResult containing a list of profiles that were successfully dissasociated.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing a list of profiles that were successfully dissociated.</returns>
         [HttpPost]
         [Route("dissociate/{name}")]
         [SwaggerOperation(OperationId = "DissociateToolFromProfilesAsync")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -181,11 +185,11 @@ namespace IntelligenceHub.Controllers
         {
             try
             {
-                if (string.IsNullOrEmpty(name)) return BadRequest($"Invalid request. Please check the route parameter for the profile name.");
-                if (profiles == null || profiles.Count < 1) return BadRequest($"Invalid request. 'Profiles' property cannot be null or empty.");
-                var errorMessage = await _profileLogic.DeleteToolAssociations(name, profiles);
-                if (errorMessage == null) return NoContent();
-                else return NotFound(errorMessage);
+                if (string.IsNullOrEmpty(name)) return BadRequest("Invalid request. Please check the route parameter for the profile name.");
+                if (profiles == null || profiles.Count < 1) return BadRequest("Invalid request. 'Profiles' property cannot be null or empty.");
+                var response = await _profileLogic.DeleteToolAssociations(name, profiles);
+                if (response.IsSuccess) return Ok(response.Data);
+                else return NotFound(response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -197,7 +201,7 @@ namespace IntelligenceHub.Controllers
         /// This endpoint is used to delete a tool.
         /// </summary>
         /// <param name="name">The name of the tool.</param>
-        /// <returns>An empty ObjectResult.</returns>
+        /// <returns>An empty <see cref="IActionResult"/>.</returns>
         [HttpDelete]
         [Route("delete/{name}")]
         [SwaggerOperation(OperationId = "DeleteToolAsync")]
@@ -206,13 +210,14 @@ namespace IntelligenceHub.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteTool([FromRoute] string name)
-        {   
+        {
             try
             {
-                if (string.IsNullOrEmpty(name)) return BadRequest($"Invalid request. Please check the route parameter for the profile name.");
-                var success = await _profileLogic.DeleteTool(name);
-                if (success) return NoContent();
-                else return NotFound($"No tool with the name {name} exists");
+                if (string.IsNullOrEmpty(name)) return BadRequest("Invalid request. Please check the route parameter for the profile name.");
+                var response = await _profileLogic.DeleteTool(name);
+                if (response.IsSuccess) return NoContent();
+                else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
+                return StatusCode(StatusCodes.Status500InternalServerError, response.ErrorMessage);
             }
             catch (Exception)
             {

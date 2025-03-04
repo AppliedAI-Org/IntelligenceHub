@@ -6,6 +6,7 @@ using IntelligenceHub.Common.Config;
 using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Interfaces;
 using Microsoft.Extensions.Options;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Business.Implementations
 {
@@ -29,6 +30,7 @@ namespace IntelligenceHub.Business.Implementations
         /// <summary>
         /// Constructor for ProfileLogic resolved with DI.
         /// </summary>
+        /// <param name="settings">The application settings.</param>
         /// <param name="profileDb">The repository used to retrieve profile data.</param>
         /// <param name="profileToolsDb">The repository used to retrieve associations between profiles and tools.</param>
         /// <param name="toolDb">The repository used to retrieve tool data.</param>
@@ -48,14 +50,14 @@ namespace IntelligenceHub.Business.Implementations
         /// Retrieves a profile by name.
         /// </summary>
         /// <param name="name">The name of the profile.</param>
-        /// <returns>The profile, if one with the requested name exists, otherwise null.</returns>
-        public async Task<Profile?> GetProfile(string name) // else shouldn't be required here
+        /// <returns>An <see cref="APIResponseWrapper{Profile}"/> containing the profile, if one with the requested name exists, otherwise null.</returns>
+        public async Task<APIResponseWrapper<Profile>> GetProfile(string name) // else shouldn't be required here
         {
             var dbProfile = await _profileDb.GetByNameAsync(name);
             if (dbProfile != null)
             {
                 var profile = DbMappingHandler.MapFromDbProfile(dbProfile);
-                // package this into a seperate method (same one as in GetAllProfiles())
+                // package this into a separate method (same one as in GetAllProfiles())
                 var profileToolDTOs = await _profileToolsDb.GetToolAssociationsAsync(dbProfile.Id);
                 profile.Tools = new List<Tool>();
                 foreach (var association in profileToolDTOs)
@@ -65,14 +67,14 @@ namespace IntelligenceHub.Business.Implementations
                     var mappedTool = DbMappingHandler.MapFromDbTool(dbTool);
                     profile.Tools.Add(mappedTool);
                 }
-                return profile;
+                return APIResponseWrapper<Profile>.Success(profile);
             }
             else
             {
                 var apiProfile = await _profileDb.GetByNameAsync(name);
-                if (apiProfile != null) return DbMappingHandler.MapFromDbProfile(apiProfile);
+                if (apiProfile != null) return APIResponseWrapper<Profile>.Success(DbMappingHandler.MapFromDbProfile(apiProfile));
             }
-            return null;
+            return APIResponseWrapper<Profile>.Failure($"No profile with the name '{name}' was found.", APIResponseStatusCodes.NotFound);
         }
 
         /// <summary>
@@ -80,8 +82,8 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="page">The page number to retrieve.</param>
         /// <param name="count">The amount of profiles to retrieve.</param>
-        /// <returns>An list of all existing profiles.</returns>
-        public async Task<IEnumerable<Profile>> GetAllProfiles(int page, int count)
+        /// <returns>An <see cref="APIResponseWrapper{IEnumerable{Profile}}"/> containing a list of all existing profiles.</returns>
+        public async Task<APIResponseWrapper<IEnumerable<Profile>>> GetAllProfiles(int page, int count)
         {
             var response = await _profileDb.GetAllAsync(page, count);
             var apiResponseList = new List<Profile>();
@@ -89,7 +91,7 @@ namespace IntelligenceHub.Business.Implementations
             {
                 foreach (var profile in response)
                 {
-                    // package this into a seperate method (same one as in GetProfiles())
+                    // package this into a separate method (same one as in GetProfiles())
                     var apiProfileDto = DbMappingHandler.MapFromDbProfile(profile);
                     var profileToolDTOs = await _profileToolsDb.GetToolAssociationsAsync(profile.Id);
                     apiProfileDto.Tools = new List<Tool>();
@@ -103,25 +105,25 @@ namespace IntelligenceHub.Business.Implementations
                     apiResponseList.Add(apiProfileDto);
                 }
             }
-            return apiResponseList;
+            return APIResponseWrapper<IEnumerable<Profile>>.Success(apiResponseList);
         }
 
         /// <summary>
         /// Creates or updates an AGI client profile.
         /// </summary>
         /// <param name="profileDto">The request body used to create or update the profile.</param>
-        /// <returns>An error message if the profile DTO fails to pass validation, otherwise null.</returns>
-        public async Task<string?> CreateOrUpdateProfile(Profile profileDto) // refactor this
+        /// <returns>An <see cref="APIResponseWrapper{string}"/> containing an error message if the profile DTO fails to pass validation, otherwise null.</returns>
+        public async Task<APIResponseWrapper<string>> CreateOrUpdateProfile(Profile profileDto) // refactor this
         {
             var errorMessage = _validationLogic.ValidateAPIProfile(profileDto); // move to controller
-            if (errorMessage != null) return errorMessage;
+            if (errorMessage != null) return APIResponseWrapper<string>.Failure(errorMessage, APIResponseStatusCodes.BadRequest);
             var existingProfile = await _profileDb.GetByNameAsync(profileDto.Name);
             var success = true;
             if (existingProfile != null)
             {
                 var updateProfileDto = DbMappingHandler.MapToDbProfile(existingProfile.Name, _defaulAzureModel, existingProfile, profileDto);
                 var rows = await _profileDb.UpdateAsync(updateProfileDto);
-                if (rows != 1) success = false;
+                if (rows == null) success = false;
             }
             else
             {
@@ -135,19 +137,19 @@ namespace IntelligenceHub.Business.Implementations
                 if (existingProfile == null) success = await AddOrUpdateProfileTools(profileDto, null);
                 else success = await AddOrUpdateProfileTools(profileDto, DbMappingHandler.MapFromDbProfile(existingProfile));
             }
-            if (!success) return _unknownErroMessage;
-            return null;
+            if (!success) return APIResponseWrapper<string>.Failure(_unknownErroMessage, APIResponseStatusCodes.InternalError);
+            return APIResponseWrapper<string>.Success(string.Empty);
         }
 
         /// <summary>
         /// Deletes an AGI client profile by name.
         /// </summary>
         /// <param name="name">The name of the profile to delete.</param>
-        /// <returns>An error message if the operation faile, otherwise null.</returns>
-        public async Task<string?> DeleteProfile(string name) // could also use some refactoring
+        /// <returns>An <see cref="APIResponseWrapper{string}"/> containing an error message if the operation fails, otherwise null.</returns>
+        public async Task<APIResponseWrapper<string>> DeleteProfile(string name) // could also use some refactoring
         {
             var dbProfile = await _profileDb.GetByNameAsync(name);
-            int rows;
+            bool success;
             if (dbProfile != null)
             {
                 var tools = new List<Tool>();
@@ -157,16 +159,16 @@ namespace IntelligenceHub.Business.Implementations
 
                 if (profile.Tools != null && profile.Tools.Count > 0) await _profileToolsDb.DeleteAllProfileAssociationsAsync(dbProfile.Id);
 
-                rows = await _profileDb.DeleteAsync(dbProfile);
+                success = await _profileDb.DeleteAsync(dbProfile);
             }
             else
             {
                 var toolLessProfile = await _profileDb.GetByNameAsync(name);
-                if (toolLessProfile == null) return _missingProfileMessage + $"'{name}'";
-                rows = await _profileDb.DeleteAsync(toolLessProfile);
+                if (toolLessProfile == null) return APIResponseWrapper<string>.Failure(_missingProfileMessage + $"'{name}'", APIResponseStatusCodes.NotFound);
+                success = await _profileDb.DeleteAsync(toolLessProfile);
             }
-            if (rows != 1) return _unknownErroMessage;
-            return null;
+            if (!success) return APIResponseWrapper<string>.Failure(_unknownErroMessage, APIResponseStatusCodes.InternalError);
+            return APIResponseWrapper<string>.Success(string.Empty);
         }
 
         #region Tool Logic
@@ -176,7 +178,7 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="profileDto">The DTO used to construct the profile.</param>
         /// <param name="existingProfile">The existing profile in the database.</param>
-        /// <returns>A bool indicating the operations success.</returns>
+        /// <returns>A bool indicating the operation's success.</returns>
         private async Task<bool> AddOrUpdateProfileTools(Profile profileDto, Profile existingProfile)
         {
             var toolIds = new List<int>();
@@ -198,13 +200,12 @@ namespace IntelligenceHub.Business.Implementations
         /// Retrieves a tool by name.
         /// </summary>
         /// <param name="name">The name of the tool.</param>
-        /// <returns>The tool if it exists in the database.</returns>
-        public async Task<Tool?> GetTool(string name)
+        /// <returns>An <see cref="APIResponseWrapper{Tool}"/> containing the tool if it exists in the database.</returns>
+        public async Task<APIResponseWrapper<Tool>> GetTool(string name)
         {
             var dbTool = await _toolDb.GetByNameAsync(name);
-            if (dbTool == null) return null;
-
-            return DbMappingHandler.MapFromDbTool(dbTool);
+            if (dbTool == null) return APIResponseWrapper<Tool>.Failure($"Failed to find a tool with the name '{name}'.", APIResponseStatusCodes.NotFound);
+            return APIResponseWrapper<Tool>.Success(DbMappingHandler.MapFromDbTool(dbTool));
         }
 
         /// <summary>
@@ -212,8 +213,8 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="page">The page number to retrieve.</param>
         /// <param name="count">The amount of tools to retrieve.</param>
-        /// <returns>A list of all existing tools.</returns>
-        public async Task<IEnumerable<Tool>> GetAllTools(int page, int count)
+        /// <returns>An <see cref="APIResponseWrapper{IEnumerable{Tool}}"/> containing a list of all existing tools.</returns>
+        public async Task<APIResponseWrapper<IEnumerable<Tool>>> GetAllTools(int page, int count)
         {
             var returnList = new List<Tool>();
             var dbTools = await _toolDb.GetAllAsync(page, count);
@@ -223,45 +224,45 @@ namespace IntelligenceHub.Business.Implementations
                 var tool = DbMappingHandler.MapFromDbTool(dbTool, properties.ToList());
                 returnList.Add(tool);
             }
-            return returnList;
+            return APIResponseWrapper<IEnumerable<Tool>>.Success(returnList);
         }
 
         /// <summary>
         /// Retrieves the tools associated with a profile.
         /// </summary>
         /// <param name="name">The name of the profile.</param>
-        /// <returns>A list of tool names.</returns>
-        public async Task<List<string>> GetProfileToolAssociations(string name)
+        /// <returns>An <see cref="APIResponseWrapper{List{string}}"/> containing a list of tool names.</returns>
+        public async Task<APIResponseWrapper<List<string>>> GetProfileToolAssociations(string name)
         {
             var profileNames = await _toolDb.GetProfileToolsAsync(name);
-            if (profileNames.Count > 0) return profileNames;
-            else return new List<string>();
+            if (profileNames.Count > 0) return APIResponseWrapper<List<string>>.Success(profileNames);
+            else return APIResponseWrapper<List<string>>.Success(new List<string>());
         }
 
         /// <summary>
         /// Retrieves the profiles associated with a tool.
         /// </summary>
-        /// <param name="name">The name of the tools.</param>
-        /// <returns>A list of profile names.</returns>
-        public async Task<List<string>> GetToolProfileAssociations(string name)
+        /// <param name="name">The name of the tool.</param>
+        /// <returns>An <see cref="APIResponseWrapper{List{string}}"/> containing a list of profile names.</returns>
+        public async Task<APIResponseWrapper<List<string>>> GetToolProfileAssociations(string name)
         {
             var profileNames = await _toolDb.GetToolProfilesAsync(name);
-            if (profileNames.Count > 0) return profileNames;
-            else return new List<string>();
+            if (profileNames.Count > 0) return APIResponseWrapper<List<string>>.Success(profileNames);
+            else return APIResponseWrapper<List<string>>.Success(new List<string>());
         }
 
         /// <summary>
         /// Creates or updates a list of tools.
         /// </summary>
         /// <param name="toolList">A list of tools to create or update.</param>
-        /// <returns>An error message if the operation failed, otherwise null.</returns>
-        public async Task<string?> CreateOrUpdateTools(List<Tool> toolList)
+        /// <returns>An <see cref="APIResponseWrapper{string}"/> containing an error message if the operation failed, otherwise null.</returns>
+        public async Task<APIResponseWrapper<string>> CreateOrUpdateTools(List<Tool> toolList)
         {
             // move below to controller
             foreach (var tool in toolList)
             {
                 var errorMessage = _validationLogic.ValidateTool(tool);
-                if (errorMessage != null) return errorMessage;
+                if (errorMessage != null) return APIResponseWrapper<string>.Failure(errorMessage, APIResponseStatusCodes.BadRequest);
             }
             foreach (var tool in toolList)
             {
@@ -281,7 +282,7 @@ namespace IntelligenceHub.Business.Implementations
                     await AddOrUpdateToolProperties(newTool, tool.Function.Parameters.properties);
                 }
             }
-            return null;
+            return APIResponseWrapper<string>.Success(string.Empty);
         }
 
         /// <summary>
@@ -289,17 +290,17 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="name">The name of the tool.</param>
         /// <param name="profiles">A list of profile names.</param>
-        /// <returns>An error message if the operation fails, otherwise null.</returns>
-        public async Task<string?> AddToolToProfiles(string name, List<string> profiles)
+        /// <returns>An <see cref="APIResponseWrapper{List{string}}"/> containing an error message if the operation fails, otherwise null.</returns>
+        public async Task<APIResponseWrapper<List<string>>> AddToolToProfiles(string name, List<string> profiles)
         {
             var tool = await _toolDb.GetByNameAsync(name);
             if (tool != null)
             {
                 var success = await _profileToolsDb.AddAssociationsByToolIdAsync(tool.Id, profiles);
-                if (success) return null;
-                else return _unknownErroMessage;
+                if (success) return APIResponseWrapper<List<string>>.Success(profiles);
+                else return APIResponseWrapper<List<string>>.Failure(_unknownErroMessage, APIResponseStatusCodes.InternalError);
             }
-            return _missingToolMessage + $"'{name}'";
+            return APIResponseWrapper<List<string>>.Failure(_missingToolMessage + $"'{name}'", APIResponseStatusCodes.NotFound);
         }
 
         /// <summary>
@@ -307,23 +308,25 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="name">The name of the profile.</param>
         /// <param name="tools">A list of tool names.</param>
-        /// <returns>An error message if the operation fails, otherwise null.</returns>
-        public async Task<string?> AddProfileToTools(string name, List<string> tools)
+        /// <returns>An <see cref="APIResponseWrapper{List{string}}"/> containing an error message if the operation fails, otherwise null.</returns>
+        public async Task<APIResponseWrapper<List<string>>> AddProfileToTools(string name, List<string> tools)
         {
+            var toolNames = new List<string>();
             var toolIDs = new List<int>();
             foreach (var toolName in tools)
             {
                 var tool = await _toolDb.GetByNameAsync(toolName);
-                if (tool is null) return _missingToolMessage + $"'{toolName}'"; ;
+                if (tool is null) return APIResponseWrapper<List<string>>.Failure(_missingToolMessage + $"'{toolName}'", APIResponseStatusCodes.NotFound);
                 toolIDs.Add(tool.Id);
+                toolNames.Add(tool.Name);
             }
             var profile = await _profileDb.GetByNameAsync(name);
             if (profile != null && toolIDs.Count > 0)
             {
                 var success = await _profileToolsDb.AddAssociationsByProfileIdAsync(profile.Id, toolIDs);
-                if (success) return null;
+                if (success) return APIResponseWrapper<List<string>>.Success(toolNames);
             }
-            return _missingProfileMessage + $"'{name}'";
+            return APIResponseWrapper<List<string>>.Failure(_missingProfileMessage + $"'{name}'", APIResponseStatusCodes.NotFound);
         }
 
         /// <summary>
@@ -331,16 +334,21 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="name">The name of the tool.</param>
         /// <param name="profiles">A list of profile names.</param>
-        /// <returns>An error message if the operation fails, otherwise null.</returns>
-        public async Task<string?> DeleteToolAssociations(string name, List<string> profiles)
+        /// <returns>An <see cref="APIResponseWrapper{List{string}}"/> containing an error message if the operation fails, otherwise null.</returns>
+        public async Task<APIResponseWrapper<List<string>>> DeleteToolAssociations(string name, List<string> profiles)
         {
+            var responseList = new List<string>();
             var tool = await _toolDb.GetByNameAsync(name);
             if (tool != null)
             {
-                foreach (var profile in profiles) await _profileToolsDb.DeleteToolAssociationAsync(tool.Id, profile);
-                return null;
+                foreach (var profile in profiles)
+                {
+                    var success = await _profileToolsDb.DeleteToolAssociationAsync(tool.Id, profile);
+                    if (success) responseList.Add(tool.Name);
+                }
+                return APIResponseWrapper<List<string>>.Success(responseList);
             }
-            return _missingToolMessage + $"'{name}'";
+            return APIResponseWrapper<List<string>>.Failure(_missingToolMessage + $"'{name}'", APIResponseStatusCodes.NotFound);
         }
 
         /// <summary>
@@ -348,24 +356,24 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="name">The name of the profile.</param>
         /// <param name="tools">A list of tool names.</param>
-        /// <returns>An error message if the operation fails, otherwise null.</returns>
-        public async Task<string?> DeleteProfileAssociations(string name, List<string> tools)
+        /// <returns>An <see cref="APIResponseWrapper{List{string}}"/> containing an error message if the operation fails, otherwise null.</returns>
+        public async Task<APIResponseWrapper<List<string>>> DeleteProfileAssociations(string name, List<string> tools)
         {
             var profile = await _profileDb.GetByNameAsync(name);
             if (profile != null)
             {
                 foreach (var tool in tools) await _profileToolsDb.DeleteProfileAssociationAsync(profile.Id, tool);
-                return null;
+                return APIResponseWrapper<List<string>>.Success(tools);
             }
-            return _missingToolMessage + $"'{name}'";
+            return APIResponseWrapper<List<string>>.Failure(_missingToolMessage + $"'{name}'", APIResponseStatusCodes.NotFound);
         }
 
         /// <summary>
         /// Deletes a tool by name.
         /// </summary>
         /// <param name="name">The name of the tool.</param>
-        /// <returns>A bool indicating the success of the operation.</returns>
-        public async Task<bool> DeleteTool(string name)
+        /// <returns>An <see cref="APIResponseWrapper{bool}"/> indicating the success of the operation.</returns>
+        public async Task<APIResponseWrapper<bool>> DeleteTool(string name)
         {
             var existingDbTool = await _toolDb.GetByNameAsync(name);
             var dbProperites = await _propertyDb.GetToolProperties(existingDbTool.Id);
@@ -379,9 +387,11 @@ namespace IntelligenceHub.Business.Implementations
                 }
                 await _profileToolsDb.DeleteAllToolAssociationsAsync(existingTool.Id);
                 var dbTool = DbMappingHandler.MapToDbTool(existingTool);
-                return await _toolDb.DeleteAsync(dbTool) == 1;
+                var success = await _toolDb.DeleteAsync(dbTool);
+                if (success) return APIResponseWrapper<bool>.Success(true);
+                return APIResponseWrapper<bool>.Failure("Something went wrong when attempting to delete the tool.", APIResponseStatusCodes.InternalError);
             }
-            return false;
+            return APIResponseWrapper<bool>.Failure($"A tool with the name '{name}' was not found.", APIResponseStatusCodes.NotFound);
         }
 
         /// <summary>
@@ -390,8 +400,8 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="existingTool">The existing tool.</param>
         /// <param name="newProperties">A dictionary of properties where the name of the 
         /// property is the key, and the value is the property object.</param>
-        /// <returns>A bool indicating the success of the operation.</returns>
-        public async Task<bool> AddOrUpdateToolProperties(Tool existingTool, Dictionary<string, Property> newProperties)
+        /// <returns>An <see cref="APIResponseWrapper{bool}"/> indicating the success of the operation.</returns>
+        public async Task<APIResponseWrapper<bool>> AddOrUpdateToolProperties(Tool existingTool, Dictionary<string, Property> newProperties)
         {
             var existingProperties = await _propertyDb.GetToolProperties(existingTool.Id);
             foreach (var property in existingProperties) await _propertyDb.DeleteAsync(property);
@@ -400,7 +410,7 @@ namespace IntelligenceHub.Business.Implementations
                 property.Value.Id = existingTool.Id;
                 await _propertyDb.AddAsync(DbMappingHandler.MapToDbProperty(property.Key, property.Value));
             }
-            return true;
+            return APIResponseWrapper<bool>.Success(true);
         }
         #endregion
     }

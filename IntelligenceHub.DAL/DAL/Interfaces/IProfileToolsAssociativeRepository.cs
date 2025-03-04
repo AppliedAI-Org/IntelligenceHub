@@ -35,30 +35,30 @@ namespace IntelligenceHub.DAL.Interfaces
         /// Deletes all tool associations for a given profile.
         /// </summary>
         /// <param name="profileId">The ID of the profile.</param>
-        /// <returns>The number of affected rows.</returns>
-        Task<int> DeleteAllProfileAssociationsAsync(int profileId);
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        Task<bool> DeleteAllProfileAssociationsAsync(int profileId);
 
         /// <summary>
         /// Deletes all profile associations for a given tool.
         /// </summary>
         /// <param name="toolId">The ID of the tool.</param>
-        /// <returns>The number of affected rows.</returns>
-        Task<int> DeleteAllToolAssociationsAsync(int toolId);
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        Task<bool> DeleteAllToolAssociationsAsync(int toolId);
 
         /// <summary>
         /// Deletes a tool association for a given profile.
         /// </summary>
         /// <param name="toolId">The ID of the tool.</param>
         /// <param name="profileName">The name of the profile.</param>
-        /// <returns>The number of affected rows.</returns>
-        Task<int> DeleteToolAssociationAsync(int toolId, string profileName);
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        Task<bool> DeleteToolAssociationAsync(int toolId, string profileName);
 
         /// <summary>
         /// Deletes a profile association for a given tool.
         /// </summary>
         /// <param name="profileId">The ID of the profile.</param>
         /// <param name="toolName">The name of the tool.</param>
-        /// <returns>The number of affected rows.</returns>
-        Task<int> DeleteProfileAssociationAsync(int profileId, string toolName);
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        Task<bool> DeleteProfileAssociationAsync(int profileId, string toolName);
     }
 }

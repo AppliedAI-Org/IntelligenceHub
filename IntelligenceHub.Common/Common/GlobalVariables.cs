@@ -15,13 +15,14 @@
             None,
         }
 
-        public enum FinishReason
+        public enum FinishReasons
         {
             Stop,
             Length,
             ToolCalls,
             ContentFilter,
-            Error
+            Error,
+            TooManyRequests
         }
 
         public enum Role
@@ -76,6 +77,15 @@
             OpenAIClientPolicy,
             AnthropicAIClientPolicy,
             ToolClientPolicy
+        }
+
+        public enum APIResponseStatusCodes
+        {
+            BadRequest,
+            NotFound,
+            Ok,
+            InternalError,
+            TooManyRequests,
         }
 
         public const string DefaultAnthropicModel = "claude-3-7-sonnet-20250219";

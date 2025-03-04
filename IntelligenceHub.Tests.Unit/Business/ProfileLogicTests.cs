@@ -65,7 +65,7 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal("ExistingProfile", result.Name);
+            Assert.Equal("ExistingProfile", result.Data.Name);
         }
 
         [Fact]
@@ -79,7 +79,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _profileLogic.CreateOrUpdateProfile(profile);
 
             // Assert
-            Assert.Equal("Validation Error", result);
+            Assert.Equal("Validation Error", result.Data);
         }
 
         [Fact]
@@ -108,7 +108,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _profileLogic.DeleteProfile("NonExistentProfile");
 
             // Assert
-            Assert.Equal("No profile with the specified name was found. Name: 'NonExistentProfile'", result);
+            Assert.Equal("No profile with the specified name was found. Name: 'NonExistentProfile'", result.Data);
         }
 
         [Fact]
@@ -117,7 +117,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Arrange
             var profile = new DbProfile { Id = 1, Name = "ExistingProfile", Host = AGIServiceHosts.Azure.ToString() };
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
-            _mockProfileRepository.Setup(repo => repo.DeleteAsync(It.IsAny<DbProfile>())).ReturnsAsync(1);
+            _mockProfileRepository.Setup(repo => repo.DeleteAsync(It.IsAny<DbProfile>())).ReturnsAsync(true);
 
             // Act
             var result = await _profileLogic.DeleteProfile("ExistingProfile");
@@ -137,7 +137,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _profileLogic.GetAllProfiles(1, 10);
 
             // Assert
-            Assert.Empty(result);
+            Assert.Empty(result.Data);
         }
 
         [Fact]
@@ -152,8 +152,8 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _profileLogic.GetAllProfiles(1, 10);
 
             // Assert
-            Assert.NotEmpty(result);
-            Assert.Single(result);
+            Assert.NotEmpty(result.Data);
+            Assert.Single(result.Data);
         }
     }
 }

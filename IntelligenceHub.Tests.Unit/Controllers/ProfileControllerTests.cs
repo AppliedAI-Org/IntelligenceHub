@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.API.DTOs;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Tests.Unit.Controllers
 {
@@ -40,7 +41,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             string name = "nonexistent-profile";
-            _mockProfileLogic.Setup(x => x.GetProfile(name)).ReturnsAsync((Profile)null);
+            _mockProfileLogic.Setup(x => x.GetProfile(name)).ReturnsAsync(APIResponseWrapper<Profile>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.GetProfile(name);
@@ -56,7 +57,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             string name = "existing-profile";
             var profile = new Profile { Name = name };
-            _mockProfileLogic.Setup(x => x.GetProfile(name)).ReturnsAsync(profile);
+            _mockProfileLogic.Setup(x => x.GetProfile(name)).ReturnsAsync(APIResponseWrapper<Profile>.Success(profile));
 
             // Act
             var result = await _controller.GetProfile(name);
@@ -71,7 +72,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var profile = new Profile { Name = "profile" };
-            _mockProfileLogic.Setup(x => x.CreateOrUpdateProfile(profile)).ReturnsAsync("Error creating profile");
+            _mockProfileLogic.Setup(x => x.CreateOrUpdateProfile(profile)).ReturnsAsync(APIResponseWrapper<string>.Failure("Error creating profile", APIResponseStatusCodes.BadRequest));
 
             // Act
             var result = await _controller.AddOrUpdateProfile(profile);
@@ -86,8 +87,8 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var profile = new Profile { Name = "profile" };
-            _mockProfileLogic.Setup(x => x.CreateOrUpdateProfile(profile)).ReturnsAsync(string.Empty);
-            _mockProfileLogic.Setup(x => x.GetProfile(profile.Name)).ReturnsAsync(profile);
+            _mockProfileLogic.Setup(x => x.CreateOrUpdateProfile(profile)).ReturnsAsync(APIResponseWrapper<string>.Success(string.Empty));
+            _mockProfileLogic.Setup(x => x.GetProfile(profile.Name)).ReturnsAsync(APIResponseWrapper<Profile>.Success(profile));
 
             // Act
             var result = await _controller.AddOrUpdateProfile(profile);
@@ -101,7 +102,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         public async Task AddProfileToTools_ReturnsBadRequest_WhenNameIsNullOrEmpty()
         {
             // Arrange
-            string name = string.Empty;
+            var name = string.Empty;
             var tools = new List<string> { "Tool1" };
 
             // Act
@@ -116,7 +117,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         public async Task AddProfileToTools_ReturnsBadRequest_WhenToolsIsNullOrEmpty()
         {
             // Arrange
-            string name = "profile";
+            var name = "profile";
             List<string> tools = null;
 
             // Act
@@ -131,10 +132,11 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         public async Task AddProfileToTools_ReturnsOk_WhenToolsAreSuccessfullyAdded()
         {
             // Arrange
-            string name = "profile";
+            var name = "profile";
             var tools = new List<string> { "Tool1" };
-            _mockProfileLogic.Setup(x => x.AddProfileToTools(name, tools)).ReturnsAsync((string)null);
-            _mockProfileLogic.Setup(x => x.GetProfileToolAssociations(name)).ReturnsAsync(tools);
+
+            _mockProfileLogic.Setup(x => x.AddProfileToTools(name, tools)).ReturnsAsync(APIResponseWrapper<List<string>>.Success(tools));
+            _mockProfileLogic.Setup(x => x.GetProfileToolAssociations(name)).ReturnsAsync(APIResponseWrapper<List<string>>.Success(tools));
 
             // Act
             var result = await _controller.AddProfileToTools(name, tools);
@@ -148,9 +150,9 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         public async Task RemoveProfileFromTools_ReturnsNoContent_WhenSuccessfullyRemoved()
         {
             // Arrange
-            string name = "profile";
+            var name = "profile";
             var tools = new List<string> { "Tool1" };
-            _mockProfileLogic.Setup(x => x.DeleteProfileAssociations(name, tools)).ReturnsAsync((string)null);
+            _mockProfileLogic.Setup(x => x.DeleteProfileAssociations(name, tools)).ReturnsAsync(APIResponseWrapper<List<string>>.Success(tools));
 
             // Act
             var result = await _controller.RemoveProfileFromTools(name, tools);
@@ -163,7 +165,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         public async Task DeleteProfile_ReturnsBadRequest_WhenNameIsNullOrWhiteSpace()
         {
             // Arrange
-            string name = string.Empty;
+            var name = string.Empty;
 
             // Act
             var result = await _controller.DeleteProfile(name);
@@ -178,7 +180,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             string name = "nonexistent-profile";
-            _mockProfileLogic.Setup(x => x.DeleteProfile(name)).ReturnsAsync("Profile not found");
+            _mockProfileLogic.Setup(x => x.DeleteProfile(name)).ReturnsAsync(APIResponseWrapper<string>.Failure("Profile not found", APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.DeleteProfile(name);
@@ -193,7 +195,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             string name = "profile";
-            _mockProfileLogic.Setup(x => x.DeleteProfile(name)).ReturnsAsync((string)null);
+            _mockProfileLogic.Setup(x => x.DeleteProfile(name)).ReturnsAsync(APIResponseWrapper<string>.Success(string.Empty));
 
             // Act
             var result = await _controller.DeleteProfile(name);

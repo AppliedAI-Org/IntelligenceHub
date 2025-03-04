@@ -11,14 +11,14 @@ namespace IntelligenceHub.Common.Extensions
         /// </summary>
         /// <param name="finishReason">The finish reason to convert.</param>
         /// <returns>The converted finish reason.</returns>
-        public static FinishReason? ConvertStringToFinishReason(this string finishReason)
+        public static FinishReasons? ConvertStringToFinishReason(this string finishReason)
         {
             finishReason = finishReason.ToLower();
-            if (finishReason == ChatFinishReason.Stop.ToString().ToLower()) return FinishReason.Stop;
-            if (finishReason == ChatFinishReason.Length.ToString().ToLower()) return FinishReason.Length;
-            if (finishReason == ChatFinishReason.ToolCalls.ToString().ToLower()) return FinishReason.ToolCalls;
-            if (finishReason == ChatFinishReason.FunctionCall.ToString().ToLower()) return FinishReason.ToolCalls;
-            if (finishReason == ChatFinishReason.ContentFilter.ToString().ToLower()) return FinishReason.ContentFilter;
+            if (finishReason == ChatFinishReason.Stop.ToString().ToLower()) return FinishReasons.Stop;
+            if (finishReason == ChatFinishReason.Length.ToString().ToLower()) return FinishReasons.Length;
+            if (finishReason == ChatFinishReason.ToolCalls.ToString().ToLower()) return FinishReasons.ToolCalls;
+            if (finishReason == ChatFinishReason.FunctionCall.ToString().ToLower()) return FinishReasons.ToolCalls;
+            if (finishReason == ChatFinishReason.ContentFilter.ToString().ToLower()) return FinishReasons.ContentFilter;
             return null;
         }
 

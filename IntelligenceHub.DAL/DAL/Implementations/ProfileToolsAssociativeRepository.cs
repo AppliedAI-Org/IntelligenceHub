@@ -76,8 +76,8 @@ namespace IntelligenceHub.DAL.Implementations
         /// </summary>
         /// <param name="toolId">The ID of the tool.</param>
         /// <param name="profileName">The name of the profile.</param>
-        /// <returns>The number of affected rows.</returns>
-        public async Task<int> DeleteToolAssociationAsync(int toolId, string profileName)
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        public async Task<bool> DeleteToolAssociationAsync(int toolId, string profileName)
         {
             var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.Name == profileName);
             if (profile != null)
@@ -86,10 +86,10 @@ namespace IntelligenceHub.DAL.Implementations
                 if (association != null)
                 {
                     _context.ProfileTools.Remove(association);
-                    return await _context.SaveChangesAsync();
+                    return await _context.SaveChangesAsync() > 0;
                 }
             }
-            return 0;
+            return false;
         }
 
         /// <summary>
@@ -97,8 +97,8 @@ namespace IntelligenceHub.DAL.Implementations
         /// </summary>
         /// <param name="profileId">The ID of the profile.</param>
         /// <param name="toolName">The name of the tool.</param>
-        /// <returns>The number of affected rows.</returns>
-        public async Task<int> DeleteProfileAssociationAsync(int profileId, string toolName)
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        public async Task<bool> DeleteProfileAssociationAsync(int profileId, string toolName)
         {
             var tool = await _context.Tools.FirstOrDefaultAsync(t => t.Name == toolName);
             if (tool != null)
@@ -107,34 +107,34 @@ namespace IntelligenceHub.DAL.Implementations
                 if (association != null)
                 {
                     _context.ProfileTools.Remove(association);
-                    return await _context.SaveChangesAsync();
+                    return await _context.SaveChangesAsync() > 0;
                 }
             }
-            return 0;
+            return false;
         }
 
         /// <summary>
         /// Deletes all tool associations for a given profile.
         /// </summary>
         /// <param name="profileId">The ID of the profile.</param>
-        /// <returns>The number of affected rows.</returns>
-        public async Task<int> DeleteAllProfileAssociationsAsync(int profileId)
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        public async Task<bool> DeleteAllProfileAssociationsAsync(int profileId)
         {
             var associations = _context.ProfileTools.Where(pt => pt.ProfileID == profileId);
             _context.ProfileTools.RemoveRange(associations);
-            return await _context.SaveChangesAsync();
+            return await _context.SaveChangesAsync() > 0;
         }
 
         /// <summary>
         /// Deletes all profile associations for a given tool.
         /// </summary>
         /// <param name="toolId">The ID of the tool.</param>
-        /// <returns>The number of affected rows.</returns>
-        public async Task<int> DeleteAllToolAssociationsAsync(int toolId)
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        public async Task<bool> DeleteAllToolAssociationsAsync(int toolId)
         {
             var associations = _context.ProfileTools.Where(pt => pt.ToolID == toolId);
             _context.ProfileTools.RemoveRange(associations);
-            return await _context.SaveChangesAsync();
+            return await _context.SaveChangesAsync() > 0;
         }
     }
 }

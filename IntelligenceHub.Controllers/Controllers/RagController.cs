@@ -22,10 +22,10 @@ namespace IntelligenceHub.Controllers
         private readonly IRagLogic _ragLogic;
 
         /// <summary>
-        /// This controller is used to manage RAG indexes.
+        /// Initializes a new instance of the <see cref="RagController"/> class.
         /// </summary>
         /// <param name="ragLogic">The business logic for managing RAG indexes.</param>
-        public RagController(IRagLogic ragLogic) 
+        public RagController(IRagLogic ragLogic)
         {
             _ragLogic = ragLogic;
         }
@@ -34,7 +34,7 @@ namespace IntelligenceHub.Controllers
         /// This endpoint is used to get a RAG index by name.
         /// </summary>
         /// <param name="index">The name of the index.</param>
-        /// <returns>The definition of the new index.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing the index metadata.</returns>
         [HttpGet]
         [Route("Index/{index}")]
         [SwaggerOperation(OperationId = "GetIndexAsync")]
@@ -47,10 +47,10 @@ namespace IntelligenceHub.Controllers
             try
             {
                 if (string.IsNullOrEmpty(index)) return BadRequest($"Invalid index name: '{index}'");
-
                 var response = await _ragLogic.GetRagIndex(index);
-                if (response == null) return NotFound();
-                else return Ok(response);
+                if (response.IsSuccess) return Ok(response.Data);
+                else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
+                return BadRequest(response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -61,21 +61,18 @@ namespace IntelligenceHub.Controllers
         /// <summary>
         /// This endpoint is used to get all RAG indexes.
         /// </summary>
-        /// <returns>A list of index definitions.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing a list of index metadata.</returns>
         [HttpGet]
         [Route("Index/All")]
         [SwaggerOperation(OperationId = "GetAllIndexesAsync")]
         [ProducesResponseType(typeof(IEnumerable<IndexMetadata>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAll()
         {
             try
             {
                 var response = await _ragLogic.GetAllIndexesAsync();
-                if (response is not null && response.Count() > 0) return Ok(response);
-                else return NotFound();
+                return Ok(response.Data ?? new List<IndexMetadata>());
             }
             catch (Exception)
             {
@@ -87,13 +84,12 @@ namespace IntelligenceHub.Controllers
         /// This endpoint is used to create a new RAG index.
         /// </summary>
         /// <param name="indexDefinition">The definition of the index.</param>
-        /// <returns>An empty ObjectResult.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing the created index metadata.</returns>
         [HttpPost]
         [Route("Index")]
         [SwaggerOperation(OperationId = "CreateIndexAsync")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IndexMetadata), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateIndex([FromBody] IndexMetadata indexDefinition)
         {
@@ -101,8 +97,9 @@ namespace IntelligenceHub.Controllers
             {
                 if (indexDefinition is null) return BadRequest("The request body is malformed.");
                 var response = await _ragLogic.CreateIndex(indexDefinition);
-                if (response) return NoContent();
-                else return BadRequest();
+                if (response.IsSuccess) return Ok(indexDefinition);
+                else if (response.StatusCode == APIResponseStatusCodes.BadRequest) return BadRequest(response.ErrorMessage);
+                return StatusCode(StatusCodes.Status500InternalServerError, response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -115,11 +112,11 @@ namespace IntelligenceHub.Controllers
         /// </summary>
         /// <param name="index">The name of the index.</param>
         /// <param name="indexDefinition">The new definition of the index.</param>
-        /// <returns>An empty ObjectResult.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing the updated index metadata.</returns>
         [HttpPost]
         [Route("Index/Configure/{index}")]
         [SwaggerOperation(OperationId = "ConfigureIndexAsync")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IndexMetadata), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -129,8 +126,10 @@ namespace IntelligenceHub.Controllers
             {
                 if (indexDefinition is null) return BadRequest("The request body is malformed.");
                 var response = await _ragLogic.ConfigureIndex(indexDefinition);
-                if (response) return NoContent();
-                else return NotFound();
+                if (response.IsSuccess) return Ok(indexDefinition);
+                else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
+                else if (response.StatusCode == APIResponseStatusCodes.InternalError) return StatusCode(StatusCodes.Status500InternalServerError, response.ErrorMessage);
+                return BadRequest(response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -143,7 +142,7 @@ namespace IntelligenceHub.Controllers
         /// </summary>
         /// <param name="index">The name of the index.</param>
         /// <param name="query">The query to perform against the index.</param>
-        /// <returns>An ObjectResult containing a collection of documents.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing a collection of documents.</returns>
         [HttpGet]
         [Route("Index/{index}/Query/{query}")]
         [SwaggerOperation(OperationId = "QueryIndexAsync")]
@@ -155,10 +154,11 @@ namespace IntelligenceHub.Controllers
         {
             try
             {
+                if (string.IsNullOrEmpty(query)) return BadRequest("The required route parameter, 'query', is null or empty.");
                 var response = await _ragLogic.QueryIndex(index, query);
-                if (response == null) return NotFound();
-                else if (response.Count > 0) return Ok(response);
-                else return BadRequest();
+                if (response.IsSuccess) return Ok(response.Data);
+                else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
+                return BadRequest(response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -170,11 +170,11 @@ namespace IntelligenceHub.Controllers
         /// This endpoint is used to run an index update.
         /// </summary>
         /// <param name="index">The name of the index.</param>
-        /// <returns>An empty ObjectResult.</returns>
+        /// <returns>An empty <see cref="IActionResult"/>.</returns>
         [HttpPost]
         [Route("Index/{index}/Run")]
         [SwaggerOperation(OperationId = "RunIndexUpdateAsync")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -183,10 +183,11 @@ namespace IntelligenceHub.Controllers
             try
             {
                 if (string.IsNullOrEmpty(index)) return BadRequest($"Invalid index name: '{index}'");
-
                 var response = await _ragLogic.RunIndexUpdate(index);
-                if (response) return NoContent();
-                else return BadRequest();
+                if (response.IsSuccess) return NoContent();
+                else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
+                else if (response.StatusCode == APIResponseStatusCodes.InternalError) return StatusCode(StatusCodes.Status500InternalServerError, response.ErrorMessage);
+                return BadRequest(response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -198,11 +199,11 @@ namespace IntelligenceHub.Controllers
         /// This endpoint is used to delete a RAG index.
         /// </summary>
         /// <param name="index">The name of the index.</param>
-        /// <returns>An empty ObjectResult.</returns>
+        /// <returns>An empty <see cref="IActionResult"/>.</returns>
         [HttpDelete]
         [Route("Index/Delete/{index}")]
         [SwaggerOperation(OperationId = "DeleteIndexAsync")]
-        [ProducesResponseType(typeof(CompletionResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -211,10 +212,11 @@ namespace IntelligenceHub.Controllers
             try
             {
                 if (string.IsNullOrEmpty(index)) return BadRequest($"Invalid index name: '{index}'");
-
                 var response = await _ragLogic.DeleteIndex(index);
-                if (response) return NoContent();
-                else return NotFound();
+                if (response.IsSuccess) return NoContent();
+                else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
+                else if (response.StatusCode == APIResponseStatusCodes.InternalError) return StatusCode(StatusCodes.Status500InternalServerError, response.ErrorMessage);
+                else return BadRequest(response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -228,13 +230,12 @@ namespace IntelligenceHub.Controllers
         /// <param name="index">The name of the index.</param>
         /// <param name="count">The number of documents to retrieve in the current batch.</param>
         /// <param name="page">The number of pages to offset the collection.</param>
-        /// <returns>An ObjectResult containing a collection of documents.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing a collection of documents.</returns>
         [HttpGet]
         [Route("Index/{index}/Document/{count}/Page/{page}")]
         [SwaggerOperation(OperationId = "GetIndexDocumentsAsync")]
         [ProducesResponseType(typeof(IEnumerable<IndexDocument>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllDocuments([FromRoute] string index, [FromRoute] int count, [FromRoute] int page)
         {
@@ -244,9 +245,9 @@ namespace IntelligenceHub.Controllers
                 if (count < 1) return BadRequest("Count must be 1 or greater");
                 if (string.IsNullOrEmpty(index)) return BadRequest($"Invalid index name: '{index}'");
 
-                var response = await _ragLogic.GetAllDocuments(index, count, page); // going to need to add pagination here
-                if (response != null && response.Count() > 0) return Ok(response);
-                else return NotFound();
+                var response = await _ragLogic.GetAllDocuments(index, count, page);
+                if (response.IsSuccess) return Ok(response.Data ?? new List<IndexDocument>());
+                return BadRequest(response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -259,7 +260,7 @@ namespace IntelligenceHub.Controllers
         /// </summary>
         /// <param name="index">The name of the index.</param>
         /// <param name="document">The name of the document.</param>
-        /// <returns>An ObjectResult containing the document.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing the document.</returns>
         [HttpGet]
         [Route("index/{index}/document/{document}")]
         [SwaggerOperation(OperationId = "GetDocumentAsync")]
@@ -272,8 +273,9 @@ namespace IntelligenceHub.Controllers
             try
             {
                 var response = await _ragLogic.GetDocument(index, document);
-                if (response is not null) return Ok(response);
-                else return NotFound();
+                if (response.IsSuccess) return Ok(response.Data);
+                else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
+                return BadRequest(response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -286,7 +288,7 @@ namespace IntelligenceHub.Controllers
         /// </summary>
         /// <param name="index">The name of the index.</param>
         /// <param name="documentUpsertRequest">An array of documents to upsert.</param>
-        /// <returns>An ObjectResult containing a boolean to indicate success or failure.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing the upserted documents.</returns>
         [HttpPost]
         [Route("index/{index}/Document")]
         [SwaggerOperation(OperationId = "UpsertDocumentAsync")]
@@ -298,11 +300,13 @@ namespace IntelligenceHub.Controllers
         {
             try
             {
-                if (documentUpsertRequest == null || documentUpsertRequest.Documents.Count < 1) return BadRequest("The request body is malformed or contains less than 1 document");
-                if (string.IsNullOrEmpty(index)) return BadRequest($"Invalid index name: '{index}'");
+                if (documentUpsertRequest == null || documentUpsertRequest.Documents.Count < 1) return BadRequest("The request body is malformed or contains less than 1 document.");
+                if (string.IsNullOrEmpty(index)) return BadRequest($"Invalid index name: '{index}'.");
                 var response = await _ragLogic.UpsertDocuments(index, documentUpsertRequest);
-                if (response) return Ok(response);
-                else return BadRequest();
+                if (response.IsSuccess) return Ok(documentUpsertRequest);
+                else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
+                else if (response.StatusCode == APIResponseStatusCodes.InternalError) return StatusCode(StatusCodes.Status500InternalServerError, response.ErrorMessage);
+                else return BadRequest(response.ErrorMessage);
             }
             catch (Exception)
             {
@@ -315,7 +319,7 @@ namespace IntelligenceHub.Controllers
         /// </summary>
         /// <param name="index">The name of the index.</param>
         /// <param name="commaDelimitedDocNames">A comma delimited string of document titles.</param>
-        /// <returns>An ObjectResult containing an int indicating the number of documents that were deleted.</returns>
+        /// <returns>An <see cref="IActionResult"/> containing the number of documents that were deleted.</returns>
         [HttpDelete]
         [Route("index/{index}/Document/{commaDelimitedDocNames}")]
         [SwaggerOperation(OperationId = "DeleteDocumentsAsync")]
@@ -328,11 +332,12 @@ namespace IntelligenceHub.Controllers
             try
             {
                 var documents = commaDelimitedDocNames.ToStringArray();
-                if (string.IsNullOrEmpty(index)) return BadRequest($"Invalid index name: '{index}'");
-                if (documents.Length < 1) return BadRequest("No document names where provided in the request route.");
+                if (string.IsNullOrEmpty(index)) return BadRequest($"Invalid index name: '{index}'.");
+                if (documents.Length < 1) return BadRequest("No document names were provided in the request route.");
                 var response = await _ragLogic.DeleteDocuments(index, documents);
-                if (response < 1) return NotFound();
-                else return Ok(response);
+                if (response.IsSuccess) return Ok(response.Data);
+                else if (response.Data != commaDelimitedDocNames.ToStringArray().Length) return NotFound($"Some or all of the provided documents were not found in the index '{index}'.");
+                else return BadRequest(response.ErrorMessage);
             }
             catch (Exception)
             {

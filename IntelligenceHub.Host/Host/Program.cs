@@ -22,6 +22,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using static IntelligenceHub.Common.GlobalVariables;
 using IntelligenceHub.Business.Factories;
+using IntelligenceHub.Host.Swagger;
 
 namespace IntelligenceHub.Host
 {
@@ -222,13 +223,19 @@ namespace IntelligenceHub.Host
             #region Swagger
             builder.Services.AddSwaggerGen(options =>
             {
-                options.EnableAnnotations(); // Enable annotations for Swagger, allowing for method renaming and custom descriptions
+                // Add Swagger documentation
                 options.SwaggerDoc("v1", new OpenApiInfo
                 {
                     Title = "Intelligence Hub API",
                     Version = "v1",
                     Description = "An API that simplifies utilizing and designing intelligent systems, particularly with AGI."
                 });
+
+                // Used to mark nullable path parameters as such
+                options.OperationFilter<NullableRouteParametersOperationFilter>();
+
+                // Enable annotations to set NSwag generated names for client methods
+                options.EnableAnnotations();
 
                 // Define the security scheme for bearer tokens
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -272,16 +279,22 @@ namespace IntelligenceHub.Host
 
                 app.UseCors(policy =>
                 {
-                    policy.WithOrigins(settings.ValidOrigins) // Specify allowed origin explicitly
-                      .AllowAnyMethod()
-                      .AllowAnyHeader()
-                      .AllowCredentials()
-                      .SetIsOriginAllowed((host) => true);
+                    policy.WithOrigins(settings.ValidOrigins)
+                          .AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials()
+                          .SetIsOriginAllowed((host) => true);
                 });
             }
             else
             {
-                // configure prod cors policy
+                app.UseCors(policy =>
+                {
+                    policy.WithOrigins(settings.ValidOrigins)
+                          .WithMethods("GET", "POST", "DELETE") 
+                          .WithHeaders("Authorization", "Content-Type")
+                          .AllowCredentials();
+                });
             }
 
             app.UseRouting();

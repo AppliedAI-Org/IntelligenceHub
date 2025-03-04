@@ -8,6 +8,6 @@ namespace IntelligenceHub.API.DTOs
         public List<Message> Messages { get; set; }
         public Dictionary<string, string> ToolCalls { get; set; }
         public List<HttpResponseMessage> ToolExecutionResponses { get; set; }
-        public FinishReason? FinishReason { get; set; }
+        public FinishReasons? FinishReason { get; set; }
     }
 }

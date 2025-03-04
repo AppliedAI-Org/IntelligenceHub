@@ -3,6 +3,7 @@ using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Tests.Unit.Controllers
 {
@@ -42,7 +43,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var id = Guid.NewGuid();
             var count = 1;
             var page = 1;
-            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, page, count)).ReturnsAsync((List<Message>)null);
+            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, page, count)).ReturnsAsync(APIResponseWrapper<List<Message>>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.GetConversation(id, count, page);
@@ -60,7 +61,8 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var count = 1;
             var page = 1;
             var messages = new List<Message> { new Message { Role = IntelligenceHub.Common.GlobalVariables.Role.User, Content = "Test" } };
-            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, page, count)).ReturnsAsync(messages);
+            var response = APIResponseWrapper<List<Message>>.Success(messages);
+            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, page, count)).ReturnsAsync(response);
 
             // Act
             var result = await _controller.GetConversation(id, page, count);
@@ -93,7 +95,8 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var id = Guid.NewGuid();
             var messages = new List<Message> { new Message { Role = IntelligenceHub.Common.GlobalVariables.Role.User, Content = "Test" } };
-            _mockMessageHistoryLogic.Setup(x => x.UpdateOrCreateConversation(id, messages)).ReturnsAsync(messages);
+            var mockResult = APIResponseWrapper<List<Message>>.Success(messages);
+            _mockMessageHistoryLogic.Setup(x => x.UpdateOrCreateConversation(id, messages)).ReturnsAsync(mockResult);
 
             // Act
             var result = await _controller.UpsertConversationData(id, messages);
@@ -110,7 +113,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var id = Guid.NewGuid();
-            _mockMessageHistoryLogic.Setup(x => x.DeleteConversation(id)).ReturnsAsync(false);
+            _mockMessageHistoryLogic.Setup(x => x.DeleteConversation(id)).ReturnsAsync(APIResponseWrapper<bool>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.DeleteConversation(id);
@@ -125,7 +128,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var id = Guid.NewGuid();
-            _mockMessageHistoryLogic.Setup(x => x.DeleteConversation(id)).ReturnsAsync(true);
+            _mockMessageHistoryLogic.Setup(x => x.DeleteConversation(id)).ReturnsAsync(APIResponseWrapper<bool>.Success(true));
 
             // Act
             var result = await _controller.DeleteConversation(id);
@@ -143,7 +146,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var conversationId = Guid.NewGuid();
             var messageId = 1;
-            _mockMessageHistoryLogic.Setup(x => x.DeleteMessage(conversationId, messageId)).ReturnsAsync(false);
+            _mockMessageHistoryLogic.Setup(x => x.DeleteMessage(conversationId, messageId)).ReturnsAsync(APIResponseWrapper<bool>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.DeleteMessage(conversationId, messageId);
@@ -159,7 +162,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var conversationId = Guid.NewGuid();
             var messageId = 1;
-            _mockMessageHistoryLogic.Setup(x => x.DeleteMessage(conversationId, messageId)).ReturnsAsync(true);
+            _mockMessageHistoryLogic.Setup(x => x.DeleteMessage(conversationId, messageId)).ReturnsAsync(APIResponseWrapper<bool>.Success(true));
 
             // Act
             var result = await _controller.DeleteMessage(conversationId, messageId);

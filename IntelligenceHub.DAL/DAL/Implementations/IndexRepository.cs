@@ -156,11 +156,11 @@ namespace IntelligenceHub.DAL.Implementations
         /// <summary>
         /// Updates an existing document in the RAG index.
         /// </summary>
-        /// <param name="existing">The current definition of the document.</param>
+        /// <param name="id">The ID of the document.</param>
         /// <param name="document">The new definition of the document.</param>
         /// <param name="tableName">The name of the index.</param>
-        /// <returns>The number of rows affected.</returns>
-        public async Task<int> UpdateAsync(DbIndexDocument existing, DbIndexDocument document, string tableName)
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        public async Task<bool> UpdateAsync(int id, DbIndexDocument document, string tableName)
         {
             var query = $@"UPDATE [{tableName}] SET 
                                Title = @Title, 
@@ -173,7 +173,7 @@ namespace IntelligenceHub.DAL.Implementations
                                WHERE Id = @Id";
             var parameters = new[]
             {
-                    new SqlParameter("@Id", existing.Id),
+                    new SqlParameter("@Id", id),
                     new SqlParameter("@Title", document.Title),
                     new SqlParameter("@Content", document.Content),
                     new SqlParameter("@Topic", document.Topic ?? (object)DBNull.Value),
@@ -182,7 +182,7 @@ namespace IntelligenceHub.DAL.Implementations
                     new SqlParameter("@Created", document.Created),
                     new SqlParameter("@Modified", document.Modified)
                 };
-            return await _context.Database.ExecuteSqlRawAsync(query, parameters);
+            return await _context.Database.ExecuteSqlRawAsync(query, parameters) == 1;
         }
 
         /// <summary>
@@ -190,15 +190,15 @@ namespace IntelligenceHub.DAL.Implementations
         /// </summary>
         /// <param name="document">The document to be deleted.</param>
         /// <param name="tableName">The name of the index.</param>
-        /// <returns></returns>
-        public async Task<int> DeleteAsync(DbIndexDocument document, string tableName)
+        /// <returns>A bool indicating the success or failure of the operation.</returns>
+        public async Task<bool> DeleteAsync(DbIndexDocument document, string tableName)
         {
             var query = $@"DELETE FROM [{tableName}] WHERE Id = @Id";
             var parameters = new[]
             {
                     new SqlParameter("@Id", document.Id)
                 };
-            return await _context.Database.ExecuteSqlRawAsync(query, parameters);
+            return await _context.Database.ExecuteSqlRawAsync(query, parameters) == 1;
         }
     }
 }

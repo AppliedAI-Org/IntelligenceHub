@@ -70,18 +70,18 @@ namespace IntelligenceHub.DAL.Interfaces
         /// <summary>
         /// Updates an existing document in the RAG index.
         /// </summary>
-        /// <param name="existing">The current definition of the document.</param>
+        /// <param name="id">The id of the document.</param>
         /// <param name="document">The new definition of the document.</param>
         /// <param name="tableName">The name of the index.</param>
-        /// <returns>The number of rows affected.</returns>
-        Task<int> UpdateAsync(DbIndexDocument existing, DbIndexDocument document, string tableName);
+        /// <returns>A bool indicating the success or failure of the operation.</returns>
+        Task<bool> UpdateAsync(int id, DbIndexDocument document, string tableName);
 
         /// <summary>
         /// Deletes a document from the RAG index.
         /// </summary>
         /// <param name="document">The document to be deleted.</param>
         /// <param name="tableName">The name of the index.</param>
-        /// <returns></returns>
-        Task<int> DeleteAsync(DbIndexDocument document, string tableName);
+        /// <returns>A bool indicating the success or failure of the operation.</returns>
+        Task<bool> DeleteAsync(DbIndexDocument document, string tableName);
     }
 }

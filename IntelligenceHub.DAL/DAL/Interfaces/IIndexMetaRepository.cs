@@ -26,7 +26,7 @@ namespace IntelligenceHub.DAL.Interfaces
         /// </summary>
         /// <param name="entity">The new definition of the entity.</param>
         /// <returns>The new entity.</returns>
-        Task<int> UpdateAsync(DbIndexMetadata entity);
+        Task<DbIndexMetadata> UpdateAsync(DbIndexMetadata entity);
 
         /// <summary>
         /// Retrieves all index metadata entities from the database.
@@ -40,7 +40,7 @@ namespace IntelligenceHub.DAL.Interfaces
         /// Deletes an index metadata entity from the database.
         /// </summary>
         /// <param name="entity">The entity to delete.</param>
-        /// <returns>The number of rows affected.</returns>
-        Task<int> DeleteAsync(DbIndexMetadata entity);
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        Task<bool> DeleteAsync(DbIndexMetadata entity);
     }
 }

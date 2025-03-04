@@ -61,24 +61,31 @@ namespace IntelligenceHub.Client.Implementations
         /// <returns>A completion response.</returns>
         public async Task<CompletionResponse> PostCompletion(CompletionRequest completionRequest)
         {
-            var request = BuildCompletionParameters(completionRequest);
-            var response = await _anthropicClient.Messages.GetClaudeMessageAsync(request);
-
-            var toolCalls = ConvertResponseTools(response.ToolCalls);
-
-            var responseContent = response.ContentBlock?.Text ?? string.Empty;
-            if (response.Content != null) responseContent = string.Join("", response.Content.OfType<TextContent>().Select(tc => tc.Text));
-            var contentString = GetMessageContent(responseContent, toolCalls);
-
-            var messages = completionRequest.Messages;
-            var responseMessage = ConvertFromAnthropicMessage(response, contentString);
-            messages.Add(responseMessage);
-            return new CompletionResponse
+            try
             {
-                Messages = messages,
-                ToolCalls = toolCalls,
-                FinishReason = ConvertFinishReason(response.StopReason, response.ToolCalls.Any())
-            };
+                var request = BuildCompletionParameters(completionRequest);
+                var response = await _anthropicClient.Messages.GetClaudeMessageAsync(request);
+
+                var toolCalls = ConvertResponseTools(response.ToolCalls);
+
+                var responseContent = response.ContentBlock?.Text ?? string.Empty;
+                if (response.Content != null) responseContent = string.Join("", response.Content.OfType<TextContent>().Select(tc => tc.Text));
+                var contentString = GetMessageContent(responseContent, toolCalls);
+
+                var messages = completionRequest.Messages;
+                var responseMessage = ConvertFromAnthropicMessage(response, contentString);
+                messages.Add(responseMessage);
+                return new CompletionResponse
+                {
+                    Messages = messages,
+                    ToolCalls = toolCalls,
+                    FinishReason = ConvertFinishReason(response.StopReason, response.ToolCalls.Any())
+                };
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                return new CompletionResponse() { FinishReason = FinishReasons.TooManyRequests };
+            }
         }
 
         /// <summary>
@@ -293,13 +300,13 @@ namespace IntelligenceHub.Client.Implementations
         /// <param name="anthropicStopReason">The stop reason to be converted.</param>
         /// <param name="hasTools">Whether or not tools were included in the response.</param>
         /// <returns>The converted finish reason.</returns>
-        private FinishReason ConvertFinishReason(string anthropicStopReason, bool hasTools)
+        private FinishReasons ConvertFinishReason(string anthropicStopReason, bool hasTools)
         {
-            var reason = FinishReason.Stop;
-            if (hasTools) reason = FinishReason.ToolCalls;
-            else if (anthropicStopReason.ToLower() == AnthropicSpecificStrings.end_turn.ToString().ToLower()) reason = FinishReason.Stop;
-            else if (anthropicStopReason.ToLower() == AnthropicSpecificStrings.stop_sequence.ToString().ToLower()) reason = FinishReason.Stop;
-            else if (anthropicStopReason.ToLower() == AnthropicSpecificStrings.max_tokens.ToString().ToLower()) reason = FinishReason.Length;
+            var reason = FinishReasons.Stop;
+            if (hasTools) reason = FinishReasons.ToolCalls;
+            else if (anthropicStopReason.ToLower() == AnthropicSpecificStrings.end_turn.ToString().ToLower()) reason = FinishReasons.Stop;
+            else if (anthropicStopReason.ToLower() == AnthropicSpecificStrings.stop_sequence.ToString().ToLower()) reason = FinishReasons.Stop;
+            else if (anthropicStopReason.ToLower() == AnthropicSpecificStrings.max_tokens.ToString().ToLower()) reason = FinishReasons.Length;
             return reason;
         }
 

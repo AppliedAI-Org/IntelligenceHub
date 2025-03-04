@@ -47,10 +47,9 @@ namespace IntelligenceHub.DAL.Interfaces
         /// <summary>
         /// Updates an existing tool in the database.
         /// </summary>
-        /// <param name="existingTool">The current definition of the tool.</param>
         /// <param name="updateToolDto">The new definition of the tool.</param>
-        /// <returns>The number of rows affected.</returns>
-        Task<int> UpdateAsync(DbTool updateToolDto);
+        /// <returns>The updated profile.</returns>
+        Task<DbTool> UpdateAsync(DbTool updateToolDto);
 
         /// <summary>
         /// Adds a new tool to the database.
@@ -63,7 +62,7 @@ namespace IntelligenceHub.DAL.Interfaces
         /// Deletes a tool from the database.
         /// </summary>
         /// <param name="tool">The tool to delete.</param>
-        /// <returns>The number of rows affected.</returns>
-        Task<int> DeleteAsync(DbTool tool);
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        Task<bool> DeleteAsync(DbTool tool);
     }
 }

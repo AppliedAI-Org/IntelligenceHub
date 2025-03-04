@@ -26,13 +26,13 @@
         /// </summary>
         /// <param name="entity">The updated entity.</param>
         /// <returns>An int representing the number of rows affected.</returns>
-        Task<int> UpdateAsync(T entity);
+        Task<T> UpdateAsync(T entity);
 
         /// <summary>
         /// Deletes an entity of type T from the database.
         /// </summary>
         /// <param name="entity">The entity to delete.</param>
         /// <returns>An int representing the number of rows affected.</returns>
-        Task<int> DeleteAsync(T entity);
+        Task<bool> DeleteAsync(T entity);
     }
 }

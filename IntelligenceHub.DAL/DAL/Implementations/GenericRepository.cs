@@ -59,12 +59,14 @@ namespace IntelligenceHub.DAL.Implementations
         /// Updates an existing entity of type T in the database.
         /// </summary>
         /// <param name="entity">The updated entity.</param>
-        /// <returns>An int representing the number of rows affected.</returns>
-        public async Task<int> UpdateAsync(T entity)
+        /// <returns>The updated entity.</returns>
+        public async Task<T> UpdateAsync(T entity)
         {
             _dbSet.Attach(entity);
             _context.Entry(entity).State = EntityState.Modified;
-            return await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
+            await _context.Entry(entity).ReloadAsync();
+            return entity;
         }
 
 
@@ -72,11 +74,11 @@ namespace IntelligenceHub.DAL.Implementations
         /// Deletes an entity of type T from the database.
         /// </summary>
         /// <param name="entity">The entity to delete.</param>
-        /// <returns>An int representing the number of rows affected.</returns>
-        public async Task<int> DeleteAsync(T entity)
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        public async Task<bool> DeleteAsync(T entity)
         {
             _dbSet.Remove(entity);
-            return await _context.SaveChangesAsync();
+            return await _context.SaveChangesAsync() > 0; // ensure an entity was deleted
         }
     }
 }

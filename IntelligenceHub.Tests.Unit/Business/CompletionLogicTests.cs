@@ -62,7 +62,7 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             var completionStreamChunks = new List<CompletionStreamChunk>
             {
-                new CompletionStreamChunk { CompletionUpdate = "Update1", Role = Role.Assistant, FinishReason = FinishReason.Stop }
+                new CompletionStreamChunk { CompletionUpdate = "Update1", Role = Role.Assistant, FinishReason = FinishReasons.Stop }
             }.ToAsyncEnumerable();
 
             _mockAIClient.Setup(client => client.StreamCompletion(It.IsAny<CompletionRequest>())).Returns(completionStreamChunks);
@@ -84,12 +84,12 @@ namespace IntelligenceHub.Tests.Unit.Business
             var resultList = new List<CompletionStreamChunk>();
             await foreach (var chunk in result)
             {
-                resultList.Add(chunk);
+                resultList.Add(chunk.Data);
             }
 
             Assert.Single(resultList);
             Assert.Equal("Update1", resultList[0].CompletionUpdate);
-            Assert.Equal(FinishReason.Stop, resultList[0].FinishReason);
+            Assert.Equal(FinishReasons.Stop, resultList[0].FinishReason);
         }
 
         [Fact]
@@ -113,7 +113,7 @@ namespace IntelligenceHub.Tests.Unit.Business
                     userMessage,
                     new Message() { Role = Role.Assistant, Content = "Response message" }
                 },
-                FinishReason = FinishReason.Stop 
+                FinishReason = FinishReasons.Stop 
             };
 
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
@@ -124,7 +124,7 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(completionResponse, result);
+            Assert.Equal(completionResponse, result.Data);
         }
 
         [Fact]
@@ -175,7 +175,8 @@ namespace IntelligenceHub.Tests.Unit.Business
                 .ReturnsAsync(httpResponse);
 
             // Act
-            var (httpResults, messageResults) = await _completionLogic.ExecuteTools(toolCalls, messages);
+            var wrappedResponse = await _completionLogic.ExecuteTools(toolCalls, messages);
+            var (httpResults, messageResults) = wrappedResponse.Data;
 
             // Assert
             Assert.NotNull(httpResults);
@@ -198,7 +199,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var completionResponse = new CompletionResponse
             {
                 Messages = new List<Message> { new Message { Content = "Recursive response", Role = Role.Assistant, TimeStamp = DateTime.UtcNow } },
-                FinishReason = FinishReason.Stop
+                FinishReason = FinishReasons.Stop
             };
 
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
@@ -207,7 +208,8 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockToolClient.Setup(client => client.CallFunction(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(httpResponse);
 
             // Act
-            var (httpResults, messageResults) = await _completionLogic.ExecuteTools(toolCalls, messages, null, null, 1);
+            var wrappedResponse = await _completionLogic.ExecuteTools(toolCalls, messages, null, null, 1);
+            var (httpResults, messageResults) = wrappedResponse.Data;
 
             // Assert
             Assert.NotNull(httpResults);

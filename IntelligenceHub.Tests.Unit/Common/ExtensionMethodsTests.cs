@@ -16,7 +16,7 @@ namespace IntelligenceHub.Tests.Unit.Common
             var result = input.ConvertStringToFinishReason();
 
             // Assert
-            Assert.Equal(FinishReason.Stop, result);
+            Assert.Equal(FinishReasons.Stop, result);
         }
 
         [Fact]

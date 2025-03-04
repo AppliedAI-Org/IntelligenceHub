@@ -26,10 +26,9 @@ namespace IntelligenceHub.DAL.Interfaces
         /// <summary>
         /// Updates an existing profile in the database.
         /// </summary>
-        /// <param name="existingProfile">The definition of the existing profile.</param>
         /// <param name="updateProfileDto">The new definition of the profile.</param>
-        /// <returns>The number of rows affected.</returns>
-        Task<int> UpdateAsync(DbProfile updateProfileDto);
+        /// <returns>The updated profile.</returns>
+        Task<DbProfile> UpdateAsync(DbProfile updateProfileDto);
 
         /// <summary>
         /// Adds a new profile to the database.
@@ -42,7 +41,7 @@ namespace IntelligenceHub.DAL.Interfaces
         /// Deletes a profile from the database.
         /// </summary>
         /// <param name="profile">The profile to delete.</param>
-        /// <returns>The number of rows affected.</returns>
-        Task<int> DeleteAsync(DbProfile profile);
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        Task<bool> DeleteAsync(DbProfile profile);
     }
 }
