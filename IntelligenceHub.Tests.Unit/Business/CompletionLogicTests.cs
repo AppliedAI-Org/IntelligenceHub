@@ -131,15 +131,19 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task ProcessCompletion_ReturnsErrorResponse_WhenRequestIsInvalid()
         {
             // Arrange
-            var completionRequest = new CompletionRequest();
-            _mockAIClient.Setup(client => client.PostCompletion(It.IsAny<CompletionRequest>()))
-                .ReturnsAsync((CompletionResponse)null);
+            var completionRequest = new CompletionRequest
+            {
+                ProfileOptions = new Profile(),
+                Messages = new List<Message>()
+            };
 
             // Act
             var result = await _completionLogic.ProcessCompletion(completionRequest);
 
             // Assert
-            Assert.Null(result);
+            Assert.NotNull(result);
+            Assert.False(result.IsSuccess);
+            Assert.Equal(APIResponseStatusCodes.BadRequest, result.StatusCode);
         }
 
         [Fact]

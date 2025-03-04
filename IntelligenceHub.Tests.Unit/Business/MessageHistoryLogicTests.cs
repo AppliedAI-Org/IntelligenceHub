@@ -3,6 +3,7 @@ using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
 using Moq;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Tests.Unit.Business
 {
@@ -133,7 +134,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         }
 
         [Fact]
-        public async Task AddMessage_ShouldReturnNull_WhenConversationNotFound()
+        public async Task AddMessage_ShouldReturnFailure_WhenConversationNotFound()
         {
             // Arrange
             var conversationId = Guid.NewGuid();
@@ -144,7 +145,10 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.AddMessage(conversationId, message);
 
             // Assert
-            Assert.Null(result);
+            Assert.NotNull(result);
+            Assert.False(result.IsSuccess);
+            Assert.Equal($"No conversation with the id '{conversationId}' was found", result.ErrorMessage);
+            Assert.Equal(APIResponseStatusCodes.NotFound, result.StatusCode);
         }
 
         [Fact]

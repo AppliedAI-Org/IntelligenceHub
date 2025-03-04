@@ -1,7 +1,6 @@
 ﻿using IntelligenceHub.API.DTOs.RAG;
 using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Factories;
-using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Config;
@@ -12,6 +11,7 @@ using Microsoft.Extensions.Options;
 using static IntelligenceHub.Common.GlobalVariables;
 using IntelligenceHub.Common.Extensions;
 using Microsoft.EntityFrameworkCore;
+using IntelligenceHub.Business.Handlers;
 
 namespace IntelligenceHub.Business.Implementations
 {
@@ -310,7 +310,7 @@ namespace IntelligenceHub.Business.Implementations
             var indexMetadata = await _metaRepository.GetByNameAsync(index);
             if (indexMetadata == null) return APIResponseWrapper<bool>.Failure($"No index with the name '{index}' was found.", APIResponseStatusCodes.NotFound);
             var success = await _searchClient.RunIndexer(index);
-            if (success) APIResponseWrapper<bool>.Success(true);
+            if (success) return APIResponseWrapper<bool>.Success(true);
             return APIResponseWrapper<bool>.Failure($"Failed to mark the SQL index for updating.", APIResponseStatusCodes.InternalError);
         }
 

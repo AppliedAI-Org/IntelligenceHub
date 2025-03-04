@@ -29,6 +29,9 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockValidationHandler = new Mock<IValidationHandler>();
             _mockIOptions = new Mock<IOptionsMonitor<Settings>>();
 
+            var settings = new Settings { ValidAGIModels = new[] { "Model1", "Model2" } };
+            _mockIOptions.Setup(m => m.CurrentValue).Returns(settings);
+
             _profileLogic = new ProfileLogic(
                 _mockIOptions.Object,
                 _mockProfileRepository.Object,
@@ -40,7 +43,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         }
 
         [Fact]
-        public async Task GetProfile_ReturnsNull_WhenProfileDoesNotExist()
+        public async Task GetProfile_ReturnsFailure_WhenProfileDoesNotExist()
         {
             // Arrange
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync((DbProfile)null);
@@ -49,7 +52,10 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _profileLogic.GetProfile("NonExistentProfile");
 
             // Assert
-            Assert.Null(result);
+            Assert.NotNull(result);
+            Assert.False(result.IsSuccess);
+            Assert.Equal("No profile with the name 'NonExistentProfile' was found.", result.ErrorMessage);
+            Assert.Equal(APIResponseStatusCodes.NotFound, result.StatusCode);
         }
 
         [Fact]
@@ -79,7 +85,9 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _profileLogic.CreateOrUpdateProfile(profile);
 
             // Assert
-            Assert.Equal("Validation Error", result.Data);
+            Assert.NotNull(result);
+            Assert.Equal("Validation Error", result.ErrorMessage);
+            Assert.Equal(APIResponseStatusCodes.BadRequest, result.StatusCode);
         }
 
         [Fact]
@@ -87,6 +95,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         {
             // Arrange
             var profile = new Profile { Name = "NewProfile" };
+            _mockValidationHandler.Setup(handler => handler.ValidateAPIProfile(It.IsAny<Profile>())).Returns((string)null);
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync((DbProfile)null);
             _mockProfileRepository.Setup(repo => repo.AddAsync(It.IsAny<DbProfile>())).ReturnsAsync(new DbProfile());
 
@@ -94,7 +103,8 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _profileLogic.CreateOrUpdateProfile(profile);
 
             // Assert
-            Assert.Null(result);
+            Assert.NotNull(result);
+            Assert.Equal(string.Empty, result.Data);
             _mockProfileRepository.Verify(repo => repo.AddAsync(It.IsAny<DbProfile>()), Times.Once);
         }
 
@@ -108,23 +118,30 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _profileLogic.DeleteProfile("NonExistentProfile");
 
             // Assert
-            Assert.Equal("No profile with the specified name was found. Name: 'NonExistentProfile'", result.Data);
+            Assert.NotNull(result);
+            Assert.Equal("No profile with the specified name was found. Name: 'NonExistentProfile'", result.ErrorMessage);
+            Assert.Equal(APIResponseStatusCodes.NotFound, result.StatusCode);
         }
 
         [Fact]
         public async Task DeleteProfile_DeletesProfile_WhenProfileExists()
         {
             // Arrange
-            var profile = new DbProfile { Id = 1, Name = "ExistingProfile", Host = AGIServiceHosts.Azure.ToString() };
+            var profileTools = new List<DbProfileTool> { new DbProfileTool { ProfileID = 1, ToolID = 1, Tool = new DbTool { Name = "Tool1" } } };
+            var profile = new DbProfile { Id = 1, Name = "ExistingProfile", Host = AGIServiceHosts.Azure.ToString(), ProfileTools = profileTools };
+
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
+            _mockProfileToolsRepository.Setup(repo => repo.DeleteAllProfileAssociationsAsync(It.IsAny<int>())).ReturnsAsync(true);
             _mockProfileRepository.Setup(repo => repo.DeleteAsync(It.IsAny<DbProfile>())).ReturnsAsync(true);
 
             // Act
             var result = await _profileLogic.DeleteProfile("ExistingProfile");
 
             // Assert
-            Assert.Null(result);
+            Assert.NotNull(result);
+            Assert.Equal(string.Empty, result.Data);
             _mockProfileRepository.Verify(repo => repo.DeleteAsync(It.IsAny<DbProfile>()), Times.Once);
+            _mockProfileToolsRepository.Verify(repo => repo.DeleteAllProfileAssociationsAsync(It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
@@ -145,8 +162,12 @@ namespace IntelligenceHub.Tests.Unit.Business
         {
             // Arrange
             var profiles = new List<DbProfile> { new DbProfile { Id = 1, Name = "Profile1", Host = AGIServiceHosts.Azure.ToString() } };
-            _mockProfileRepository.Setup(repo => repo.GetAllAsync(null, null)).ReturnsAsync(profiles);
-            _mockProfileToolsRepository.Setup(repo => repo.GetToolAssociationsAsync(It.IsAny<int>())).ReturnsAsync(new List<DbProfileTool>());
+            var profileTools = new List<DbProfileTool> { new DbProfileTool { ProfileID = 1, Tool = new DbTool { Name = "Tool1" } } };
+            var tool = new DbTool { Name = "Tool1" };
+
+            _mockProfileRepository.Setup(repo => repo.GetAllAsync(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(profiles);
+            _mockProfileToolsRepository.Setup(repo => repo.GetToolAssociationsAsync(It.IsAny<int>())).ReturnsAsync(profileTools);
+            _mockToolRepository.Setup(repo => repo.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(tool);
 
             // Act
             var result = await _profileLogic.GetAllProfiles(1, 10);
@@ -154,6 +175,9 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Assert
             Assert.NotEmpty(result.Data);
             Assert.Single(result.Data);
+            Assert.Equal("Profile1", result.Data.First().Name);
+            Assert.NotEmpty(result.Data.First().Tools);
+            Assert.Equal("Tool1", result.Data.First().Tools.First().Function.Name);
         }
     }
 }

@@ -42,7 +42,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var name = "nonexistentTool";
-            _profileLogicMock.Setup(p => p.GetTool(name)).ReturnsAsync(APIResponseWrapper<Tool>.Success(new Tool() { Function = new Function() { Name = name } }));
+            _profileLogicMock.Setup(p => p.GetTool(name)).ReturnsAsync(APIResponseWrapper<Tool>.Failure($"No tool with the name {name} exists", APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.GetTool(name);
@@ -71,7 +71,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
 
         #region GetAllTools Tests
         [Fact]
-        public async Task GetAllTools_ReturnsNotFound_WhenNoToolsExist()
+        public async Task GetAllTools_ReturnsEmptySet_WhenNoToolsExist()
         {
             // Arrange
             _profileLogicMock.Setup(p => p.GetAllTools(1, 10)).ReturnsAsync(APIResponseWrapper<IEnumerable<Tool>>.Success(Enumerable.Empty<Tool>()));
@@ -80,8 +80,9 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var result = await _controller.GetAllTools(1, 10);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            Assert.Equal("No tools exist. Make a post request to add some.", notFoundResult.Value);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var tools = Assert.IsAssignableFrom<IEnumerable<Tool>>(okResult.Value);
+            Assert.Empty(tools);
         }
 
         [Fact]
@@ -127,8 +128,9 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var result = await _controller.GetToolProfiles(name);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            Assert.Equal($"The tool '{name}' is not associated with any profiles, or does not exist.", notFoundResult.Value);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var profiles = Assert.IsType<List<string>>(okResult.Value);
+            Assert.Empty(profiles);
         }
 
         [Fact]
@@ -165,7 +167,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         }
 
         [Fact]
-        public async Task AddOrUpdateTool_ReturnsNoContent_WhenSuccess()
+        public async Task AddOrUpdateTool_ReturnsOk_WhenSuccess()
         {
             // Arrange
             var toolList = new List<Tool> { new Tool { Function = new Function() { Name = "tool1" } } };
@@ -175,7 +177,8 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var result = await _controller.AddOrUpdateTool(toolList);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(toolList, okResult.Value);
         }
         #endregion
 
@@ -233,7 +236,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         }
 
         [Fact]
-        public async Task RemoveToolFromProfiles_ReturnsNoContent_WhenSuccess()
+        public async Task RemoveToolFromProfiles_ReturnsOk_WhenSuccess()
         {
             // Arrange
             var name = "tool1";
@@ -244,7 +247,8 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var result = await _controller.RemoveToolFromProfiles(name, profiles);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(profiles, okResult.Value);
         }
         #endregion
 
@@ -268,7 +272,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var name = "nonexistentTool";
-            _profileLogicMock.Setup(p => p.DeleteTool(name)).ReturnsAsync(APIResponseWrapper<bool>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
+            _profileLogicMock.Setup(p => p.DeleteTool(name)).ReturnsAsync(APIResponseWrapper<bool>.Failure($"No tool with the name {name} exists", APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.DeleteTool(name);
@@ -290,6 +294,19 @@ namespace IntelligenceHub.Tests.Unit.Controllers
 
             // Assert
             Assert.IsType<NoContentResult>(result);
+        }
+        [Fact]
+        public async Task GetAllTools_ReturnsOk_WhenNoToolsExist()
+        {
+            // Arrange
+            _profileLogicMock.Setup(p => p.GetAllTools(1, 10)).ReturnsAsync(APIResponseWrapper<IEnumerable<Tool>>.Success(Enumerable.Empty<Tool>()));
+
+            // Act
+            var result = await _controller.GetAllTools(1, 10);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Empty((IEnumerable<Tool>)okResult.Value);
         }
         #endregion
     }

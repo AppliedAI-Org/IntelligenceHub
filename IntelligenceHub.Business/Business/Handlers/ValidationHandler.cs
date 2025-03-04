@@ -39,7 +39,7 @@ namespace IntelligenceHub.Business.Handlers
         /// <summary>
         /// Default constructor for the ValidationHandler class.
         /// </summary>
-        public ValidationHandler(IOptionsMonitor<Settings> settings) 
+        public ValidationHandler(IOptionsMonitor<Settings> settings)
         {
             _validModels = settings.CurrentValue.ValidAGIModels;
         }
@@ -96,7 +96,7 @@ namespace IntelligenceHub.Business.Handlers
             if (profile.TopP < 0 || profile.TopP > 1) return "Top_P must be a value between 0 and 1";
             if (profile.MaxTokens < 1 || profile.MaxTokens > 1000000) return "Max_Tokens must be a value between 1 and 1,000,000"; // check this value for Azure and other services
             if (profile.TopLogprobs < 0 || profile.TopLogprobs > 5) return "Top_Logprobs must be a value between 0 and 5";
-            if (profile.ResponseFormat != null && profile.ResponseFormat != "text" && profile.ResponseFormat != GlobalVariables.ResponseFormat.Json.ToString()) return $"If Response_Type is set, it must either be equal to '{GlobalVariables.ResponseFormat.Text}' or '{GlobalVariables.ResponseFormat.Json}'";
+            if (profile.ResponseFormat != null && profile.ResponseFormat != "text" && profile.ResponseFormat != ResponseFormat.Json.ToString()) return $"If Response_Type is set, it must either be equal to '{ResponseFormat.Text}' or '{ResponseFormat.Json}'";
 
             if (profile.Tools != null)
             {

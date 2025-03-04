@@ -42,10 +42,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var completionRepsonse = new CompletionResponse
             {
                 FinishReason = GlobalVariables.FinishReasons.Stop,
-                Messages = new List<Message>
-                {
-                    new Message { Role = GlobalVariables.Role.Assistant, Content = "The AI generated string goes here" }
-                }
+                Messages = new List<Message> { new Message { Role = GlobalVariables.Role.Assistant, Content = "The AI generated string goes here" } }
             };
 
             var expectedResponse = APIResponseWrapper<CompletionResponse>.Success(completionRepsonse);
@@ -59,7 +56,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
-            Assert.Equal(expectedResponse, okResult.Value);
+            Assert.Equal(expectedResponse.Data, okResult.Value);
         }
 
         [Fact]
@@ -90,7 +87,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var completionRequest = new CompletionRequest { ProfileOptions = new Profile { Name = name } };
 
             _mockCompletionLogic.Setup(x => x.ProcessCompletion(completionRequest))
-                                .ReturnsAsync(APIResponseWrapper<CompletionResponse>.Failure(string.Empty, APIResponseStatusCodes.BadRequest));
+                                .ReturnsAsync(APIResponseWrapper<CompletionResponse>.Failure("Invalid request. Please check your request body.", APIResponseStatusCodes.BadRequest));
 
             // Act
             var result = await _controller.CompletionStandard(name, completionRequest);
@@ -127,9 +124,9 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var name = "testProfile";
-            var completionRequest = new CompletionRequest { ProfileOptions = new Profile { Name = name } };
+            var completionRequest = new CompletionRequest { ProfileOptions = new Profile { Name = name }, Messages = new List<Message>() { new Message() { Role = Role.User, Content = "content" } } };
             var responseChunks = new List<APIResponseWrapper<CompletionStreamChunk>>();
-            var data = APIResponseWrapper<CompletionStreamChunk>.Success(new CompletionStreamChunk { FinishReason = GlobalVariables.FinishReasons.Stop, CompletionUpdate = "" } );
+            var data = APIResponseWrapper<CompletionStreamChunk>.Success(new CompletionStreamChunk { FinishReason = GlobalVariables.FinishReasons.Stop, CompletionUpdate = "" });
             responseChunks.Add(data);
 
             // Mock the streaming completion response
@@ -155,7 +152,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var responseBody = Encoding.UTF8.GetString(memoryStream.ToArray());
             foreach (var chunk in responseChunks)
             {
-                var jsonChunk = JsonConvert.SerializeObject(chunk);
+                var jsonChunk = JsonConvert.SerializeObject(chunk.Data);
                 var expectedSseMessage = $"data: {jsonChunk}\n\n";
                 Assert.Contains(expectedSseMessage, responseBody);
             }

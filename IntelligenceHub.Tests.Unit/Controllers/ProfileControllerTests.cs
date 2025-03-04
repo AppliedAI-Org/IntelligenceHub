@@ -41,7 +41,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             string name = "nonexistent-profile";
-            _mockProfileLogic.Setup(x => x.GetProfile(name)).ReturnsAsync(APIResponseWrapper<Profile>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
+            _mockProfileLogic.Setup(x => x.GetProfile(name)).ReturnsAsync(APIResponseWrapper<Profile>.Failure($"No profile with the name {name} was found.", APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.GetProfile(name);
@@ -147,7 +147,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         }
 
         [Fact]
-        public async Task RemoveProfileFromTools_ReturnsNoContent_WhenSuccessfullyRemoved()
+        public async Task RemoveProfileFromTools_ReturnsOk_WhenSuccessfullyRemoved()
         {
             // Arrange
             var name = "profile";
@@ -158,7 +158,8 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var result = await _controller.RemoveProfileFromTools(name, tools);
 
             // Assert
-            var noContentResult = Assert.IsType<NoContentResult>(result);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(tools, okResult.Value);
         }
 
         [Fact]

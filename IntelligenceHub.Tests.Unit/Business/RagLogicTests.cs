@@ -1,8 +1,8 @@
 ﻿using Azure.Search.Documents.Models;
 using global::IntelligenceHub.API.DTOs.RAG;
 using global::IntelligenceHub.DAL.Models;
-using IntelligenceHub.Business.Factories;
 using IntelligenceHub.Business.Handlers;
+using IntelligenceHub.Business.Factories;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Config;
@@ -41,6 +41,9 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockBackgroundTaskQueueHandler = new Mock<IBackgroundTaskQueueHandler>();
             _mockIOptions = new Mock<IOptionsMonitor<Settings>>();
             _context = new Mock<IntelligenceHubDbContext>();
+
+            var settings = new Settings { ValidAGIModels = new[] { "Model1", "Model2" } };
+            _mockIOptions.Setup(m => m.CurrentValue).Returns(settings);
 
             _ragLogic = new RagLogic(_mockIOptions.Object, _mockClientFactory.Object, _mockProfileRepository.Object, _mockSearchClient.Object, _mockMetaRepository.Object, _mockRagRepository.Object, _mockValidationHandler.Object, _mockBackgroundTaskQueueHandler.Object, _context.Object);
         }
@@ -323,6 +326,8 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             // Assert
             Assert.True(result.Data);
+            Assert.True(result.IsSuccess);
+            Assert.Equal(APIResponseStatusCodes.Ok, result.StatusCode);
         }
 
         [Fact]
@@ -343,7 +348,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         }
 
         [Fact]
-        public async Task QueryIndex_ShouldReturnNull_WhenIndexNameIsInvalid()
+        public async Task QueryIndex_ShouldReturnBadRequestWrapper_WhenIndexNameIsInvalid()
         {
             // Arrange
             var indexName = "invalid index name";
@@ -354,11 +359,14 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.QueryIndex(indexName, query);
 
             // Assert
-            Assert.Null(result);
+            Assert.NotNull(result);
+            Assert.False(result.IsSuccess);
+            Assert.Equal(APIResponseStatusCodes.BadRequest, result.StatusCode);
+            Assert.Equal($"The supplied index name, '{indexName}' is invalid. Please avoid reserved SQL words.", result.ErrorMessage);
         }
 
         [Fact]
-        public async Task QueryIndex_ShouldReturnNull_WhenQueryIsEmpty()
+        public async Task QueryIndex_ShouldReturnBadRequestWrapper_WhenQueryIsEmpty()
         {
             // Arrange
             var indexName = "testIndex";
@@ -369,11 +377,14 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.QueryIndex(indexName, query);
 
             // Assert
-            Assert.Null(result);
+            Assert.NotNull(result);
+            Assert.False(result.IsSuccess);
+            Assert.Equal(APIResponseStatusCodes.BadRequest, result.StatusCode);
+            Assert.Equal("The supplied index name, 'testIndex' is invalid. Please avoid reserved SQL words.", result.ErrorMessage);
         }
 
         [Fact]
-        public async Task QueryIndex_ShouldReturnNull_WhenIndexDoesNotExist()
+        public async Task QueryIndex_ShouldReturnNotFound_WhenIndexDoesNotExist()
         {
             // Arrange
             var indexName = "nonExistentIndex";
@@ -385,7 +396,10 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _ragLogic.QueryIndex(indexName, query);
 
             // Assert
-            Assert.Null(result);
+            Assert.NotNull(result);
+            Assert.False(result.IsSuccess);
+            Assert.Equal(APIResponseStatusCodes.NotFound, result.StatusCode);
+            Assert.Equal($"No index with the name '{indexName}' was found.", result.ErrorMessage);
         }
 
         [Fact]
@@ -797,17 +811,20 @@ namespace IntelligenceHub.Tests.Unit.Business
         }
 
         [Fact]
-        public async Task DeleteDocuments_ShouldReturnNegativeOne_WhenIndexNameIsInvalid()
+        public async Task DeleteDocuments_ShouldReturnBadRequestWrapper_WhenIndexNameIsInvalid()
         {
             // Arrange
-            var indexName = "invalid index name";
+            var indexName = "invalid index name with SQL keyword such as DROP";
             var documentNames = new[] { "doc1", "doc2" };
+            _mockValidationHandler.Setup(repo => repo.IsValidIndexName(indexName)).Returns(false);
 
             // Act
             var result = await _ragLogic.DeleteDocuments(indexName, documentNames);
 
             // Assert
-            Assert.Equal(-1, result.Data);
+            Assert.False(result.IsSuccess);
+            Assert.Equal(APIResponseStatusCodes.BadRequest, result.StatusCode);
+            Assert.Equal($"The supplied index name, '{indexName}' is invalid. Please avoid reserved SQL words.", result.ErrorMessage);
         }
     }
 }

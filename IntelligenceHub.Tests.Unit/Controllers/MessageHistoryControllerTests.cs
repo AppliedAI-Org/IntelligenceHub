@@ -33,7 +33,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal("count must be greater than 1", badRequestResult.Value);
+            Assert.Equal("Count must be greater than 0.", badRequestResult.Value);
         }
 
         [Fact]
@@ -43,14 +43,14 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var id = Guid.NewGuid();
             var count = 1;
             var page = 1;
-            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, page, count)).ReturnsAsync(APIResponseWrapper<List<Message>>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
+            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, page, count)).ReturnsAsync(APIResponseWrapper<List<Message>>.Success(new List<Message>()));
 
             // Act
             var result = await _controller.GetConversation(id, count, page);
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            Assert.Equal($"The conversation '{id}' does not exist or is empty...", notFoundResult.Value);
+            Assert.Equal($"The conversation '{id}' does not exist or is empty.", notFoundResult.Value);
         }
 
         [Fact]
@@ -113,7 +113,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var id = Guid.NewGuid();
-            _mockMessageHistoryLogic.Setup(x => x.DeleteConversation(id)).ReturnsAsync(APIResponseWrapper<bool>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
+            _mockMessageHistoryLogic.Setup(x => x.DeleteConversation(id)).ReturnsAsync(APIResponseWrapper<bool>.Failure($"No conversation with ID '{id}' was found", APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.DeleteConversation(id);
@@ -134,8 +134,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var result = await _controller.DeleteConversation(id);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.True((bool)okResult.Value);
+            var okResult = Assert.IsType<NoContentResult>(result);
         }
         #endregion
 
@@ -146,7 +145,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var conversationId = Guid.NewGuid();
             var messageId = 1;
-            _mockMessageHistoryLogic.Setup(x => x.DeleteMessage(conversationId, messageId)).ReturnsAsync(APIResponseWrapper<bool>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
+            _mockMessageHistoryLogic.Setup(x => x.DeleteMessage(conversationId, messageId)).ReturnsAsync(APIResponseWrapper<bool>.Failure("The conversation or message was not found", APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.DeleteMessage(conversationId, messageId);
@@ -168,8 +167,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var result = await _controller.DeleteMessage(conversationId, messageId);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.True((bool)okResult.Value);
+            Assert.IsType<NoContentResult>(result);
         }
         #endregion
     }

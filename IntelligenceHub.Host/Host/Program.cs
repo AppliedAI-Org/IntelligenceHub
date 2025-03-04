@@ -1,6 +1,5 @@
 using DotNetEnv;
 using IntelligenceHub.Business.Interfaces;
-using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.Client.Implementations;
 using IntelligenceHub.Client.Interfaces;
@@ -23,6 +22,7 @@ using System.Text.Json.Serialization;
 using static IntelligenceHub.Common.GlobalVariables;
 using IntelligenceHub.Business.Factories;
 using IntelligenceHub.Host.Swagger;
+using IntelligenceHub.Business.Handlers;
 
 namespace IntelligenceHub.Host
 {

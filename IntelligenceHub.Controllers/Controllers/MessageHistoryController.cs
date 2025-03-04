@@ -78,7 +78,7 @@ namespace IntelligenceHub.Controllers
             try
             {
                 // Validate the messages list
-                if (!messages.Any()) return BadRequest("Messages must be included in the request.");
+                if (messages == null || !messages.Any()) return BadRequest("Messages must be included in the request.");
 
                 var response = await _messageHistoryLogic.UpdateOrCreateConversation(id, messages);
                 if (!response.IsSuccess) return BadRequest(response.ErrorMessage);

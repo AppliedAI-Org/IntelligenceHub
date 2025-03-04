@@ -52,7 +52,7 @@ namespace IntelligenceHub.Business.Implementations
             {
                 var dbMessage = DbMappingHandler.MapToDbMessage(message, conversationId);
                 var addedMessage = await _messageHistoryRepository.AddAsync(dbMessage);
-                addedMessages.Add(message);
+                if (addedMessage != null) addedMessages.Add(message);
             }
             return APIResponseWrapper<List<Message>>.Success(addedMessages);
         }

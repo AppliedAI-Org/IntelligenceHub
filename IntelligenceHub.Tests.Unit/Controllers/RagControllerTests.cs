@@ -33,7 +33,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.Equal(expectedResponse, okResult.Value);
+            Assert.Equal(metadata, okResult.Value);
         }
 
         [Fact]
@@ -41,13 +41,15 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var name = "testIndex";
-            _mockRagLogic.Setup(r => r.GetRagIndex(name)).ReturnsAsync(APIResponseWrapper<IndexMetadata>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
+            var expectedResponse = APIResponseWrapper<IndexMetadata>.Failure(string.Empty, APIResponseStatusCodes.NotFound);
+            _mockRagLogic.Setup(r => r.GetRagIndex(name)).ReturnsAsync(expectedResponse);
 
             // Act
             var result = await _controller.Get(name);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Equal(expectedResponse.ErrorMessage, notFoundResult.Value);
         }
 
         [Fact]
@@ -63,20 +65,23 @@ namespace IntelligenceHub.Tests.Unit.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.Equal(expectedResponse, okResult.Value);
+            Assert.Equal(allMetadata, okResult.Value);
         }
 
         [Fact]
-        public async Task GetAll_NoIndexes_ReturnsNotFound()
+        public async Task GetAll_NoIndexes_ReturnsEmptySet()
         {
             // Arrange
-            _mockRagLogic.Setup(r => r.GetAllIndexesAsync()).ReturnsAsync(APIResponseWrapper<IEnumerable<IndexMetadata>>.Success(new List<IndexMetadata>()));
+            var expectedResponse = APIResponseWrapper<IEnumerable<IndexMetadata>>.Success(new List<IndexMetadata>());
+            _mockRagLogic.Setup(r => r.GetAllIndexesAsync()).ReturnsAsync(expectedResponse);
 
             // Act
             var result = await _controller.GetAll();
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returnedList = Assert.IsAssignableFrom<IEnumerable<IndexMetadata>>(okResult.Value);
+            Assert.Empty(returnedList);
         }
 
         [Fact]
@@ -84,13 +89,15 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var indexDefinition = new IndexMetadata();
-            _mockRagLogic.Setup(r => r.CreateIndex(indexDefinition)).ReturnsAsync(APIResponseWrapper<bool>.Success(true));
+            var expectedResponse = APIResponseWrapper<bool>.Success(true);
+            _mockRagLogic.Setup(r => r.CreateIndex(indexDefinition)).ReturnsAsync(expectedResponse);
 
             // Act
             var result = await _controller.CreateIndex(indexDefinition);
 
             // Assert
-            Assert.IsType<OkResult>(result);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(indexDefinition, okResult.Value);
         }
 
         [Fact]
@@ -98,17 +105,19 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var indexDefinition = new IndexMetadata();
-            _mockRagLogic.Setup(r => r.CreateIndex(indexDefinition)).ReturnsAsync(APIResponseWrapper<bool>.Failure(string.Empty, APIResponseStatusCodes.BadRequest));
+            var expectedResponse = APIResponseWrapper<bool>.Failure("Bad Request", APIResponseStatusCodes.BadRequest);
+            _mockRagLogic.Setup(r => r.CreateIndex(indexDefinition)).ReturnsAsync(expectedResponse);
 
             // Act
             var result = await _controller.CreateIndex(indexDefinition);
 
             // Assert
-            Assert.IsType<BadRequestResult>(result);
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal(expectedResponse.ErrorMessage, badRequestResult.Value);
         }
 
         [Fact]
-        public async Task DeleteIndex_ValidRequest_ReturnsOkResult()
+        public async Task DeleteIndex_ValidRequest_ReturnsNoContentResult()
         {
             // Arrange
             var index = "testIndex";
@@ -118,7 +127,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var result = await _controller.DeleteIndex(index);
 
             // Assert
-            Assert.IsType<OkResult>(result);
+            var noContentResult = Assert.IsType<NoContentResult>(result);
         }
 
         [Fact]
@@ -126,13 +135,15 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var index = "testIndex";
-            _mockRagLogic.Setup(r => r.DeleteIndex(index)).ReturnsAsync(APIResponseWrapper<bool>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
+            var expectedResponse = APIResponseWrapper<bool>.Failure(string.Empty, APIResponseStatusCodes.NotFound);
+            _mockRagLogic.Setup(r => r.DeleteIndex(index)).ReturnsAsync(expectedResponse);
 
             // Act
             var result = await _controller.DeleteIndex(index);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Equal(expectedResponse.ErrorMessage, notFoundResult.Value);
         }
 
         [Fact]
@@ -150,7 +161,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.Equal(expectedResponse, okResult.Value);
+            Assert.Equal(document, okResult.Value);
         }
 
         [Fact]
@@ -159,13 +170,15 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var index = "testIndex";
             var document = "doc1";
-            _mockRagLogic.Setup(r => r.GetDocument(index, document)).ReturnsAsync(APIResponseWrapper<IndexDocument>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
+            var expectedResponse = APIResponseWrapper<IndexDocument>.Failure(string.Empty, APIResponseStatusCodes.NotFound);
+            _mockRagLogic.Setup(r => r.GetDocument(index, document)).ReturnsAsync(expectedResponse);
 
             // Act
             var result = await _controller.GetDocument(index, document);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Equal(expectedResponse.ErrorMessage, notFoundResult.Value);
         }
 
         [Fact]
@@ -191,13 +204,15 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var index = "testIndex";
             var documentToDelete = new IndexDocument() { Title = "doc1", Content = "content" };
             var documentUpsertRequest = new RagUpsertRequest() { Documents = new List<IndexDocument>() { documentToDelete } };
-            _mockRagLogic.Setup(r => r.UpsertDocuments(index, documentUpsertRequest)).ReturnsAsync(APIResponseWrapper<bool>.Failure(string.Empty, APIResponseStatusCodes.NotFound));
+            var expectedResponse = APIResponseWrapper<bool>.Failure("Bad Request", APIResponseStatusCodes.BadRequest);
+            _mockRagLogic.Setup(r => r.UpsertDocuments(index, documentUpsertRequest)).ReturnsAsync(expectedResponse);
 
             // Act
             var result = await _controller.UpsertDocuments(index, documentUpsertRequest);
 
             // Assert
-            Assert.IsType<BadRequestResult>(result);
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal(expectedResponse.ErrorMessage, badRequestResult.Value);
         }
 
         [Fact]
@@ -238,14 +253,15 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var index = "testIndex";
             var commaDelimitedDocNames = "doc1,doc2";
-            var expectedResponse = APIResponseWrapper<int>.Failure(string.Empty, APIResponseStatusCodes.NotFound);
+            var expectedResponse = APIResponseWrapper<int>.Failure($"Some or all of the provided documents were not found in the index '{index}'.", APIResponseStatusCodes.NotFound);
             _mockRagLogic.Setup(r => r.DeleteDocuments(index, It.IsAny<string[]>())).ReturnsAsync(expectedResponse);
 
             // Act
             var result = await _controller.DeleteDocuments(index, commaDelimitedDocNames);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Equal(expectedResponse.ErrorMessage, notFoundResult.Value);
         }
     }
 }
