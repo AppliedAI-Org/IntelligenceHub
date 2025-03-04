@@ -22,7 +22,7 @@ Key capabilities include:
 - RAG database creation and consumption
 - Conversation persistence
 
-AI clients are resolved using a custom client factory, allowing new clients to be added easily by implementing the IAGIClient interface. This design also supports image generation from various clients, decoupling the image generation client from the API client. A similar design could also be used to provide support for multiple RAG services.
+AI clients are resolved using a custom client factory, allowing new clients to be added easily by implementing the IAGIClient interface. This design also supports image generation from various clients, decoupling the image generation providers from LLM providers within the same agent profile. A similar design could also be used to provide support for multiple RAG services with relative ease.
 
 For more information, please refer to the [Features](#features) section below.
 
