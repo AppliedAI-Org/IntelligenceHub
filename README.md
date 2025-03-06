@@ -47,14 +47,12 @@ For more information, please refer to the [Features](#features) section below.
 ### Usage - TO DO
 
 
-### API Reference - TO DO
-CompletionController API Reference
-----------------------------------\
+### API Reference 
+
+###CompletionController API Reference
 The `CompletionController` handles chat requests via standard HTTP responses and Server-Sent Events (SSE). Authentication is required, and routes are profile-based.
 
-### Base URL
-
--   `/Completion`
+### Base URL `/Completion`
 
 ### Endpoints
 
@@ -68,7 +66,60 @@ The `CompletionController` handles chat requests via standard HTTP responses and
     -   **Content-Type**: `application/json`
     -   **Payload Schema**: [`CompletionRequest`](https://ai.azure.com/resource/playground?wsid=/subscriptions/1dc97be4-3550-41c0-b2a9-cfdd85ea7713/resourceGroups/AppliedAI/providers/Microsoft.CognitiveServices/accounts/appliedai-eastus2-dev&tid=27dbd7ba-4c05-41cf-af4d-86a141eee738&deploymentId=/subscriptions/1dc97be4-3550-41c0-b2a9-cfdd85ea7713/resourceGroups/AppliedAI/providers/Microsoft.CognitiveServices/accounts/appliedai-eastus2-dev/deployments/gpt-4o#completionrequest)
 
-    `{   "ConversationId": "Guid (optional)",   "ProfileOptions": {   "Name": "string",   "Model": "string",   "Host": "AGIServiceHosts enum value",   "ImageHost": "AGIServiceHosts enum value (optional)",   "RagDatabase": "string (optional)",   "FrequencyPenalty": "float (optional)",   "PresencePenalty": "float (optional)",   "Temperature": "float (optional)",   "TopP": "float (optional)",   "MaxTokens": "int (optional)",   "TopLogprobs": "int (optional)",   "Logprobs": "bool (optional)",   "User": "string (optional)",   "ToolChoice": "string (optional)",   "ResponseFormat": "string (optional)",   "SystemMessage": "string (optional)",   "Stop": ["string", "..."],   "Tools": [  {  "Type": "function",   "Function": {   "Name": "string",   "Description": "string (optional)",   "Parameters": {   "type": "object",   "properties": {   "propertyName": {   "type": "string",   "description": "string (optional)"   } },  "required": ["propertyName"]  } },  "ExecutionUrl": "string (optional)",   "ExecutionMethod": "string (optional)",   "ExecutionBase64Key": "string (optional)"   } ],  "MaxMessageHistory": "int (optional)",   "ReferenceProfiles": ["string", "..."]  },  "Messages": [  {  "Role": "User | Assistant | System | Tool",   "Content": "string",   "Base64Image": "string (optional)",   "TimeStamp": "DateTime (UTC)"   } ] } `
+    `{   
+        "ConversationId": "Guid (optional)",   
+        "ProfileOptions": {   
+            "Name": "string",   
+            "Model": "string",   
+            "Host": "AGIServiceHosts enum value",   
+            "ImageHost": "AGIServiceHosts enum value (optional)",   
+            "RagDatabase": "string (optional)",   
+            "FrequencyPenalty": "float (optional)",   
+            "PresencePenalty": "float (optional)",   
+            "Temperature": "float (optional)",   
+            "TopP": "float (optional)",   
+            "MaxTokens": "int (optional)",   
+            "TopLogprobs": "int (optional)",   
+            "Logprobs": "bool (optional)",   
+            "User": "string (optional)",   
+            "ToolChoice": "string (optional)",   
+            "ResponseFormat": "string (optional)",   
+            "SystemMessage": "string (optional)",   
+            "Stop": ["string", "..."],   
+            "Tools": [  
+                {  
+                    "Type": "function",   
+                    "Function": {   
+                        "Name": "string",   
+                        "Description": "string (optional)",   
+                        "Parameters": {   
+                            "type": "object",   
+                            "properties": {   
+                                "propertyName": {   
+                                    "type": "string",   
+                                    "description": "string (optional)"   
+                                } 
+                            },  
+                            "required": ["propertyName"]  
+                        } 
+                    },  
+                    "ExecutionUrl": "string (optional)",   
+                    "ExecutionMethod": "string (optional)",   
+                    "ExecutionBase64Key": "string (optional)"   
+                } 
+            ],  
+            "MaxMessageHistory": "int (optional)",   
+            "ReferenceProfiles": ["string", "..."]  
+        },  
+        "Messages": [  
+            {  
+                "Role": "User | Assistant | System | Tool",   
+                "Content": "string",   
+                "Base64Image": "string (optional)",   
+                "TimeStamp": "DateTime (UTC)"   
+            } 
+        ] 
+    } `
 
 -   **Responses**:
     -   `200 OK`: Returns the chat completion response. Schema: [`CompletionResponse`](https://ai.azure.com/resource/playground?wsid=/subscriptions/1dc97be4-3550-41c0-b2a9-cfdd85ea7713/resourceGroups/AppliedAI/providers/Microsoft.CognitiveServices/accounts/appliedai-eastus2-dev&tid=27dbd7ba-4c05-41cf-af4d-86a141eee738&deploymentId=/subscriptions/1dc97be4-3550-41c0-b2a9-cfdd85ea7713/resourceGroups/AppliedAI/providers/Microsoft.CognitiveServices/accounts/appliedai-eastus2-dev/deployments/gpt-4o#completionresponse)
@@ -102,21 +153,36 @@ The `CompletionController` handles chat requests via standard HTTP responses and
 
         **Example Request**:
 
-`curl -X POST "https://yourapi.com/Completion/SSE/ChatProfile" \  -H "Authorization: Bearer {token}" \  -H "Content-Type: application/json" \  -N \ -d '{  "ProfileOptions": { "Name": "ChatProfile", "Model": "gpt-4o", "Host": "OpenAI", "Temperature": 0.7, "MaxTokens": 150 }, "Messages": [ { "Role": "User", "Content": "Hello, stream my response!" } ] }'  `\
+`curl -X POST "https://yourapi.com/Completion/SSE/ChatProfile" \  -H "Authorization: Bearer {token}" \  -H "Content-Type: application/json" \  -N \ -d 
+'{  
+    "ProfileOptions": { 
+        "Name": "ChatProfile", 
+        "Model": "gpt-4o", 
+        "Host": "OpenAI", 
+        "Temperature": 0.7, 
+        "MaxTokens": 150 
+    }, 
+    "Messages": [ 
+        { 
+            "Role": "User", 
+            "Content": "Hello, stream my response!" 
+        } 
+    ] 
+}'  `\
 **Example SSE Response**:
 
 `data: { "chunkProperty": "chunkValue", ... } data: { "chunkProperty": "chunkValue", ... } `
 
 ### Data Transfer Objects (DTOs)
 
-#### CompletionRequest\
+#### CompletionRequest
 Represents the payload for a chat request.
 
 -   **ConversationId**: `Guid` (optional)
 -   **ProfileOptions**: `Profile` -- Options for the chat profile.
 -   **Messages**: `List<Message>` -- Array of chat messages.
 
-#### Profile\
+#### Profile
 Contains profile and model configuration details.
 
 -   **Name**: `string` (required)
@@ -140,7 +206,7 @@ Contains profile and model configuration details.
 -   **MaxMessageHistory**: `int` (optional)
 -   **ReferenceProfiles**: `array of strings` (optional)
 
-#### Message\
+#### Message
 Represents an individual chat message.
 
 -   **Role**: `enum (User, Assistant, System, Tool)` -- Role of the sender.
@@ -148,10 +214,10 @@ Represents an individual chat message.
 -   **Base64Image**: `string` (optional) -- Base64-encoded image string.
 -   **TimeStamp**: `DateTime` (UTC)
 
-#### CompletionResponse & CompletionStreamChunk\
+#### CompletionResponse & CompletionStreamChunk
 These types encapsulate the response data for standard and streaming endpoints respectively.
 
-### Error Handling\
+### Error Handling
 The API uses standard HTTP status codes to indicate the result of the operation:
 
 -   `400 Bad Request`: Issues with validation.
@@ -159,7 +225,7 @@ The API uses standard HTTP status codes to indicate the result of the operation:
 -   `429 Too Many Requests`: Rate limits exceeded.
 -   `500 Internal Server Error`: Unexpected server error.
 
-### Authentication\
+### Authentication
 All endpoints in the `CompletionController` are secured with the `[Authorize]` attribute. Ensure to include a valid authentication token in your request headers.
 
 ### Summary
@@ -174,12 +240,12 @@ All endpoints in the `CompletionController` are secured with the `[Authorize]` a
 * * * * *
 
 IntelligenceHub API Reference
------------------------------\
+
 This documentation provides an overview of the IntelligenceHub API components used to stream chat completions to clients via SignalR.
 
 ### SignalR Hub: ChatHub
 
-#### Overview\
+#### Overview
 The `ChatHub` is a SignalR hub designed to stream chat completion responses to connected clients. It is secured with authorization.
 
 #### Constructor
@@ -293,9 +359,29 @@ The `ChatHub` is a SignalR hub designed to stream chat completion responses to c
 
 ### Usage Example
 
-`// Create a new completion request  var request = new CompletionRequest {
- ConversationId = Guid.NewGuid(), ProfileOptions = new Profile  { Name = "Default Profile",  Model = "gpt-3.5-turbo",  Host = AGIServiceHosts.YourPrimaryHost, Temperature = 0.7f,  MaxTokens = 150   }, Messages = new List<Message>  {  new Message  { Role = Role.User, Content = "Hello, can you assist me with my query?"   } } };
-  // Invoke the Send method on the ChatHub using SignalR  await hubConnection.InvokeAsync("Send", request); `
+`// Create a new completion request  
+var request = new CompletionRequest 
+{
+    ConversationId = Guid.NewGuid(), 
+    ProfileOptions = new Profile  
+    { 
+        Name = "Default Profile",  
+        Model = "gpt-3.5-turbo",  
+        Host = AGIServiceHosts.YourPrimaryHost, 
+        Temperature = 0.7f,  
+        MaxTokens = 150   
+    }, 
+    Messages = new List<Message>  
+    {  
+        new Message  
+        { 
+            Role = Role.User, 
+            Content = "Hello, can you assist me with my query?"   
+        } 
+    } 
+};
+// Invoke the Send method on the ChatHub using SignalR  
+await hubConnection.InvokeAsync("Send", request); `
 
 ### Notes
 
@@ -306,7 +392,6 @@ The `ChatHub` is a SignalR hub designed to stream chat completion responses to c
 * * * * *
 
 Message History API Reference
------------------------------
 
 ### Endpoints
 
@@ -325,7 +410,24 @@ Message History API Reference
 
         **Example Response**:
 
-`{   "status": "Ok",   "data": [  {  "Role": "User",   "Content": "Hello, how can I help you?",   "Base64Image": null,   "TimeStamp": "2025-03-05T12:34:56Z"   }, {  "Role": "Assistant",   "Content": "I need assistance with my order.",   "Base64Image": null,   "TimeStamp": "2025-03-05T12:35:10Z"   } ] } `
+`{   
+    "status": "Ok",   
+    "data": [  
+        {  
+            "Role": "User",   
+            "Content": "Hello, how can I help you?",   
+            "Base64Image": null,   
+            "TimeStamp": "2025-03-05T12:34:56Z"   
+        }, 
+        {  
+            "Role": "Assistant",   
+            "Content": "I need assistance with my order.",   
+            "Base64Image": null,   
+            "TimeStamp": "2025-03-05T12:35:10Z"   
+        } 
+    ] 
+} 
+`
 
 #### 2\. Update or Create Conversation
 
@@ -339,7 +441,20 @@ Message History API Reference
 
         **Example Request**:
 
-`[  {  "Role": "User",   "Content": "What is the status of my order?",   "Base64Image": null,   "TimeStamp": "2025-03-05T12:40:00Z"   }, {  "Role": "Assistant",   "Content": "Your order is being processed.",   "Base64Image": null,   "TimeStamp": "2025-03-05T12:41:00Z"   } ] `
+`[  
+    {  
+        "Role": "User",   
+        "Content": "What is the status of my order?",   
+        "Base64Image": null,   
+        "TimeStamp": "2025-03-05T12:40:00Z"   
+    }, 
+    {  
+        "Role": "Assistant",   
+        "Content": "Your order is being processed.",   
+        "Base64Image": null,   
+        "TimeStamp": "2025-03-05T12:41:00Z"   
+    } 
+] `
 
 #### 3\. Delete Conversation
 
@@ -366,7 +481,12 @@ Message History API Reference
 
         **Example Request**:
 
-`{   "Role": "User",   "Content": "Can I update my shipping address?",   "Base64Image": null,   "TimeStamp": "2025-03-05T12:45:00Z"  } `
+`{   
+    "Role": "User",   
+    "Content": "Can I update my shipping address?",   
+    "Base64Image": null,   
+    "TimeStamp": "2025-03-05T12:45:00Z"  
+} `
 
 #### 5\. Delete Message from Conversation
 
@@ -393,15 +513,8 @@ Message History API Reference
 | `Base64Image` | `string` (nullable) | Base64-encoded image content (if applicable). |
 | `TimeStamp` | `DateTime` | The UTC timestamp when the message was created. |
 |   |  |  |
-| #### APIResponseWrapper |  |  |
-|   |  |  |
-| A generic wrapper used for all responses. Contains: |  |  |
 
--   `status`: Indicates the status code (`Ok`, `BadRequest`, `NotFound`, etc.).
--   `data`: The payload of type `T`.
--   Additional error message fields (if any).
-
-### Validation\
+### Validation
 The API employs validation for both single messages and lists of messages:
 
 -   **ValidateMessageList(List messageList)**:
@@ -413,7 +526,7 @@ The API employs validation for both single messages and lists of messages:
     -   Ensures a role is provided.
     -   Requires that either
 
-### Contributing
+## Contributing
 Contributions are welcome! Please follow the steps below to contribute to the project:
 1. (Optional) If you would like to gaurentee your changes will be merged, please open an issue to determine if your desired changes align with the project's goals, or choose from an existing issue. Otherwise, feel free to skip this step.
 2. Fork the project, create a new branch, and make your changes. 
@@ -422,13 +535,13 @@ Contributions are welcome! Please follow the steps below to contribute to the pr
 
 If for whatever reason we miss your request, please feel free to notify us on the pull request itself, at the email provided in the [Contact](#contact) section, or any other method you have at your disposal.
 
-### Contact
+## Contact
 For any questions comments or concerns, please reach out to Applied.AI.Help@gmail.com, or open an issue in the repository.
 
-### License
+## License
 This project is licensed under the Elastic 2.0 license - see the `LICENSE` file for more details.
 
-### Acknowledgements
+## Acknowledgements
 This project was developed by the Applied AI team, currently consisting of the following members: 
 - [Jacob J. Thomas](https://github.com/jacob-j-thomas)
 
