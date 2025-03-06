@@ -42,13 +42,13 @@ For more information, please refer to the [Features](#features) section below.
 
 ## Setup - TO DO
 
-###Create Azure Resources
+### Create Azure Resources
 
-###Set Up Repository
+### Set Up Repository
 
 ## Usage & API Reference 
 
-###CompletionController API Reference
+### CompletionController API Reference
 The `CompletionController` handles chat requests via standard HTTP responses and Server-Sent Events (SSE). Authentication is required, and routes are profile-based.
 
 ### Base URL `/Completion`
