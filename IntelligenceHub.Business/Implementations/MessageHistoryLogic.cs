@@ -5,6 +5,7 @@ using IntelligenceHub.Common.Config;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.DAL.Interfaces;
 using static IntelligenceHub.Common.GlobalVariables;
+using IntelligenceHub.Business.Handlers;
 
 namespace IntelligenceHub.Business.Implementations
 {
@@ -14,14 +15,16 @@ namespace IntelligenceHub.Business.Implementations
     public class MessageHistoryLogic : IMessageHistoryLogic
     {
         private readonly IMessageHistoryRepository _messageHistoryRepository;
+        private readonly IValidationHandler _validationHandler;
 
         /// <summary>
         /// Constructor for the message history logic class that is resolved by the DI container.
         /// </summary>
         /// <param name="messageRepository">The repository where message history is stored.</param>
-        public MessageHistoryLogic(IMessageHistoryRepository messageRepository)
+        public MessageHistoryLogic(IMessageHistoryRepository messageRepository, IValidationHandler validationHandler)
         {
             _messageHistoryRepository = messageRepository;
+            _validationHandler = validationHandler;
         }
 
         /// <summary>
@@ -47,6 +50,9 @@ namespace IntelligenceHub.Business.Implementations
         /// <returns>An <see cref="APIResponseWrapper{List{Message}}"/> containing the messages that were successfully added.</returns>
         public async Task<APIResponseWrapper<List<Message>>> UpdateOrCreateConversation(Guid conversationId, List<Message> messages)
         {
+            var errorMessage = _validationHandler.ValidateMessageList(messages);
+            if (!string.IsNullOrEmpty(errorMessage)) return APIResponseWrapper<List<Message>>.Failure(errorMessage, APIResponseStatusCodes.BadRequest);
+
             var addedMessages = new List<Message>();
             foreach (var message in messages)
             {

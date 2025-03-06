@@ -28,6 +28,5 @@ namespace IntelligenceHub.API.DTOs
         public List<Tool>? Tools { get; set; }
         public int? MaxMessageHistory { get; set; }
         public string[]? ReferenceProfiles { get; set; }
-        public string? ReferenceDescription { get; set; }
     }
 }

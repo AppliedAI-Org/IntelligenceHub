@@ -27,8 +27,9 @@ namespace IntelligenceHub.Business.Handlers
         /// Validates the base DTO/Profile DTO for the chat request API and profile API.
         /// </summary>
         /// <param name="profile">The profile to validate.</param>
+        /// /// <param name="messages">Messages if any need to be validated against the host API's parameters.</param>
         /// <returns>An error message string, or null if validation passes.</returns>
-        public string? ValidateBaseDTO(Profile profile);
+        public string? ValidateProfileOptions(Profile profile, List<Message>? messages = null);
 
         /// <summary>
         /// Validates the tool DTO.
@@ -44,6 +45,20 @@ namespace IntelligenceHub.Business.Handlers
         /// key is the property name, and the value is the property object.</param>
         /// <returns>An error message string, or null if validation passes.</returns>
         public string? ValidateProperties(Dictionary<string, Property> properties);
+
+        /// <summary>
+        /// Validates a list of messages.
+        /// </summary>
+        /// <param name="messageList">The list of messages to validate.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
+        public string? ValidateMessageList(List<Message> messageList);
+
+        /// <summary>
+        /// Validates a single message.
+        /// </summary>
+        /// <param name="message">The message to validate.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
+        public string? ValidateMessage(Message message);
 
         /// <summary>
         /// Validates the index definition DTO for RAG operations.

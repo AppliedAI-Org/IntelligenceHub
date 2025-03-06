@@ -318,8 +318,7 @@ namespace IntelligenceHub.Business.Implementations
                 SystemMessage = profileOptions?.SystemMessage ?? profile.SystemMessage,
                 ReferenceProfiles = profileReferences,
                 Host = profileOptions?.Host ?? profile.Host,
-                ToolChoice = profileOptions?.ToolChoice ?? profile.ToolChoice,
-                ReferenceDescription = profileOptions?.ReferenceDescription ?? profile.ReferenceDescription
+                ToolChoice = profileOptions?.ToolChoice ?? profile.ToolChoice
             };
         }
         #endregion

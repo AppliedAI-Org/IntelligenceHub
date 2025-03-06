@@ -56,7 +56,7 @@ namespace IntelligenceHub.DAL.Implementations
                                 Content NVARCHAR(MAX) NOT NULL,
                                 Topic NVARCHAR(255),
                                 Keywords NVARCHAR(255),
-                                Source NVARCHAR(510) NOT NULL,
+                                Source NVARCHAR(4000) NOT NULL,
                                 Created DATETIMEOFFSET NOT NULL,
                                 Modified DATETIMEOFFSET NOT NULL
                             );";

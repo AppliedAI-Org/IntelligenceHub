@@ -28,7 +28,6 @@ namespace IntelligenceHub.DAL.Models
         public string? SystemMessage { get; set; }
         public string? Stop { get; set; }
         public string? ReferenceProfiles { get; set; }
-        public string? ReferenceDescription { get; set; }
         public ICollection<DbProfileTool> ProfileTools { get; set; } = new List<DbProfileTool>();
     }
 }

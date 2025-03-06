@@ -273,7 +273,8 @@ namespace IntelligenceHub.Business.Implementations
         /// <returns>An <see cref="APIResponseWrapper{List{IndexDocument}}"/> containing a list of documents most closely matching the query.</returns>
         public async Task<APIResponseWrapper<List<IndexDocument>>> QueryIndex(string index, string query)
         {
-            if (!_validationHandler.IsValidIndexName(index) || string.IsNullOrEmpty(query)) return APIResponseWrapper<List<IndexDocument>>.Failure($"The supplied index name, '{index}' is invalid. Please avoid reserved SQL words.", APIResponseStatusCodes.BadRequest);
+            if (!_validationHandler.IsValidIndexName(index) || string.IsNullOrEmpty(index)) return APIResponseWrapper<List<IndexDocument>>.Failure($"The supplied index name, '{index}' is invalid. Please avoid reserved SQL words.", APIResponseStatusCodes.BadRequest);
+            if (string.IsNullOrEmpty(query)) return APIResponseWrapper<List<IndexDocument>>.Failure("The supplied query is null or empty.", APIResponseStatusCodes.BadRequest);
             var indexData = await _metaRepository.GetByNameAsync(index);
             if (indexData is null) return APIResponseWrapper<List<IndexDocument>>.Failure($"No index with the name '{index}' was found.", APIResponseStatusCodes.NotFound);
 
@@ -306,7 +307,7 @@ namespace IntelligenceHub.Business.Implementations
         /// <returns>An <see cref="APIResponseWrapper{bool}"/> indicating success or failure.</returns>
         public async Task<APIResponseWrapper<bool>> RunIndexUpdate(string index)
         {
-            if (!_validationHandler.IsValidIndexName(index)) return APIResponseWrapper<bool>.Failure($"The supplied index name, '{index}' is invalid. Please avoid reserved SQL words.", APIResponseStatusCodes.BadRequest);
+            if (!_validationHandler.IsValidIndexName(index) || string.IsNullOrEmpty(index)) return APIResponseWrapper<bool>.Failure($"The supplied index name, '{index}' is invalid. Please avoid reserved SQL words.", APIResponseStatusCodes.BadRequest);
             var indexMetadata = await _metaRepository.GetByNameAsync(index);
             if (indexMetadata == null) return APIResponseWrapper<bool>.Failure($"No index with the name '{index}' was found.", APIResponseStatusCodes.NotFound);
             var success = await _searchClient.RunIndexer(index);

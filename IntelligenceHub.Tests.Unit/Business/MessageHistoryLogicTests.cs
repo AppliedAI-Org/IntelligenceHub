@@ -1,4 +1,5 @@
 ﻿using IntelligenceHub.API.DTOs;
+using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
@@ -10,12 +11,14 @@ namespace IntelligenceHub.Tests.Unit.Business
     public class MessageHistoryTests
     {
         private readonly Mock<IMessageHistoryRepository> _messageHistoryRepositoryMock;
+        private readonly Mock<IValidationHandler> _validationHandlerMock;
         private readonly MessageHistoryLogic _messageHistoryLogic;
 
         public MessageHistoryTests()
         {
             _messageHistoryRepositoryMock = new Mock<IMessageHistoryRepository>();
-            _messageHistoryLogic = new MessageHistoryLogic(_messageHistoryRepositoryMock.Object);
+            _validationHandlerMock = new Mock<IValidationHandler>();
+            _messageHistoryLogic = new MessageHistoryLogic(_messageHistoryRepositoryMock.Object, _validationHandlerMock.Object);
         }
 
         [Fact]

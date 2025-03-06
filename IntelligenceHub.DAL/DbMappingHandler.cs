@@ -43,7 +43,6 @@ namespace IntelligenceHub.DAL
                 ReferenceProfiles = dbProfile.ReferenceProfiles?.ToStringArray(),
                 Tools = tools,
                 MaxMessageHistory = dbProfile.MaxMessageHistory,
-                ReferenceDescription = dbProfile.ReferenceDescription,
             };
             profile.Logprobs = profile.TopLogprobs > 0 ? true : false;
             return profile;
@@ -77,7 +76,6 @@ namespace IntelligenceHub.DAL
                 User = profileUpdate?.User ?? existingProfile?.User,
                 SystemMessage = profileUpdate?.SystemMessage ?? existingProfile?.SystemMessage,
                 TopLogprobs = profileUpdate?.TopLogprobs ?? existingProfile?.TopLogprobs,
-                ReferenceDescription = profileUpdate?.ReferenceDescription ?? profileUpdate?.ReferenceDescription ?? string.Empty,
                 MaxTokens = profileUpdate?.MaxTokens ?? existingProfile?.MaxTokens,
 
                 // Variables with default values during first database entry

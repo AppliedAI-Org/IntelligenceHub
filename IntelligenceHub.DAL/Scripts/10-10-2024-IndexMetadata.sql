@@ -1,6 +1,6 @@
 ﻿CREATE TABLE IndexMetadata (
     Id INT IDENTITY(1,1) PRIMARY KEY,
-    [Name] NVARCHAR(255) UNIQUE NOT NULL ,
+    [Name] NVARCHAR(128) UNIQUE NOT NULL ,
     QueryType NVARCHAR(255),
     GenerationHost NVARCHAR(255),
     IndexingInterval BIGINT,
@@ -13,7 +13,7 @@
     GenerateContentVector BIT,
     GenerateTopicVector BIT,
     GenerateKeywordVector BIT,
-    DefaultScoringProfile NVARCHAR(255),
+    DefaultScoringProfile NVARCHAR(128),
     ScoringAggregation NVARCHAR(255),
     ScoringInterpolation NVARCHAR(255),
     ScoringFreshnessBoost FLOAT,

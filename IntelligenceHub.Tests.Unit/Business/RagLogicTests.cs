@@ -380,7 +380,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             Assert.NotNull(result);
             Assert.False(result.IsSuccess);
             Assert.Equal(APIResponseStatusCodes.BadRequest, result.StatusCode);
-            Assert.Equal("The supplied index name, 'testIndex' is invalid. Please avoid reserved SQL words.", result.ErrorMessage);
+            Assert.Equal("The supplied query is null or empty.", result.ErrorMessage);
         }
 
         [Fact]

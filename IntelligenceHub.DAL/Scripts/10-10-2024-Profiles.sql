@@ -1,6 +1,6 @@
 ﻿CREATE TABLE Profiles (
     Id INT IDENTITY(1,1) PRIMARY KEY,
-    [Name] NVARCHAR(255) UNIQUE NOT NULL,
+    [Name] NVARCHAR(40) UNIQUE NOT NULL,
     Model NVARCHAR(255),
     FrequencyPenalty FLOAT,
     PresencePenalty FLOAT,
@@ -11,10 +11,9 @@
     MaxMessageHistory INT,
     ResponseFormat NVARCHAR(255),
     [User] NVARCHAR(255),
-    SystemMessage NVARCHAR(Max),
+    SystemMessage NVARCHAR(2040),
     [Stop] NVARCHAR(255),
     ReferenceProfiles NVARCHAR(2040),
-    ReferenceDescription NVARCHAR(2040),
     Host NVARCHAR(255) NOT NULL,
     ImageHost NVARCHAR(255),
 );

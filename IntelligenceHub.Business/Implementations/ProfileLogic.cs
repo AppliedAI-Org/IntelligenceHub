@@ -258,6 +258,8 @@ namespace IntelligenceHub.Business.Implementations
         /// <returns>An <see cref="APIResponseWrapper{string}"/> containing an error message if the operation failed, otherwise null.</returns>
         public async Task<APIResponseWrapper<string>> CreateOrUpdateTools(List<Tool> toolList)
         {
+            if (toolList == null || !toolList.Any()) return APIResponseWrapper<string>.Failure("The toolList did not contain any tools.", APIResponseStatusCodes.BadRequest);
+
             // move below to controller
             foreach (var tool in toolList)
             {

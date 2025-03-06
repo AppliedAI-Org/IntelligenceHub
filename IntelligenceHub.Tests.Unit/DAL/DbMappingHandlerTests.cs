@@ -35,7 +35,6 @@ namespace IntelligenceHub.Tests.Unit.DAL
                 Stop = "Stop1,Stop2",
                 ReferenceProfiles = "Ref1,Ref2",
                 MaxMessageHistory = 10,
-                ReferenceDescription = "Test Description"
             };
 
             // Act
@@ -59,7 +58,6 @@ namespace IntelligenceHub.Tests.Unit.DAL
             Assert.Equal(dbProfile.Stop.Split(','), result.Stop);
             Assert.Equal(dbProfile.ReferenceProfiles.Split(','), result.ReferenceProfiles);
             Assert.Equal(dbProfile.MaxMessageHistory, result.MaxMessageHistory);
-            Assert.Equal(dbProfile.ReferenceDescription, result.ReferenceDescription);
         }
 
         [Fact]
@@ -74,7 +72,6 @@ namespace IntelligenceHub.Tests.Unit.DAL
                 User = "Test User",
                 SystemMessage = "Test Message",
                 TopLogprobs = 5,
-                ReferenceDescription = "Test Description",
                 MaxTokens = 100,
                 FrequencyPenalty = 0.5f,
                 PresencePenalty = 0.5f,
@@ -95,7 +92,6 @@ namespace IntelligenceHub.Tests.Unit.DAL
             Assert.Equal("Test User", result.User);
             Assert.Equal("Test Message", result.SystemMessage);
             Assert.Equal(5, result.TopLogprobs);
-            Assert.Equal("Test Description", result.ReferenceDescription);
             Assert.Equal(100, result.MaxTokens);
             Assert.Equal(0.5, result.FrequencyPenalty);
             Assert.Equal(0.5, result.PresencePenalty);
