@@ -44,10 +44,7 @@ For more information, please refer to the [Features](#features) section below.
 1. Prerequisites: List any prerequisites needed to run the project.
 2. Installation: Step-by-step instructions on how to install the project.
 
-### Usage - TO DO
-
-
-### API Reference 
+### Usage & API Reference 
 
 ###CompletionController API Reference
 The `CompletionController` handles chat requests via standard HTTP responses and Server-Sent Events (SSE). Authentication is required, and routes are profile-based.
@@ -64,9 +61,10 @@ The `CompletionController` handles chat requests via standard HTTP responses and
     -   `name` (optional, string): Profile name for the request. Defaults to `ProfileOptions.Name` in the request body if not provided.
 -   **Request Body**:
     -   **Content-Type**: `application/json`
-    -   **Payload Schema**: [`CompletionRequest`](https://ai.azure.com/resource/playground?wsid=/subscriptions/1dc97be4-3550-41c0-b2a9-cfdd85ea7713/resourceGroups/AppliedAI/providers/Microsoft.CognitiveServices/accounts/appliedai-eastus2-dev&tid=27dbd7ba-4c05-41cf-af4d-86a141eee738&deploymentId=/subscriptions/1dc97be4-3550-41c0-b2a9-cfdd85ea7713/resourceGroups/AppliedAI/providers/Microsoft.CognitiveServices/accounts/appliedai-eastus2-dev/deployments/gpt-4o#completionrequest)
+    -   **Payload Schema**:
 
-    `{   
+    ```json
+    {   
         "ConversationId": "Guid (optional)",   
         "ProfileOptions": {   
             "Name": "string",   
@@ -119,10 +117,10 @@ The `CompletionController` handles chat requests via standard HTTP responses and
                 "TimeStamp": "DateTime (UTC)"   
             } 
         ] 
-    } `
+    } ```
 
 -   **Responses**:
-    -   `200 OK`: Returns the chat completion response. Schema: [`CompletionResponse`](https://ai.azure.com/resource/playground?wsid=/subscriptions/1dc97be4-3550-41c0-b2a9-cfdd85ea7713/resourceGroups/AppliedAI/providers/Microsoft.CognitiveServices/accounts/appliedai-eastus2-dev&tid=27dbd7ba-4c05-41cf-af4d-86a141eee738&deploymentId=/subscriptions/1dc97be4-3550-41c0-b2a9-cfdd85ea7713/resourceGroups/AppliedAI/providers/Microsoft.CognitiveServices/accounts/appliedai-eastus2-dev/deployments/gpt-4o#completionresponse)
+    -   `200 OK`: Returns the chat completion response. Schema: CompletionResponse
     -   `400 Bad Request`: Request payload fails validation.
     -   `404 Not Found`: Profile or resource not found.
     -   `429 Too Many Requests`: Rate limits exceeded.
@@ -154,21 +152,7 @@ The `CompletionController` handles chat requests via standard HTTP responses and
         **Example Request**:
 
 `curl -X POST "https://yourapi.com/Completion/SSE/ChatProfile" \  -H "Authorization: Bearer {token}" \  -H "Content-Type: application/json" \  -N \ -d 
-'{  
-    "ProfileOptions": { 
-        "Name": "ChatProfile", 
-        "Model": "gpt-4o", 
-        "Host": "OpenAI", 
-        "Temperature": 0.7, 
-        "MaxTokens": 150 
-    }, 
-    "Messages": [ 
-        { 
-            "Role": "User", 
-            "Content": "Hello, stream my response!" 
-        } 
-    ] 
-}'  `\
+'{ "ProfileOptions": { "Name": "ChatProfile", "Model": "gpt-4o", "Host": "OpenAI", "Temperature": 0.7, "MaxTokens": 150 }, "Messages": [ { "Role": "User", "Content": "Hello, stream my response!" } ] }'  `\
 **Example SSE Response**:
 
 `data: { "chunkProperty": "chunkValue", ... } data: { "chunkProperty": "chunkValue", ... } `
@@ -359,7 +343,8 @@ The `ChatHub` is a SignalR hub designed to stream chat completion responses to c
 
 ### Usage Example
 
-`// Create a new completion request  
+```csharp
+// Create a new completion request  
 var request = new CompletionRequest 
 {
     ConversationId = Guid.NewGuid(), 
@@ -381,7 +366,8 @@ var request = new CompletionRequest
     } 
 };
 // Invoke the Send method on the ChatHub using SignalR  
-await hubConnection.InvokeAsync("Send", request); `
+await hubConnection.InvokeAsync("Send", request); 
+```
 
 ### Notes
 
@@ -410,7 +396,8 @@ Message History API Reference
 
         **Example Response**:
 
-`{   
+```json
+{   
     "status": "Ok",   
     "data": [  
         {  
@@ -427,7 +414,7 @@ Message History API Reference
         } 
     ] 
 } 
-`
+```
 
 #### 2\. Update or Create Conversation
 
@@ -441,7 +428,8 @@ Message History API Reference
 
         **Example Request**:
 
-`[  
+```json
+[  
     {  
         "Role": "User",   
         "Content": "What is the status of my order?",   
@@ -454,7 +442,8 @@ Message History API Reference
         "Base64Image": null,   
         "TimeStamp": "2025-03-05T12:41:00Z"   
     } 
-] `
+] 
+```
 
 #### 3\. Delete Conversation
 
@@ -481,12 +470,14 @@ Message History API Reference
 
         **Example Request**:
 
-`{   
+```json
+{   
     "Role": "User",   
     "Content": "Can I update my shipping address?",   
     "Base64Image": null,   
     "TimeStamp": "2025-03-05T12:45:00Z"  
-} `
+} 
+```
 
 #### 5\. Delete Message from Conversation
 
