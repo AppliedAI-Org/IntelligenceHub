@@ -1,7 +1,7 @@
 # The Intelligence Hub 
 ### A powerful API wrapper for common AGI services, designed to simplify application AI powered app development.
 
-### Table of Contents
+## Table of Contents
 - [Overview](#overview)
 - [Features](#features)
 - [Setup](#setup)
@@ -12,7 +12,7 @@
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
 
-### Overview
+## Overview
 The main goal of this project is to enable rapid setup and development for AI-powered applications.
 
 Key capabilities include:
@@ -26,7 +26,7 @@ AI clients are resolved using a custom client factory, allowing new clients to b
 
 For more information, please refer to the [Features](#features) section below.
 
-### Features
+## Features
 1. **Saving agentic chat 'profiles'** to simplify client requests, and create preset configurations related to prompting and AI model configs.
 2. **Chat completions** including streaming via a SignalR web socket or via server side events, and support for custom models deployed in Azure AI Studio.
 3. **RAG database support**, including database creation, document ingestion, and the ability to perform RAG operations across AGI service providers. (Currently, only Azure AI is supported, but an interface is provided for easy extensibility.)
@@ -40,11 +40,13 @@ For more information, please refer to the [Features](#features) section below.
 11. **Front-end template** to jump start the process of building custom applications to consume the API.
 12. **Testing utilities** including unit tests, stress tests, and an AI competency testing module.
 
-### Setup - TO DO
-1. Prerequisites: List any prerequisites needed to run the project.
-2. Installation: Step-by-step instructions on how to install the project.
+## Setup - TO DO
 
-### Usage & API Reference 
+###Create Azure Resources
+
+###Set Up Repository
+
+## Usage & API Reference 
 
 ###CompletionController API Reference
 The `CompletionController` handles chat requests via standard HTTP responses and Server-Sent Events (SSE). Authentication is required, and routes are profile-based.
@@ -117,7 +119,8 @@ The `CompletionController` handles chat requests via standard HTTP responses and
                 "TimeStamp": "DateTime (UTC)"   
             } 
         ] 
-    } ```
+    } 
+    ```
 
 -   **Responses**:
     -   `200 OK`: Returns the chat completion response. Schema: CompletionResponse
@@ -153,6 +156,7 @@ The `CompletionController` handles chat requests via standard HTTP responses and
 
 `curl -X POST "https://yourapi.com/Completion/SSE/ChatProfile" \  -H "Authorization: Bearer {token}" \  -H "Content-Type: application/json" \  -N \ -d 
 '{ "ProfileOptions": { "Name": "ChatProfile", "Model": "gpt-4o", "Host": "OpenAI", "Temperature": 0.7, "MaxTokens": 150 }, "Messages": [ { "Role": "User", "Content": "Hello, stream my response!" } ] }'  `\
+
 **Example SSE Response**:
 
 `data: { "chunkProperty": "chunkValue", ... } data: { "chunkProperty": "chunkValue", ... } `
@@ -234,7 +238,9 @@ The `ChatHub` is a SignalR hub designed to stream chat completion responses to c
 
 #### Constructor
 
-`public ChatHub(ICompletionLogic completionLogic, IValidationHandler validationHandler)`
+```csharp
+public ChatHub(ICompletionLogic completionLogic, IValidationHandler validationHandler)
+```
 
 -   **Parameters**:
     -   `completionLogic`: Implements the business logic to process chat completion requests.
@@ -503,7 +509,6 @@ Message History API Reference
 | `Content` | `string` | The textual content of the message. |
 | `Base64Image` | `string` (nullable) | Base64-encoded image content (if applicable). |
 | `TimeStamp` | `DateTime` | The UTC timestamp when the message was created. |
-|   |  |  |
 
 ### Validation
 The API employs validation for both single messages and lists of messages:
