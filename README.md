@@ -13,7 +13,7 @@
 - [Acknowledgements](#acknowledgements)
 ---
 ## Overview
-The main goal of this project is to enable rapid setup and development for AI-powered applications. With minor configurations, a payload as slim as the below can be used for powerful AGI operations ranging from standard chat completions, to image generation, tool execution, and RAG powered searches. Continue to the startup 
+The main goal of this project is to enable rapid setup and development for AI-powered applications. With minor configurations, a payload as slim as the below can be used for powerful AGI operations ranging from standard chat completions, to image generation, tool execution, and RAG powered searches. 
 
 ```json
 {
