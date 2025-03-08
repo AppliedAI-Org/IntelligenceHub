@@ -62,7 +62,7 @@ This section outlines the steps required to set up the IntelligenceHub repositor
 
 Optional infrastructure can be treated modularly unless otherwise noted, but you should be able to find a free tier available for every piece of infrastructure as well, excluding the LLM hosts, although the Azure OpenAI option is at least a 'pay as you go' model, keeping things exceptionally cheap. An Azure subscription is only required for RAG operations, or if you wish to use Azure OpenAI as your LLM host. 
 
-NOTE: The application requires several sensative keys and values to populate the configuration. If you intend to use an associated feature, please be sure to have the relevant keys and endpoint data ready when running the `env_setup.py` script at IntelligenceHub\IntelligenceHub\infrastructure\ `env_setup.py`. The only required features are an SQL Server connection string, and the API key for at least one LLM host.
+**NOTE:** The application requires several sensative keys and values to populate the configuration. If you intend to use an associated feature, please be sure to have the relevant keys and endpoint data ready when running the `env_setup.py` script at IntelligenceHub\IntelligenceHub\infrastructure\ `env_setup.py`. The only required features are an SQL Server connection string, and the API key for at least one LLM host.
 
 ---
 
@@ -114,7 +114,7 @@ The below resources are the bare minimum requirements to run the API and get a `
 
 2. **Run the Script**:  
    - Open a terminal in the repository’s base directory.
-   - Execute the script (e.g., open the command line, navigate to the file, and run: `python generate_appsettings.py`).
+   - Execute the script (e.g., open the command line, navigate to the file, and run: `python env_setup.py`).
    - **Script Details**:
      - The script is configured to work in a CI/CD pipeline, but this setup is outside of the scope of this guide.
      - The script searches for environment variables before requesting they be populated by the user.
@@ -254,7 +254,7 @@ Use the **Create RAG Index** endpoint to define a new RAG index. For example, to
     "Name": "MyRagIndex",
     "GenerationHost": "AzureAI",
     "IndexingInterval": "00:05:00",
-    "EmbeddingModel": "bert-base",
+    "EmbeddingModel": "ada-text-embedding-002",
     "MaxRagAttachments": 10,
     "ChunkOverlap": 0.2,
     "ScoringProfile": {
@@ -281,7 +281,7 @@ Use the **Create RAG Index** endpoint to define a new RAG index. For example, to
            "Name": "MyRagIndex",
            "GenerationHost": "AzureAI",
            "IndexingInterval": "00:05:00",
-           "EmbeddingModel": "bert-base",
+           "EmbeddingModel": "ada-text-embedding-002",
            "MaxRagAttachments": 10,
            "ChunkOverlap": 0.2,
            "ScoringProfile": {
@@ -631,11 +631,48 @@ The `ProfileController` manages agent profiles. It provides endpoints for retrie
 
  **Example Response**:
 ```json
-{
-    "Name": "ChatProfile",
-    "Model": "gpt-4o",
-    "Host": "OpenAI"
-    // additional profile properties
+{   
+    "Name": "ProfileName",   
+    "Model": "gpt4o",   
+    "Host": "OpenAI",   
+    "ImageHost": "OpenAI",   
+    "RagDatabase": "MyRagIndex",   
+    "FrequencyPenalty": .5,   
+    "PresencePenalty": .5,   
+    "Temperature": .5,   
+    "TopP": .5,
+    "MaxTokens": 4000,
+    "TopLogprobs": 2,   
+    "Logprobs": true,   
+    "User": "Jacob",   
+    "ToolChoice": "TestTool",   
+    "ResponseFormat": "Text",   
+    "SystemMessage": "You are an example assistant.",   
+    "Stop": ["string", "another string"],   
+    "Tools": [  
+        {  
+            "Type": "function",   
+            "Function": {   
+                "Name": "TestTool",   
+                "Description": "A tool description for example purposes. This will be sent to example.com",   
+                "Parameters": {   
+                    "type": "object",   
+                    "properties": {   
+                        "anExampleProperty": {   
+                            "type": "string",   
+                            "description": "An example description of the property."   
+                        } 
+                    },  
+                    "required": ["anExampleProperty"]  
+                } 
+            },  
+            "ExecutionUrl": "https://example.com",   
+            "ExecutionMethod": "POST",   
+            "ExecutionBase64Key": "A base key"   
+        } 
+    ],  
+    "MaxMessageHistory": 20,   
+    "ReferenceProfiles": ["ProfileName", "AnotherProfile"]  
 }
 ```
 
@@ -657,17 +694,91 @@ The `ProfileController` manages agent profiles. It provides endpoints for retrie
 **Example Response**:
 ```json
 [
-    {
-        "Name": "ChatProfile",
-        "Model": "gpt-4o",
-        "Host": "OpenAI"
-        // additional profile properties
+    {   
+        "Name": "ProfileName",   
+        "Model": "gpt4o",   
+        "Host": "OpenAI",   
+        "ImageHost": "OpenAI",   
+        "RagDatabase": "MyRagIndex",   
+        "FrequencyPenalty": .5,   
+        "PresencePenalty": .5,   
+        "Temperature": .5,   
+        "TopP": .5,
+        "MaxTokens": 4000,
+        "TopLogprobs": 2,   
+        "Logprobs": true,   
+        "User": "Jacob",   
+        "ToolChoice": "TestTool",   
+        "ResponseFormat": "Text",   
+        "SystemMessage": "You are an example assistant.",   
+        "Stop": ["string", "another string"],   
+        "Tools": [  
+            {  
+                "Type": "function",   
+                "Function": {   
+                    "Name": "TestTool",   
+                    "Description": "A tool description for example purposes. This will be sent to example.com",   
+                    "Parameters": {   
+                        "type": "object",   
+                        "properties": {   
+                            "anExampleProperty": {   
+                                "type": "string",   
+                                "description": "An example description of the property."   
+                            } 
+                        },  
+                        "required": ["anExampleProperty"]  
+                    } 
+                },  
+                "ExecutionUrl": "https://example.com",   
+                "ExecutionMethod": "POST",   
+                "ExecutionBase64Key": "A base key"   
+            } 
+        ],  
+        "MaxMessageHistory": 20,   
+        "ReferenceProfiles": ["ProfileName", "AnotherProfile"]  
     },
-    {
-        "Name": "SupportProfile",
-        "Model": "gpt-3",
-        "Host": "Azure"
-        // additional profile properties
+    {   
+        "Name": "AnotherProfile",   
+        "Model": "gpt4o",   
+        "Host": "OpenAI",   
+        "ImageHost": "OpenAI",   
+        "RagDatabase": "MyRagIndex",   
+        "FrequencyPenalty": .5,   
+        "PresencePenalty": .5,   
+        "Temperature": .5,   
+        "TopP": .5,
+        "MaxTokens": 4000,
+        "TopLogprobs": 2,   
+        "Logprobs": true,   
+        "User": "Jacob",   
+        "ToolChoice": "TestTool",   
+        "ResponseFormat": "Text",   
+        "SystemMessage": "You are an example assistant.",   
+        "Stop": ["string", "another string"],   
+        "Tools": [  
+            {  
+                "Type": "function",   
+                "Function": {   
+                    "Name": "TestTool",   
+                    "Description": "A tool description for example purposes. This will be sent to example.com",   
+                    "Parameters": {   
+                        "type": "object",   
+                        "properties": {   
+                            "anExampleProperty": {   
+                                "type": "string",   
+                                "description": "An example description of the property."   
+                            } 
+                        },  
+                        "required": ["anExampleProperty"]  
+                    } 
+                },  
+                "ExecutionUrl": "https://example.com",   
+                "ExecutionMethod": "POST",   
+                "ExecutionBase64Key": "A base key"   
+            } 
+        ],  
+        "MaxMessageHistory": 20,   
+        "ReferenceProfiles": ["ProfileName", "AnotherProfile"]  
     }
 ]
 ```
@@ -692,13 +803,48 @@ See the request payload at `Completions/Chat/{profileName}`.
 
 **Example Response**:
 ```json
-{
-    "Name": "ChatProfile",
-    "Model": "gpt-4o",
-    "Host": "OpenAI",
-    "Temperature": 0.7,
-    "MaxTokens": 150
-    // additional profile properties
+{   
+    "Name": "ProfileName",   
+    "Model": "gpt4o",   
+    "Host": "OpenAI",   
+    "ImageHost": "OpenAI",   
+    "RagDatabase": "MyRagIndex",   
+    "FrequencyPenalty": .5,   
+    "PresencePenalty": .5,   
+    "Temperature": .5,   
+    "TopP": .5,
+    "MaxTokens": 4000,
+    "TopLogprobs": 2,   
+    "Logprobs": true,   
+    "User": "Jacob",   
+    "ToolChoice": "TestTool",   
+    "ResponseFormat": "Text",   
+    "SystemMessage": "You are an example assistant.",   
+    "Stop": ["string", "another string"],   
+    "Tools": [  
+        {  
+            "Type": "function",   
+            "Function": {   
+                "Name": "TestTool",   
+                "Description": "A tool description for example purposes. This will be sent to example.com",   
+                "Parameters": {   
+                    "type": "object",   
+                    "properties": {   
+                        "anExampleProperty": {   
+                            "type": "string",   
+                            "description": "An example description of the property."   
+                        } 
+                    },  
+                    "required": ["anExampleProperty"]  
+                } 
+            },  
+            "ExecutionUrl": "https://example.com",   
+            "ExecutionMethod": "POST",   
+            "ExecutionBase64Key": "A base key"   
+        } 
+    ],  
+    "MaxMessageHistory": 20,   
+    "ReferenceProfiles": ["ProfileName", "AnotherProfile"]  
 }
 ```
 
@@ -794,12 +940,26 @@ The `ToolController` manages agent tools. It provides endpoints for retrieving i
 
  **Example Response**:
 ```json
-{
-    "Name": "ImageProcessor",
-    "Description": "Processes images for various operations",
-    "Version": "1.0.0"
-    // additional tool properties
-}
+{  
+    "Type": "function",   
+    "Function": {   
+        "Name": "TestTool",   
+        "Description": "A tool description for example purposes. This will be sent to example.com",   
+        "Parameters": {   
+            "type": "object",   
+            "properties": {   
+                "anExampleProperty": {   
+                    "type": "string",   
+                    "description": "An example description of the property."   
+                } 
+            },  
+            "required": ["anExampleProperty"]  
+        } 
+    },  
+    "ExecutionUrl": "https://example.com",   
+    "ExecutionMethod": "POST",   
+    "ExecutionBase64Key": "A base key"   
+} 
 ```
 
 #### 2\. Get All Tools
@@ -820,18 +980,46 @@ The `ToolController` manages agent tools. It provides endpoints for retrieving i
 **Example Response**:
 ```json
 [
-    {
-        "Name": "ImageProcessor",
-        "Description": "Processes images for various operations",
-        "Version": "1.0.0"
-        // additional tool properties
+    {  
+        "Type": "function",   
+        "Function": {   
+            "Name": "TestTool",   
+            "Description": "A tool description for example purposes. This will be sent to example.com",   
+            "Parameters": {   
+                "type": "object",   
+                "properties": {   
+                    "anExampleProperty": {   
+                        "type": "string",   
+                        "description": "An example description of the property."   
+                    } 
+                },  
+                "required": ["anExampleProperty"]  
+            } 
+        },  
+        "ExecutionUrl": "https://example.com",   
+        "ExecutionMethod": "POST",   
+        "ExecutionBase64Key": "A base key"   
     },
-    {
-        "Name": "DataAnalyzer",
-        "Description": "Analyzes data sets to extract insights",
-        "Version": "2.1.0"
-        // additional tool properties
-    }
+    {  
+        "Type": "function",   
+        "Function": {   
+            "Name": "TestTool",   
+            "Description": "A tool description for example purposes. This will be sent to example.com",   
+            "Parameters": {   
+                "type": "object",   
+                "properties": {   
+                    "anExampleProperty": {   
+                        "type": "string",   
+                        "description": "An example description of the property."   
+                    } 
+                },  
+                "required": ["anExampleProperty"]  
+            } 
+        },  
+        "ExecutionUrl": "https://example.com",   
+        "ExecutionMethod": "POST",   
+        "ExecutionBase64Key": "A base key"   
+    } 
 ]
 ```
 
@@ -861,18 +1049,46 @@ The `ToolController` manages agent tools. It provides endpoints for retrieving i
     -   **Payload**: An array of tool objects.
         ```json
         [
-            {
-                "Name": "ImageProcessor",
-                "Description": "Processes images for various operations",
-                "Version": "1.0.0"
-                // additional tool properties
+            {  
+                "Type": "function",   
+                "Function": {   
+                    "Name": "TestTool",   
+                    "Description": "A tool description for example purposes. This will be sent to example.com",   
+                    "Parameters": {   
+                        "type": "object",   
+                        "properties": {   
+                            "anExampleProperty": {   
+                                "type": "string",   
+                                "description": "An example description of the property."   
+                            } 
+                        },  
+                        "required": ["anExampleProperty"]  
+                    } 
+                },  
+                "ExecutionUrl": "https://example.com",   
+                "ExecutionMethod": "POST",   
+                "ExecutionBase64Key": "A base key"   
             },
-            {
-                "Name": "DataAnalyzer",
-                "Description": "Analyzes data sets to extract insights",
-                "Version": "2.1.0"
-                // additional tool properties
-            }
+            {  
+                "Type": "function",   
+                "Function": {   
+                    "Name": "TestTool",   
+                    "Description": "A tool description for example purposes. This will be sent to example.com",   
+                    "Parameters": {   
+                        "type": "object",   
+                        "properties": {   
+                            "anExampleProperty": {   
+                                "type": "string",   
+                                "description": "An example description of the property."   
+                            } 
+                        },  
+                        "required": ["anExampleProperty"]  
+                    } 
+                },  
+                "ExecutionUrl": "https://example.com",   
+                "ExecutionMethod": "POST",   
+                "ExecutionBase64Key": "A base key"   
+            } 
         ]
         ```
 
@@ -889,16 +1105,46 @@ with the payload as shown above.
 **Example Response**:
 ```json
 [
-    {
-        "Name": "ImageProcessor",
-        "Description": "Processes images for various operations",
-        "Version": "1.0.0"
+    {  
+        "Type": "function",   
+        "Function": {   
+            "Name": "TestTool",   
+            "Description": "A tool description for example purposes. This will be sent to example.com",   
+            "Parameters": {   
+                "type": "object",   
+                "properties": {   
+                    "anExampleProperty": {   
+                        "type": "string",   
+                        "description": "An example description of the property."   
+                    } 
+                },  
+                "required": ["anExampleProperty"]  
+            } 
+        },  
+        "ExecutionUrl": "https://example.com",   
+        "ExecutionMethod": "POST",   
+        "ExecutionBase64Key": "A base key"   
     },
-    {
-        "Name": "DataAnalyzer",
-        "Description": "Analyzes data sets to extract insights",
-        "Version": "2.1.0"
-    }
+    {  
+        "Type": "function",   
+        "Function": {   
+            "Name": "TestTool",   
+            "Description": "A tool description for example purposes. This will be sent to example.com",   
+            "Parameters": {   
+                "type": "object",   
+                "properties": {   
+                    "anExampleProperty": {   
+                        "type": "string",   
+                        "description": "An example description of the property."   
+                    } 
+                },  
+                "required": ["anExampleProperty"]  
+            } 
+        },  
+        "ExecutionUrl": "https://example.com",   
+        "ExecutionMethod": "POST",   
+        "ExecutionBase64Key": "A base key"   
+    } 
 ]
 ```
 
@@ -1145,7 +1391,7 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
     "Name": "MyRagIndex",
     "GenerationHost": "AzureAI",
     "IndexingInterval": "00:05:00",
-    "EmbeddingModel": "bert-base",
+    "EmbeddingModel": "ada-text-embedding-002 | text-embedding-3-large",
     "MaxRagAttachments": 10,
     "ChunkOverlap": 0.2,
     "ScoringProfile": {
@@ -1178,13 +1424,45 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 ```json
 [
     {
-        "Name": "MyRagIndex"
-        // additional properties
-    },
-    {
-        "Name": "AnotherIndex"
-        // additional properties
+    "Name": "MyRagIndex",
+    "GenerationHost": "AzureAI",
+    "IndexingInterval": "00:05:00",
+    "EmbeddingModel": "ada-text-embedding-002 | text-embedding-3-large",
+    "MaxRagAttachments": 10,
+    "ChunkOverlap": 0.2,
+    "ScoringProfile": {
+        "Name": "DefaultScoring",
+        "SearchAggregation": "Sum | Average | Minimum | Maximum | FirstMatching",
+        "SearchInterpolation": "Linear | Constant | Quadratic | Logarithmic",
+        "FreshnessBoost": 1.0,
+        "BoostDurationDays": 7,
+        "TagBoost": 1.5,
+        "Weights": {
+            "field1": 0.8,
+            "field2": 1.2
+        }
     }
+},
+    {
+    "Name": "AnotherIndex",
+    "GenerationHost": "AzureAI",
+    "IndexingInterval": "00:05:00",
+    "EmbeddingModel": "ada-text-embedding-002 | text-embedding-3-large",
+    "MaxRagAttachments": 10,
+    "ChunkOverlap": 0.2,
+    "ScoringProfile": {
+        "Name": "SecondaryScoring",
+        "SearchAggregation": "Sum | Average | Minimum | Maximum | FirstMatching",
+        "SearchInterpolation": "Linear | Constant | Quadratic | Logarithmic",
+        "FreshnessBoost": 1.0,
+        "BoostDurationDays": 7,
+        "TagBoost": 1.5,
+        "Weights": {
+            "field1": 0.8,
+            "field2": 1.2
+        }
+    }
+}
 ]
 ```
 
@@ -1214,7 +1492,7 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
     "Name": "MyRagIndex",
     "GenerationHost": "AzureAI",
     "IndexingInterval": "00:05:00",
-    "EmbeddingModel": "bert-base",
+    "EmbeddingModel": "ada-text-embedding-002",
     "MaxRagAttachments": 10,
     "ChunkOverlap": 0.2,
     "ScoringProfile": {
@@ -1235,10 +1513,30 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 ```
 
 **Example Response**:
-`{
-    "Name": "MyRagIndex"
-    // additional index metadata properties
-}`
+```json
+{
+    "Name": "MyRagIndex",
+    "GenerationHost": "AzureAI",
+    "IndexingInterval": "00:05:00",
+    "EmbeddingModel": "ada-text-embedding-002",
+    "MaxRagAttachments": 10,
+    "ChunkOverlap": 0.2,
+    "ScoringProfile": {
+        "Name": "DefaultScoring",
+        "SearchAggregation": "Sum",
+        "SearchInterpolation": "Linear",
+        "FreshnessBoost": 1.0,
+        "BoostDurationDays": 7,
+        "TagBoost": 1.5,
+        "Weights": {
+            "field1": 0.8,
+            "field2": 1.2
+        }
+    },
+    "GenerateKeywords": true,
+    "GenerateTopic": false
+}
+```
 
 #### 4\. Configure RAG Index
 
@@ -1259,17 +1557,51 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 ```json
 {
     "Name": "MyRagIndex",
-    "IndexingInterval": "00:10:00",
-    "MaxRagAttachments": 15
-    // additional updated properties
+    "GenerationHost": "AzureAI",
+    "IndexingInterval": "00:05:00",
+    "EmbeddingModel": "text-embedding-3-large | ada-text-embedding-002",
+    "MaxRagAttachments": 10,
+    "ChunkOverlap": 0.2,
+    "ScoringProfile": {
+        "Name": "DefaultScoring",
+        "SearchAggregation": "Sum | Average | Minimum | Maximum | FirstMatching",
+        "SearchInterpolation": "Linear | Constant | Quadratic | Logarithmic",
+        "FreshnessBoost": 1.0,
+        "BoostDurationDays": 7,
+        "TagBoost": 1.5,
+        "Weights": {
+            "field1": 0.8,
+            "field2": 1.2
+        }
+    },
+    "GenerateKeywords": true,
+    "GenerateTopic": false
 }
 ```
 
 **Example Response**:
 ```json
 {
-    "Name": "MyRagIndex"
-    // updated index metadata properties
+    "Name": "MyRagIndex",
+    "GenerationHost": "AzureAI",
+    "IndexingInterval": "00:05:00",
+    "EmbeddingModel": "text-embedding-3-large",
+    "MaxRagAttachments": 10,
+    "ChunkOverlap": 0.2,
+    "ScoringProfile": {
+        "Name": "DefaultScoring",
+        "SearchAggregation": "Sum",
+        "SearchInterpolation": "Linear",
+        "FreshnessBoost": 1.0,
+        "BoostDurationDays": 7,
+        "TagBoost": 1.5,
+        "Weights": {
+            "field1": 0.8,
+            "field2": 1.2
+        }
+    },
+    "GenerateKeywords": true,
+    "GenerateTopic": false
 }
 ```
 
@@ -1295,12 +1627,10 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
     {
         "Title": "Azure AI Services",
         "Content": "Details about Azure AI Search Services..."
-        // additional document properties
     },
     {
         "Title": "Getting Started with Azure AI",
         "Content": "An introductory guide..."
-        // additional document properties
     }
 ]
 ```
@@ -1358,12 +1688,10 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
     {
         "Title": "Azure AI Services",
         "Content": "Details about Azure AI Search Services..."
-        // additional document properties
     },
     {
         "Title": "Getting Started with Azure AI",
         "Content": "An introductory guide..."
-        // additional document properties
     }
 ]
 ```
@@ -1389,7 +1717,6 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 {
     "Title": "AzureAIOverview",
     "Content": "Comprehensive overview of Azure AI Search Services..."
-    // additional document properties
 }
 ```
 
