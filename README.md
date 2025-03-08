@@ -58,129 +58,82 @@ For more information, please refer to the [Features](#features) section below.
 
 ### Setup Instructions
 
-This section outlines the steps required to set up the IntelligenceHub repository for local development. IntelligenceHub is a .NET API wrapper for AI services that relies on several external resources including AI service providers, search functionalities, and additional infrastructure. To save costs during development, only the essential resources are required. Optional resources needed for enhanced functionality or production scenarios are clearly marked.
+This section outlines the steps required to set up the IntelligenceHub repository for local development. IntelligenceHub is a .NET API wrapper for AI services that relies on several external resources including AI service providers, search functionalities, and additional infrastructure.
+
+Optional infrastructure can be treated modularly unless otherwise noted, but you should be able to find a free tier available for every piece of infrastructure as well, excluding the LLM hosts, although the Azure OpenAI option is at least a 'pay as you go' model, keeping things exceptionally cheap. An Azure subscription is only required for RAG operations, or if you wish to use Azure OpenAI as your LLM host. 
+
+NOTE: The application requires several sensative keys and values to populate the configuration. If you intend to use an associated feature, please be sure to have the relevant keys and endpoint data ready when running the `env_setup.py` script at IntelligenceHub\IntelligenceHub\infrastructure\ `env_setup.py`. The only required features are an SQL Server connection string, and the API key for at least one LLM host.
 
 ---
 
-#### 1. Prerequisites
+#### 1. Environment Setup
 
-- **Development Environment**:
+- **Ensure the following are installed**:
   - [.NET SDK (version 8.0 or later)](https://dotnet.microsoft.com/download)
   - [Python 3.1 or later](https://www.python.org/downloads/) – for running the appsettings generation script.
-  - Git client – for cloning the repository.
+  - [Visual Studio 2022](https://visualstudio.microsoft.com/) is recommended for easiest set up, but technically the Git client should suffice.
 
-- **Essential for Completions**:
-  - An SQL Server instance running locally. 
-  - An API key from one of the supported LLM providers (e.g., OpenAI, Azure OpenAI, or Anthropic).  
-    **Note:**  
-    - **OpenAI**: Retrieve your API key from [OpenAI's platform](https://platform.openai.com/account/api-keys).  
-    - **Anthropic**: Retrieve your API key from Anthropic’s portal (follow their documentation or contact support).
-    - **Azure OpenAI**: If using Azure as your LLM host, please be sure to set up a resource and provide your deployed models to the ValidAGIModels array when running the `env_setup.py` script.
-
-- **Azure Account (Optional for Local Development)**:  
-  You only need to set up additional Azure resources if you plan to use advanced features such as RAG operations or enhanced search capabilities. For basic completions, local configuration with LLM provider API keys is sufficient.
-  - **Azure SQL Database** – *Optional; for persistent storage requiring RAG completions. NOTE: A local SQL database could also be used, but it must be exposed to the internet, and be accessible to your Azure AI Search service instance in order to create a datasource connection and allow for automatic index updates.*
-  - **Azure AI Studio Deployments** – *Optional; required only if you wish to deploy and use custom AI models via Azure AI Studio.*
-  - **Azure AI Search Services** – *Optional; required only if you intend to use RAG operations.*
-  - **Application Insights** – *Optional; for telemetry and performance monitoring.*
-
-- **Environment Variables**:  
-  The application requires several environment variables (as listed in the provided script) to populate the configuration. These include logging levels, authentication settings, connection strings, and endpoints/keys for various AI services. Have the relevant keys and endpoint data ready before running the configuration script.
+- **Set Up the Repo**:
+    - Open Visual Studio, and select 'clone a repository.'
+    - Get the Git repository URL at https://github.com/Jacob-J-Thomas/IntelligenceHub, and use it to clone the repo.
 
 ---
 
-#### 2. Create and Configure Azure Resources (Optional)
+#### 2. Create Resource Dependencies
 
-For local development, you can skip these if you are only testing basic LLM completions. Otherwise, set up the following resources in your Azure subscription as needed:
+**Note:** The repository includes a Python script, `IntelligenceHub\infrastructure\env_setup.py`, that generates a development configuration file by populating `appsettings.Development.json` from a template. You may find it worthwhile to save the API keys and URLs associated with these resources so that you can easily enter them into the Python script later. 
 
-- **Azure AI Search Service**:
-  - **Setup**: Create an instance through the [Azure Portal](https://portal.azure.com/).
-  - **Usage**: Only required for RAG operations. If not needed, you can leave this unconfigured.
-  - **Documentation**: [Azure Cognitive Search Documentation](https://docs.microsoft.com/en-us/azure/search/).
+- **Essential Resources for Basic Completions**:
+The below resources are the bare minimum requirements to run the API and get a `200` response from the `\Completion\Chat\{profileName}` endpoint. If your application requires RAG database operations, app insight telemetry collection, or 
+  - An SQL Server instance running locally. For setup instructions, follow the [SQL Server Installation Guide](https://docs.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server?view=sql-server-ver15). 
+    - **NOTE:** If you intend to perform RAG operations, **consider following the documentation for Azure SQL databases** provided below instead. Otherwise, you should be comfortable configuring your development server to be accessible to Azure AI Search services.
+    - Free versions and more can be [found here](https://www.microsoft.com/en-us/sql-server/sql-server-downloads).
+    - Please be sure to run the SQL scripts found in the repo at `\IntelligenceHub\IntelligenceHub.DAL\Scripts` against the database after it is created.
+  - An API key from one of the supported LLM providers (e.g., OpenAI, Azure OpenAI, or Anthropic). NOTE: Technically only one of the below is required, provided you only use that host.  
+    - **OpenAI**: Retrieve your API key from [OpenAI's platform](https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key).  
+    - **Anthropic**: Sign in and create a [new API key here](https://console.anthropic.com/settings/keys). Make sure to save its details.
+    - **Azure OpenAI**: Create an Azure OpenAI resource, and be sure to deploy at least one LLM in your Azure OpenAI deployment. You can name this model deployment whatever you want, but be sure to add this name to the ValidAGIModels array when running the `env_setup.py` script. Instructions on deploying this resource can be [found here](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal).
 
-- **Azure AI Studio Deployments**:
-  - **Setup**: Deploy your custom AI models in Azure AI Studio if you wish to use them.
-  - **Configuration**: Ensure the deployment names match the entries you include in the `ValidAIServices` array.
-  - **Documentation**: [Azure AI Services Documentation](https://docs.microsoft.com/en-us/azure/ai-services/).
-
-- **Database Setup**:
-  - **Setup**: Create an Azure SQL Database or use a local database for development.
-  - **Configuration**: Set the connection string in the environment variable `Settings_DbConnectionString`.
-  - **Documentation**: [Azure SQL Database Documentation](https://docs.microsoft.com/en-us/azure/azure-sql/).
-
-- **Azure Application Insights**:
-  - **Setup**: Create an Application Insights resource via the [Azure Portal](https://portal.azure.com/).
-  - **Usage**: Optional for local development; useful for monitoring and telemetry in production.
-  - **Documentation**: [Application Insights Documentation](https://docs.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview).
-
-- **Azure SignalR Service**:
-  - **Setup**: Create an instance if real-time communication features are required.
-  - **Usage**: Optional for local development.
-  - **Documentation**: [Azure SignalR Service Documentation](https://docs.microsoft.com/en-us/azure/azure-signalr/).
-
-- **Other Resources**:
-  - **API Management and Additional Monitoring**: These are optional and typically only needed in a production environment.
-  - Refer to official documentation for each service if you choose to set these up.
+- **Azure Resources (Optional)**:  
+  You only need to set up these additional resources if you plan to use advanced features such as RAG operations. For basic completions, local configuration with a single LLM provider's API key is sufficient.
+  - **Azure SQL Database** – In order to support RAG requests powered by Azure AI Search Services, the database must either be created in Azure, or otherwise be accessible to the Azure AI Search instance. This is required to create the datasource connection used to index the database via automatic change tracking. For set up instructions, follow the [Azure SQL database quickstart guide](https://learn.microsoft.com/en-us/azure/azure-sql/database/single-database-create-quickstart?view=azuresql&tabs=azure-portal#prerequisites).
+  - **Azure AI Search Services** – Required only if you intend to use RAG operations. Follow [these instructions](https://learn.microsoft.com/en-us/azure/search/search-create-service-portal) until an AI Search Service resource is created, but feel free to skip any sections after you get the API key. The API is fully capable of setting up and managing AI Search Service indexes with just a couple of API requests.
+  - **Application Insights** – Only required for telemetry and performance monitoring. For setup, follow [these instructions for setting up Application Insights for .NET Core](https://learn.microsoft.com/en-us/azure/azure-monitor/app/asp-net-core). The application is already set up to use the service, so skip any sections that aren't related to getting a connection string.
 
 ---
 
 #### 3. Configure Application Settings
 
-The repository includes a Python script that generates a development configuration file by populating `appsettings.Development.json` from a template file.
-
-**Steps:**
-
 1. **Locate the Template and Output Paths**:  
    - **Template**: `IntelligenceHub.Host/appsettings.Template.json`  
    - **Output**: `IntelligenceHub.Host/appsettings.Development.json`
 
+2. **Collect Any Required Secrets and Keys**
+    - Only the SQL database string, and one LLM host credential/url combination is required.
+    - Refer to the appsettings.Template.json file for a list of all values possible values.
+
 2. **Run the Script**:  
    - Open a terminal in the repository’s base directory.
-   - Execute the script (e.g., `python generate_appsettings.py`).
+   - Execute the script (e.g., open the command line, navigate to the file, and run: `python generate_appsettings.py`).
    - **Script Details**:
-     - Checks for required environment variables.
-     - In a production environment, it verifies that all necessary variables are set and exits if any are missing.
-     - For local development, it prompts you for any missing tokens.
-     - Supports multiple entries for service endpoints (e.g., Azure OpenAI Services, OpenAI Services, Anthropic Services) and arrays such as `ValidOrigins` and `ValidAGIModels`.
-     - **API Key Setup**:
-       - For **OpenAI**, use your API key from [OpenAI](https://platform.openai.com/account/api-keys).
-       - For **Anthropic**, use your API key from Anthropic’s portal.
+     - The script is configured to work in a CI/CD pipeline, but this setup is outside of the scope of this guide.
+     - The script searches for environment variables before requesting they be populated by the user.
+     - Supports multiple entries for service endpoints (e.g., Azure OpenAI Services, OpenAI Services, Anthropic Services).
+     - If using Azure OpenAI, be sure to populate `ValidAGIModels` with the names of your deployed models, otherwise leave empty.
+     - Be sure to list any intended clients under `ValidOrigins`, which will be used to populate the cors policy's allowed origins. Can be set to `*` for a permissive policy to get a dev environment up and running quickly. 
+     - For the `SearchServiceCompletionService` values, provide any of set of credentials you used for one of the completion services, or if you don't intend to use RAG operations, feel free to leave it null. These values are used to generate the Keywords and Topic strings for RAG documents if `GenerateKeywords` or `GenerateTopic` is set to true on the targeted index.
    - Upon completion, the script writes the updated configuration to `appsettings.Development.json`.
 
 ---
 
-#### 4. Deploying the Application
+#### 4. Run the application
 
-After configuring the application settings and (if applicable) setting up the optional Azure resources, deploy the application locally with the following steps:
-
-1. **Build the Application**:
-   - Open a terminal in the repository root.
-   - Run `dotnet build` to compile the project.
-
-2. **Run the Application**:
-   - Start the application using `dotnet run` or deploy it locally using Docker or another hosting method.
-   - For local testing, running `dotnet run` is typically sufficient.
-
-3. **Testing Endpoints**:
-   - When the application starts, the Swagger UI should open automatically.
-   - Use the Swagger page to test API endpoints and verify that basic completions work using your LLM provider keys.
-
----
-
-#### 5. (Optional) CI/CD and Production Environment
-
-- **Continuous Integration/Continuous Deployment (CI/CD)**:
-  - Configure your CI/CD pipeline to securely inject the required environment variables without manual prompts.
-  - Production builds should rely entirely on provided environment variables.
-
-- **Production Configuration**:
-  - The setup script will exit if required environment variables are missing in a production environment.
-  - Ensure all optional resources (e.g., AI Search, AI Studio deployments, Application Insights, SignalR) are properly configured and connected if you plan to use them in production.
-
----
-
-By following these detailed steps, you will have a fully configured local development environment for IntelligenceHub with minimal cost. The essential resources for generating completions from your chosen LLM provider(s) are set up, while additional resources remain optional and can be configured as needed for more advanced functionality or production use.
-
+1. **Open the solution folder if the repo did not already**
+2. **Run the application**
+    - If using Visual Studio, click the drop down arrow next to 'run' button, and select 'Configure Startup Projects' from the list. Ensure that IntelligenceHub.Host.csproj is selected as the startup application, and then run the application.
+    - Otherwise, start the application using 'Dotnet Run' or your preferred IDE.
+3. **Begin Making Requests Using the Swagger Page**
+    - Refer to the [next section on usage](#usage) for help making your first request.
 
 ---
 
@@ -229,7 +182,8 @@ With the profile created, you can now send a chat request using the Chat Complet
 `POST https://yourapi.com/Completion/Chat/ChatProfile`
 
 **Request Payload:**
-`{
+```json
+{
     "ConversationId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
     "ProfileOptions": {
         "Name": "ChatProfile",
@@ -244,7 +198,8 @@ With the profile created, you can now send a chat request using the Chat Complet
             "Content": "Hello, how are you?"
         }
     ]
-}`
+}
+```
 
 **Example using curl:**
 `curl -X POST "https://yourapi.com/Completion/Chat/ChatProfile"\
@@ -268,7 +223,8 @@ With the profile created, you can now send a chat request using the Chat Complet
          }'`
 
 **Expected Response:**
-`{
+```json
+{
     "Messages": [
         {
             "Role": "Assistant",
@@ -278,9 +234,176 @@ With the profile created, you can now send a chat request using the Chat Complet
     "ToolCalls": {},
     "ToolExecutionResponses": [],
     "FinishReason": "Stop | Length | ToolCalls | ContentFilter | TooManyRequests | Error"
-}`
+}
+```
 
-These steps demonstrate how to set up an agent profile using the upsert endpoint and then initiate a chat request to receive a response from the configured profile.
+### 3\. Integrate RAG Index with Chat Requests
+
+To enable your AI model to answer queries using information stored in a RAG index, follow these steps:
+
+#### 3.1 Create a RAG Index
+
+Use the **Create RAG Index** endpoint to define a new RAG index. For example, to create an index named **MyRagIndex**, send a POST request with the required index metadata.
+
+**HTTP Request:**
+`POST https://yourapi.com/Rag/Index`
+
+**Request Payload:**
+```json
+{
+    "Name": "MyRagIndex",
+    "GenerationHost": "AzureAI",
+    "IndexingInterval": "00:05:00",
+    "EmbeddingModel": "bert-base",
+    "MaxRagAttachments": 10,
+    "ChunkOverlap": 0.2,
+    "ScoringProfile": {
+        "Name": "DefaultScoring",
+        "SearchAggregation": "Sum",
+        "SearchInterpolation": "Linear",
+        "FreshnessBoost": 1.0,
+        "BoostDurationDays": 7,
+        "TagBoost": 1.5,
+        "Weights": {
+            "field1": 0.8,
+            "field2": 1.2
+        }
+    },
+    "GenerateKeywords": true,
+    "GenerateTopic": false
+}
+```
+
+**Example using curl:**
+`curl -X POST "https://yourapi.com/Rag/Index"\
+     -H "Content-Type: application/json"\
+     -d '{
+           "Name": "MyRagIndex",
+           "GenerationHost": "AzureAI",
+           "IndexingInterval": "00:05:00",
+           "EmbeddingModel": "bert-base",
+           "MaxRagAttachments": 10,
+           "ChunkOverlap": 0.2,
+           "ScoringProfile": {
+               "Name": "DefaultScoring",
+               "SearchAggregation": "Sum",
+               "SearchInterpolation": "Linear",
+               "FreshnessBoost": 1.0,
+               "BoostDurationDays": 7,
+               "TagBoost": 1.5,
+               "Weights": {
+                   "field1": 0.8,
+                   "field2": 1.2
+               }
+           },
+           "GenerateKeywords": true,
+           "GenerateTopic": false
+         }'`
+
+A successful request will return the index metadata for **MyRagIndex**.
+
+#### 3.2 Add a New Document to the RAG Index
+
+After creating the index, add or update documents using the **Upsert Documents** endpoint.
+
+**HTTP Request:**
+`POST https://yourapi.com/Rag/index/MyRagIndex/Document`
+
+**Request Payload:**
+```json
+{
+    "Documents": [
+        {
+            "Title": "Azure AI Overview",
+            "Content": "Detailed information on Azure AI Search Services and its capabilities...",
+            "Topic": "Azure",
+            "Keywords": "AI, Search, Azure",
+            "Source": "Official Documentation"
+        }
+    ]
+}
+```
+
+**Example using curl:**
+`curl -X POST "https://yourapi.com/Rag/index/MyRagIndex/Document"\
+     -H "Content-Type: application/json"\
+     -d '{
+           "Documents": [
+               {
+                   "Title": "Azure AI Overview",
+                   "Content": "Detailed information on Azure AI Search Services and its capabilities...",
+                   "Topic": "Azure",
+                   "Keywords": "AI, Search, Azure",
+                   "Source": "Official Documentation"
+               }
+           ]
+         }'`
+
+This request will upsert the document into **MyRagIndex**.
+
+#### 3.3 Run an Update on the RAG Index
+
+Once you have added new content, refresh the RAG index by initiating an update run.
+
+**HTTP Request:**
+`POST https://yourapi.com/Rag/Index/MyRagIndex/Run`
+
+**Example using curl:**
+`curl -X POST "https://yourapi.com/Rag/Index/MyRagIndex/Run"`
+
+A successful update will return a `204 No Content` status, indicating that the index update process has started.
+
+#### 3.4 Make a Chat Request with RAG Database Integration
+
+Finally, to leverage the RAG index during chat interactions, include the `RagDatabase` property in the `ProfileOptions` of your chat request. This tells the AI model to retrieve and use the context from **MyRagIndex**.
+
+**HTTP Request:**
+`POST https://yourapi.com/Completion/Chat/ChatProfile`
+
+**Request Payload:**
+```json
+{
+    "ConversationId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+    "ProfileOptions": {
+        "Name": "ChatProfile",
+        "Model": "gpt-4o",
+        "Host": "OpenAI",
+        "Temperature": 0.7,
+        "MaxTokens": 150,
+        "RagDatabase": "MyRagIndex"
+    },
+    "Messages": [
+        {
+            "Role": "User",
+            "Content": "Can you tell me about Azure AI Services?"
+        }
+    ]
+}
+```
+
+**Example using curl:**
+`curl -X POST "https://yourapi.com/Completion/Chat/ChatProfile"\
+     -H "Authorization: Bearer {token}"\
+     -H "Content-Type: application/json"\
+     -d '{
+           "ConversationId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+           "ProfileOptions": {
+               "Name": "ChatProfile",
+               "Model": "gpt-4o",
+               "Host": "OpenAI",
+               "Temperature": 0.7,
+               "MaxTokens": 150,
+               "RagDatabase": "MyRagIndex"
+           },
+           "Messages": [
+               {
+                   "Role": "User",
+                   "Content": "Can you tell me about Azure AI Services?"
+               }
+           ]
+         }'`
+
+When processed, the AI model will use the documents and context from **MyRagIndex** to provide an informed response to your query. By following these steps, you integrate the RAG database into your chat workflows, allowing the AI model to reference up-to-date and relevant information stored in your custom index.
 
 ---
 
@@ -532,7 +655,6 @@ The `ProfileController` manages agent profiles. It provides endpoints for retrie
 `GET https://yourapi.com/Profile/get/all/page/1/count/10`
 
 **Example Response**:
-
 ```json
 [
     {
@@ -934,10 +1056,12 @@ The Message History API provides endpoints to manage message histories. You can 
     -   `404 Not Found`: If the message history is not found.
 
 **Example Response**:
-`{
+```json
+{
     "status": "Ok",
     "data": true
-}`
+}
+```
 
 #### 4\. Add Message to Message History
 
@@ -973,10 +1097,12 @@ The Message History API provides endpoints to manage message histories. You can 
     -   `404 Not Found`: If the message history or message is not found.
 
 **Example Response**:
-`{
+```json
+{
     "status": "Ok",
     "data": true
-}`
+}
+```
 
 ### RAG Index API Reference
 ###### Base URL `/Rag`
@@ -1024,8 +1150,8 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
     "ChunkOverlap": 0.2,
     "ScoringProfile": {
         "Name": "DefaultScoring",
-        "SearchAggregation": { /* aggregation details */ },
-        "SearchInterpolation": { /* interpolation details */ },
+        "SearchAggregation": "Sum | Average | Minimum | Maximum | FirstMatching",
+        "SearchInterpolation": "Linear | Constant | Quadratic | Logarithmic",
         "FreshnessBoost": 1.0,
         "BoostDurationDays": 7,
         "TagBoost": 1.5,
@@ -1049,7 +1175,8 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 `GET https://yourapi.com/Rag/Index/All`
 
 **Example Response**:
-`[
+```json
+[
     {
         "Name": "MyRagIndex"
         // additional properties
@@ -1058,7 +1185,8 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
         "Name": "AnotherIndex"
         // additional properties
     }
-]`
+]
+```
 
 #### 3\. Create RAG Index
 
@@ -1091,8 +1219,8 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
     "ChunkOverlap": 0.2,
     "ScoringProfile": {
         "Name": "DefaultScoring",
-        "SearchAggregation": { /* aggregation details */ },
-        "SearchInterpolation": { /* interpolation details */ },
+        "SearchAggregation": "Sum | Average | Minimum | Maximum | FirstMatching",
+        "SearchInterpolation": "Linear | Constant | Quadratic | Logarithmic",
         "FreshnessBoost": 1.0,
         "BoostDurationDays": 7,
         "TagBoost": 1.5,
@@ -1128,18 +1256,22 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
     -   `500 Internal Server Error`: Unexpected server error.
 
 **Example Request**:
-`{
+```json
+{
     "Name": "MyRagIndex",
     "IndexingInterval": "00:10:00",
     "MaxRagAttachments": 15
     // additional updated properties
-}`
+}
+```
 
 **Example Response**:
-`{
+```json
+{
     "Name": "MyRagIndex"
     // updated index metadata properties
-}`
+}
+```
 
 #### 5\. Query RAG Index
 
@@ -1158,7 +1290,8 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 `GET https://yourapi.com/Rag/Index/MyRagIndex/Query/azure`
 
 **Example Response**:
-`[
+```json
+[
     {
         "Title": "Azure AI Services",
         "Content": "Details about Azure AI Search Services..."
@@ -1169,7 +1302,8 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
         "Content": "An introductory guide..."
         // additional document properties
     }
-]`
+]
+```
 
 #### 6\. Run RAG Index Update
 
@@ -1219,7 +1353,8 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 `GET https://yourapi.com/Rag/Index/MyRagIndex/Document/10/Page/1`
 
 **Example Response**:
-`[
+```json
+[
     {
         "Title": "Azure AI Services",
         "Content": "Details about Azure AI Search Services..."
@@ -1230,7 +1365,8 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
         "Content": "An introductory guide..."
         // additional document properties
     }
-]`
+]
+```
 
 #### 9\. Get Document from RAG Index
 
@@ -1249,11 +1385,13 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 `GET https://yourapi.com/Rag/Index/MyRagIndex/document/AzureAIOverview`
 
 **Example Response**:
-`{
+```json
+{
     "Title": "AzureAIOverview",
     "Content": "Comprehensive overview of Azure AI Search Services..."
     // additional document properties
-}`
+}
+```
 
 #### 10\. Upsert Documents to RAG Index
 
