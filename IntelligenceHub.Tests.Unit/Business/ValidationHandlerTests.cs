@@ -54,7 +54,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             // should have at least one message that is not a Role.User (as per your sample logic).
             var message = new Message
             {
-                Role = Role.Assistant,
+                Role = Role.User,
                 Content = "Test content",
                 User = "Tester"
             };
@@ -325,7 +325,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Arrange: Valid messages list (using a non-User role per current validation logic).
             var message = new Message
             {
-                Role = Role.Assistant,
+                Role = Role.User,
                 Content = "Hello world",
                 User = "Tester"
             };

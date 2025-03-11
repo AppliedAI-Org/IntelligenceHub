@@ -44,9 +44,9 @@ namespace IntelligenceHub.API.DTOs.Tools
                 {
                     type = _objectPropertyType,
                     properties = new Dictionary<string, Property>()
-                        {
-                            { _promptResponsePropertyName, dialogueHistoryProperty },
-                            { _respondingModelPropertyName, recursionProfileNameProperty },
+                    {
+                        { _promptResponsePropertyName, dialogueHistoryProperty },
+                        { _respondingModelPropertyName, recursionProfileNameProperty },
                         },
                     required = new string[] { _promptResponsePropertyName, _respondingModelPropertyName },
                 }
