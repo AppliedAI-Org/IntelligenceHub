@@ -195,7 +195,7 @@ namespace IntelligenceHub.Business.Implementations
             if (profile == null) return APIResponseWrapper<CompletionResponse>.Failure($"The profile '{completionRequest.ProfileOptions.Name}' was not found in the database.", APIResponseStatusCodes.NotFound);
 
             var mappedProfile = DbMappingHandler.MapFromDbProfile(profile);
-            if (string.IsNullOrEmpty(mappedProfile.Model)) return APIResponseWrapper<CompletionResponse>.Failure($"The profile '{completionRequest.ProfileOptions.Name}' does not have a model associated with it.", APIResponseStatusCodes.BadRequest);
+            if (string.IsNullOrEmpty(mappedProfile.Model)) return APIResponseWrapper<CompletionResponse>.Failure($"The profile '{completionRequest.ProfileOptions.Model}' does not have a model associated with it.", APIResponseStatusCodes.BadRequest);
             if (string.IsNullOrEmpty(mappedProfile.Host.ToString())) return APIResponseWrapper<CompletionResponse>.Failure($"The profile '{completionRequest.ProfileOptions.Name}' does not have a host associated with it.", APIResponseStatusCodes.BadRequest);
             completionRequest.ProfileOptions = await BuildCompletionOptions(mappedProfile, completionRequest.ProfileOptions);
 
