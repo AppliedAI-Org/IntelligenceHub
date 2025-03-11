@@ -1,9 +1,11 @@
-﻿using IntelligenceHub.API.DTOs.Tools;
+﻿using IntelligenceHub.API.DTOs;
+using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Tests.Unit.Controllers
 {
@@ -40,7 +42,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var name = "nonexistentTool";
-            _profileLogicMock.Setup(p => p.GetTool(name)).ReturnsAsync((Tool)null);
+            _profileLogicMock.Setup(p => p.GetTool(name)).ReturnsAsync(APIResponseWrapper<Tool>.Failure($"No tool with the name {name} exists", APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.GetTool(name);
@@ -56,7 +58,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var name = "tool1";
             var tool = new Tool { Function = new Function() { Name = "tool1" } };
-            _profileLogicMock.Setup(p => p.GetTool(name)).ReturnsAsync(tool);
+            _profileLogicMock.Setup(p => p.GetTool(name)).ReturnsAsync(APIResponseWrapper<Tool>.Success(tool));
 
             // Act
             var result = await _controller.GetTool(name);
@@ -69,17 +71,18 @@ namespace IntelligenceHub.Tests.Unit.Controllers
 
         #region GetAllTools Tests
         [Fact]
-        public async Task GetAllTools_ReturnsNotFound_WhenNoToolsExist()
+        public async Task GetAllTools_ReturnsEmptySet_WhenNoToolsExist()
         {
             // Arrange
-            _profileLogicMock.Setup(p => p.GetAllTools()).ReturnsAsync(Enumerable.Empty<Tool>());
+            _profileLogicMock.Setup(p => p.GetAllTools(1, 10)).ReturnsAsync(APIResponseWrapper<IEnumerable<Tool>>.Success(Enumerable.Empty<Tool>()));
 
             // Act
-            var result = await _controller.GetAllTools();
+            var result = await _controller.GetAllTools(1, 10);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            Assert.Equal("No tools exist. Make a post request to add some.", notFoundResult.Value);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var tools = Assert.IsAssignableFrom<IEnumerable<Tool>>(okResult.Value);
+            Assert.Empty(tools);
         }
 
         [Fact]
@@ -87,10 +90,11 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var tools = new List<Tool> { new Tool { Function = new Function() { Name = "tool1" } }, new Tool { Function = new Function() { Name = "tool2" } } };
-            _profileLogicMock.Setup(p => p.GetAllTools()).ReturnsAsync(tools);
+            var mockResponse = APIResponseWrapper<IEnumerable<Tool>>.Success(tools);
+            _profileLogicMock.Setup(p => p.GetAllTools(1, 10)).ReturnsAsync(mockResponse);
 
             // Act
-            var result = await _controller.GetAllTools();
+            var result = await _controller.GetAllTools(1, 10);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -118,14 +122,15 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var name = "tool1";
-            _profileLogicMock.Setup(p => p.GetToolProfileAssociations(name)).ReturnsAsync((List<string>)null);
+            _profileLogicMock.Setup(p => p.GetToolProfileAssociations(name)).ReturnsAsync(APIResponseWrapper<List<string>>.Success(new List<string>()));
 
             // Act
             var result = await _controller.GetToolProfiles(name);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            Assert.Equal($"The tool '{name}' is not associated with any profiles, or does not exist.", notFoundResult.Value);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var profiles = Assert.IsType<List<string>>(okResult.Value);
+            Assert.Empty(profiles);
         }
 
         [Fact]
@@ -134,7 +139,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             // Arrange
             var name = "tool1";
             var profiles = new List<string> { "profile1", "profile2" };
-            _profileLogicMock.Setup(p => p.GetToolProfileAssociations(name)).ReturnsAsync(profiles);
+            _profileLogicMock.Setup(p => p.GetToolProfileAssociations(name)).ReturnsAsync(APIResponseWrapper<List<string>>.Success(profiles));
 
             // Act
             var result = await _controller.GetToolProfiles(name);
@@ -151,7 +156,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var toolList = new List<Tool> { new Tool { Function = new Function() { Name = "tool1" }  } };
-            _profileLogicMock.Setup(p => p.CreateOrUpdateTools(toolList)).ReturnsAsync("Error adding/updating tool");
+            _profileLogicMock.Setup(p => p.CreateOrUpdateTools(toolList)).ReturnsAsync(APIResponseWrapper<string>.Failure("Error adding/updating tool", IntelligenceHub.Common.GlobalVariables.APIResponseStatusCodes.BadRequest));
 
             // Act
             var result = await _controller.AddOrUpdateTool(toolList);
@@ -162,17 +167,18 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         }
 
         [Fact]
-        public async Task AddOrUpdateTool_ReturnsNoContent_WhenSuccess()
+        public async Task AddOrUpdateTool_ReturnsOk_WhenSuccess()
         {
             // Arrange
             var toolList = new List<Tool> { new Tool { Function = new Function() { Name = "tool1" } } };
-            _profileLogicMock.Setup(p => p.CreateOrUpdateTools(toolList)).ReturnsAsync((string)null);
+            _profileLogicMock.Setup(p => p.CreateOrUpdateTools(toolList)).ReturnsAsync(APIResponseWrapper<string>.Success("tool1"));
 
             // Act
             var result = await _controller.AddOrUpdateTool(toolList);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(toolList, okResult.Value);
         }
         #endregion
 
@@ -200,8 +206,8 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var profiles = new List<string> { "profile1" };
             var profileAssociations = new List<string> { "profile1", "profile2" };
 
-            _profileLogicMock.Setup(p => p.AddToolToProfiles(name, profiles)).ReturnsAsync((string)null);
-            _profileLogicMock.Setup(p => p.GetToolProfileAssociations(name)).ReturnsAsync(profileAssociations);
+            _profileLogicMock.Setup(p => p.AddToolToProfiles(name, profiles)).ReturnsAsync(APIResponseWrapper<List<string>>.Success(profileAssociations));
+            _profileLogicMock.Setup(p => p.GetToolProfileAssociations(name)).ReturnsAsync(APIResponseWrapper<List<string>>.Success(profileAssociations));
 
             // Act
             var result = await _controller.AddToolToProfiles(name, profiles);
@@ -230,18 +236,19 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         }
 
         [Fact]
-        public async Task RemoveToolFromProfiles_ReturnsNoContent_WhenSuccess()
+        public async Task RemoveToolFromProfiles_ReturnsOk_WhenSuccess()
         {
             // Arrange
             var name = "tool1";
             var profiles = new List<string> { "profile1" };
-            _profileLogicMock.Setup(p => p.DeleteToolAssociations(name, profiles)).ReturnsAsync((string)null);
+            _profileLogicMock.Setup(p => p.DeleteToolAssociations(name, profiles)).ReturnsAsync(APIResponseWrapper<List<string>>.Success(profiles));
 
             // Act
             var result = await _controller.RemoveToolFromProfiles(name, profiles);
 
             // Assert
-            Assert.IsType<NoContentResult>(result);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(profiles, okResult.Value);
         }
         #endregion
 
@@ -265,7 +272,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var name = "nonexistentTool";
-            _profileLogicMock.Setup(p => p.DeleteTool(name)).ReturnsAsync(false);
+            _profileLogicMock.Setup(p => p.DeleteTool(name)).ReturnsAsync(APIResponseWrapper<bool>.Failure($"No tool with the name {name} exists", APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.DeleteTool(name);
@@ -280,13 +287,26 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         {
             // Arrange
             var name = "tool1";
-            _profileLogicMock.Setup(p => p.DeleteTool(name)).ReturnsAsync(true);
+            _profileLogicMock.Setup(p => p.DeleteTool(name)).ReturnsAsync(APIResponseWrapper<bool>.Success(true));
 
             // Act
             var result = await _controller.DeleteTool(name);
 
             // Assert
             Assert.IsType<NoContentResult>(result);
+        }
+        [Fact]
+        public async Task GetAllTools_ReturnsOk_WhenNoToolsExist()
+        {
+            // Arrange
+            _profileLogicMock.Setup(p => p.GetAllTools(1, 10)).ReturnsAsync(APIResponseWrapper<IEnumerable<Tool>>.Success(Enumerable.Empty<Tool>()));
+
+            // Act
+            var result = await _controller.GetAllTools(1, 10);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Empty((IEnumerable<Tool>)okResult.Value);
         }
         #endregion
     }

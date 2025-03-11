@@ -1,20 +1,24 @@
 ﻿using IntelligenceHub.API.DTOs;
+using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
 using Moq;
+using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Tests.Unit.Business
 {
     public class MessageHistoryTests
     {
         private readonly Mock<IMessageHistoryRepository> _messageHistoryRepositoryMock;
+        private readonly Mock<IValidationHandler> _validationHandlerMock;
         private readonly MessageHistoryLogic _messageHistoryLogic;
 
         public MessageHistoryTests()
         {
             _messageHistoryRepositoryMock = new Mock<IMessageHistoryRepository>();
-            _messageHistoryLogic = new MessageHistoryLogic(_messageHistoryRepositoryMock.Object);
+            _validationHandlerMock = new Mock<IValidationHandler>();
+            _messageHistoryLogic = new MessageHistoryLogic(_messageHistoryRepositoryMock.Object, _validationHandlerMock.Object);
         }
 
         [Fact]
@@ -25,13 +29,13 @@ namespace IntelligenceHub.Tests.Unit.Business
             var timeStamp = DateTime.UtcNow;
             var messages = new List<Message> { new Message { Content = "Test message", TimeStamp = timeStamp } };
             var dbMessages = new List<DbMessage> { new DbMessage { Content = "Test message", TimeStamp = timeStamp } };
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10)).ReturnsAsync(dbMessages);
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10, 1)).ReturnsAsync(dbMessages);
 
             // Act
-            var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10);
+            var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10, 1);
 
             // Assert
-            Assert.Collection(result, message =>
+            Assert.Collection(result.Data, message =>
             {
                 Assert.Equal("Test message", message.Content);
                 Assert.Equal(timeStamp, message.TimeStamp);
@@ -45,13 +49,13 @@ namespace IntelligenceHub.Tests.Unit.Business
         {
             // Arrange
             var conversationId = Guid.NewGuid();
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10)).ReturnsAsync(new List<DbMessage>());
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10, 1)).ReturnsAsync(new List<DbMessage>());
 
             // Act
-            var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10);
+            var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10, 1);
 
             // Assert
-            Assert.Empty(result);
+            Assert.Empty(result.Data);
         }
 
         [Fact]
@@ -67,8 +71,8 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.UpdateOrCreateConversation(conversationId, messages);
 
             // Assert
-            Assert.Single(result);
-            Assert.Equal(messages[0].Content, result[0].Content);
+            Assert.Single(result.Data);
+            Assert.Equal(messages[0].Content, result.Data[0].Content);
         }
 
         [Fact]
@@ -83,7 +87,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.UpdateOrCreateConversation(conversationId, messages);
 
             // Assert
-            Assert.Empty(result);
+            Assert.Empty(result.Data);
         }
 
         [Fact]
@@ -97,7 +101,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.DeleteConversation(conversationId);
 
             // Assert
-            Assert.True(result);
+            Assert.True(result.Data);
         }
 
         [Fact]
@@ -111,7 +115,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.DeleteConversation(conversationId);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
 
         [Fact]
@@ -121,7 +125,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var conversationId = Guid.NewGuid();
             var message = new Message { Content = "Test message" };
             var dbMessage = new DbMessage { Content = "Test message" };
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1)).ReturnsAsync(new List<DbMessage> { dbMessage });
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1, 1)).ReturnsAsync(new List<DbMessage> { dbMessage });
             _messageHistoryRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<DbMessage>())).ReturnsAsync(dbMessage);
 
             // Act
@@ -129,22 +133,25 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(dbMessage.Content, result.Content);
+            Assert.Equal(dbMessage.Content, result.Data.Content);
         }
 
         [Fact]
-        public async Task AddMessage_ShouldReturnNull_WhenConversationNotFound()
+        public async Task AddMessage_ShouldReturnFailure_WhenConversationNotFound()
         {
             // Arrange
             var conversationId = Guid.NewGuid();
             var message = new Message { Content = "Test message" };
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1)).ReturnsAsync((List<DbMessage>?)null);
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1, 1)).ReturnsAsync((List<DbMessage>?)null);
 
             // Act
             var result = await _messageHistoryLogic.AddMessage(conversationId, message);
 
             // Assert
-            Assert.Null(result);
+            Assert.NotNull(result);
+            Assert.False(result.IsSuccess);
+            Assert.Equal($"No conversation with the id '{conversationId}' was found", result.ErrorMessage);
+            Assert.Equal(APIResponseStatusCodes.NotFound, result.StatusCode);
         }
 
         [Fact]
@@ -159,7 +166,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.DeleteMessage(conversationId, messageId);
 
             // Assert
-            Assert.True(result);
+            Assert.True(result.Data);
         }
 
         [Fact]
@@ -174,7 +181,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.DeleteMessage(conversationId, messageId);
 
             // Assert
-            Assert.False(result);
+            Assert.False(result.Data);
         }
     }
 }
