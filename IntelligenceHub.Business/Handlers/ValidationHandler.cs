@@ -227,7 +227,7 @@ namespace IntelligenceHub.Business.Handlers
         public string? ValidateMessageList(List<Message> messageList)
         {
             if (messageList == null || !messageList.Any()) return "The messages array was null or empty.";
-            if (messageList.Exists(m => m.Role == Role.User)) return "The messages array must contain at least one user message, but contains none.";
+            if (!messageList.Exists(m => m.Role == Role.User)) return "The messages array must contain at least one user message, but contains none.";
             foreach (var message in messageList)
             {
                 var errorMessage = ValidateMessage(message);

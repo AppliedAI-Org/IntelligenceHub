@@ -195,6 +195,8 @@ namespace IntelligenceHub.Business.Implementations
             if (profile == null) return APIResponseWrapper<CompletionResponse>.Failure($"The profile '{completionRequest.ProfileOptions.Name}' was not found in the database.", APIResponseStatusCodes.NotFound);
 
             var mappedProfile = DbMappingHandler.MapFromDbProfile(profile);
+            if (string.IsNullOrEmpty(mappedProfile.Model)) return APIResponseWrapper<CompletionResponse>.Failure($"The profile '{completionRequest.ProfileOptions.Name}' does not have a model associated with it.", APIResponseStatusCodes.BadRequest);
+            if (string.IsNullOrEmpty(mappedProfile.Host.ToString())) return APIResponseWrapper<CompletionResponse>.Failure($"The profile '{completionRequest.ProfileOptions.Name}' does not have a host associated with it.", APIResponseStatusCodes.BadRequest);
             completionRequest.ProfileOptions = await BuildCompletionOptions(mappedProfile, completionRequest.ProfileOptions);
 
             if (completionRequest.ConversationId is Guid conversationId)
@@ -284,7 +286,7 @@ namespace IntelligenceHub.Business.Implementations
             if (profile.Tools == null) profile.Tools = new List<Tool>();
 
             // add image gen system tool if appropriate - Anthropic does not support image gen currently
-            var host = profileOptions?.ImageHost ?? profile.ImageHost ?? profileOptions?.Host ?? profile.Host; // if an image host is provided use that, otherwise default to the primary host
+            var host = string.IsNullOrEmpty(profileOptions?.ImageHost.ToString()) ? profile.ImageHost : profileOptions?.ImageHost ?? profileOptions?.Host ?? profile.Host;
             if (host != AGIServiceHosts.Anthropic && host != AGIServiceHosts.None) profile.Tools.Add(new ImageGenSystemTool());
 
             // add recursive chat system tool if appropriate
@@ -300,25 +302,25 @@ namespace IntelligenceHub.Business.Implementations
             return new Profile()
             {
                 Id = profile.Id,
-                Name = profile.Name,
-                Model = profileOptions?.Model ?? profile.Model,
-                RagDatabase = profileOptions?.RagDatabase ?? profile.RagDatabase,
+                Name = string.IsNullOrEmpty(profileOptions?.Name) ? profile.Name : profileOptions?.Name,
+                Model = string.IsNullOrEmpty(profileOptions?.Model) ? profile.Model : profileOptions?.Model,
+                RagDatabase = string.IsNullOrEmpty(profileOptions?.RagDatabase) ? profile.RagDatabase : profileOptions?.RagDatabase,
                 MaxMessageHistory = profileOptions?.MaxMessageHistory ?? profile.MaxMessageHistory,
                 MaxTokens = profileOptions?.MaxTokens ?? profile.MaxTokens,
                 Temperature = profileOptions?.Temperature ?? profile.Temperature,
                 TopP = profileOptions?.TopP ?? profile.TopP,
                 FrequencyPenalty = profileOptions?.FrequencyPenalty ?? profile.FrequencyPenalty,
                 PresencePenalty = profileOptions?.PresencePenalty ?? profile.PresencePenalty,
-                Stop = profileOptions?.Stop ?? profile.Stop,
+                Stop = string.IsNullOrEmpty(profileOptions?.Stop?.ToCommaSeparatedString()) ? profile.Stop : profileOptions?.Stop,
                 Logprobs = profileOptions?.Logprobs ?? profile.Logprobs,
                 TopLogprobs = profileOptions?.TopLogprobs ?? profile.TopLogprobs,
-                ResponseFormat = profileOptions?.ResponseFormat ?? profile.ResponseFormat,
-                User = profileOptions?.User ?? profile.User,
+                ResponseFormat = string.IsNullOrEmpty(profileOptions?.ResponseFormat) ? profile.ResponseFormat : profileOptions?.ResponseFormat,
+                User = string.IsNullOrEmpty(profileOptions?.User) ? profile.User : profileOptions?.User,
                 Tools = profileOptions?.Tools ?? profile.Tools,
-                SystemMessage = profileOptions?.SystemMessage ?? profile.SystemMessage,
+                SystemMessage = string.IsNullOrEmpty(profileOptions?.SystemMessage) ? profile.SystemMessage : profileOptions?.SystemMessage,
                 ReferenceProfiles = profileReferences,
                 Host = profileOptions?.Host ?? profile.Host,
-                ToolChoice = profileOptions?.ToolChoice ?? profile.ToolChoice
+                ToolChoice = string.IsNullOrEmpty(profileOptions?.ToolChoice) ? profile.ToolChoice : profileOptions?.ToolChoice
             };
         }
         #endregion

@@ -45,7 +45,7 @@ namespace IntelligenceHub.Hubs
             var response = _completionLogic.StreamCompletion(completionRequest);
             await foreach (var chunk in response)
             {
-                if (chunk.IsSuccess) await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");
+                if (chunk.IsSuccess) await Clients.Caller.SendAsync("broadcastMessage", chunk.Data);
                 else if (chunk.StatusCode == APIResponseStatusCodes.NotFound) await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");
                 else if (chunk.StatusCode == APIResponseStatusCodes.TooManyRequests) await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");
                 else if (chunk.StatusCode == APIResponseStatusCodes.InternalError) await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");

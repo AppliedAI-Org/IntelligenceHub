@@ -297,6 +297,8 @@ namespace IntelligenceHub.Host
                 });
             }
 
+            app.UseHttpsRedirection();
+
             app.UseRouting();
 
             app.UseMiddleware<LoggingMiddleware>();
