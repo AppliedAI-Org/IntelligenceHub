@@ -23,6 +23,7 @@ namespace IntelligenceHub.Controllers
     public class CompletionController : ControllerBase
     {
         private readonly ICompletionLogic _completionLogic;
+        private readonly IProfileLogic _profileLogic;
         private readonly IValidationHandler _validationLogic;
 
         /// <summary>
@@ -30,9 +31,10 @@ namespace IntelligenceHub.Controllers
         /// </summary>
         /// <param name="completionLogic">The business logic for completions.</param>
         /// <param name="validationHandler">A class that validates incoming API request payloads.</param>
-        public CompletionController(ICompletionLogic completionLogic, IValidationHandler validationHandler)
+        public CompletionController(ICompletionLogic completionLogic, IProfileLogic profileLogic, IValidationHandler validationHandler)
         {
             _completionLogic = completionLogic;
+            _profileLogic = profileLogic;
             _validationLogic = validationHandler;
         }
 

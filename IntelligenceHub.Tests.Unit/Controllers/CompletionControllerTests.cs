@@ -19,6 +19,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         private readonly Mock<ICompletionLogic> _mockCompletionLogic;
         private readonly Mock<Settings> _mockSettings;
         private readonly Mock<IValidationHandler> _mockValidationLogic;
+        private readonly Mock<IProfileLogic> _mockProfileLogic;
         private readonly Mock<HttpContext> _mockHttpContext;
 
         public CompletionControllerTests()
@@ -26,10 +27,11 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             _mockCompletionLogic = new Mock<ICompletionLogic>();
             _mockSettings = new Mock<Settings>();
             _mockValidationLogic = new Mock<IValidationHandler>();
+            _mockProfileLogic = new Mock<IProfileLogic>();
             _mockHttpContext = new Mock<HttpContext>();
 
             // Initialize the controller with mocked dependencies
-            _controller = new CompletionController(_mockCompletionLogic.Object, _mockValidationLogic.Object);
+            _controller = new CompletionController(_mockCompletionLogic.Object, _mockProfileLogic.Object,  _mockValidationLogic.Object);
         }
 
         #region Standard Completion

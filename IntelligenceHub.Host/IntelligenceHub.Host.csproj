@@ -44,6 +44,7 @@
     <PackageReference Include="NSwag.AspNetCore" Version="14.2.0" />
     <PackageReference Include="Owin.Extensions" Version="0.8.5" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.1.2" />
     <PackageReference Include="System.Text.Json" Version="9.0.0" />
   </ItemGroup>
 
