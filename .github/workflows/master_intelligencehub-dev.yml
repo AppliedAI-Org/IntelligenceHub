@@ -94,7 +94,7 @@ jobs:
         id: deploy-to-webapp-prod
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'IntelligenceHub-prod'
+          app-name: 'IntelligenceHub'
           slot-name: 'Production'
           package: .
 
