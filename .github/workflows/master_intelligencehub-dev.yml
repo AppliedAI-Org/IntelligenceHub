@@ -1,25 +1,20 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy ASP.Net Core app to Azure Web Apps
+name: Build and deploy ASP.Net Core app to Azure Web App - IntelligenceHub-dev
 
 on:
   push:
-    # Triggers on any branch push for automatic dev deployments.
     branches:
-      - '*'
+      - master
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Choose the target environment: dev or prod'
-        required: true
-        default: 'dev'
 
 jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: read
+      contents: read #This is required for actions/checkout
+
     steps:
       - uses: actions/checkout@v4
 
@@ -40,62 +35,34 @@ jobs:
           name: .net-app
           path: ${{env.DOTNET_ROOT}}/myapp
 
-  deploy-dev:
-    # This job runs on push or when the manual input is set to 'dev'
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+  deploy:
     runs-on: windows-latest
     needs: build
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     permissions:
-      id-token: write
-      contents: read
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: .net-app
       
-      - name: Login to Azure (Dev)
+      - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_F7A84D9F09B5428D9256BE6C7077FCF7 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E7BA30CBEC004DAB9CD73FB345F5E010  }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_7C5AA75A152C44E193EF21A15DD257FE  }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_BB0154D72683450CBF8E06936C16A2F5 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_B8CE0396962445BC88258B6D1486F552 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_091ACAA045DB4202BA30D55D9AD067CC }}
 
-      - name: Deploy to Azure Web App (Dev)
-        id: deploy-to-webapp-dev
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'IntelligenceHub-dev'
           slot-name: 'Production'
           package: .
-
-  deploy-prod:
-    # This job runs only when manually triggered with the environment set to 'prod'
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
-    runs-on: windows-latest
-    needs: build
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: .net-app
-      
-      - name: Login to Azure (Prod)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_INTELLIGENCEHUB_PROD }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_INTELLIGENCEHUB_PROD }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_INTELLIGENCEHUB_PROD }}
-
-      - name: Deploy to Azure Web App (Prod)
-        id: deploy-to-webapp-prod
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'IntelligenceHub'
-          slot-name: 'Production'
-          package: .
-
           
