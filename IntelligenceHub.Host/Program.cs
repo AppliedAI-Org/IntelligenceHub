@@ -295,14 +295,6 @@ namespace IntelligenceHub.Host
                 });
             }
 
-            app.UseStaticFiles(); // Enables serving static files
-
-            app.MapGet("/", async context =>
-            {
-                context.Response.Redirect("/index.html");
-            });
-
-
             app.UseHttpsRedirection();
 
             app.UseRouting();
