@@ -279,8 +279,7 @@ namespace IntelligenceHub.Host
 
                 app.UseCors(policy =>
                 {
-                    policy.WithOrigins(settings.ValidOrigins)
-                          .AllowAnyMethod()
+                    policy.AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials()
                           .SetIsOriginAllowed((host) => true);
@@ -290,8 +289,7 @@ namespace IntelligenceHub.Host
             {
                 app.UseCors(policy =>
                 {
-                    policy.WithOrigins(settings.ValidOrigins)
-                          .WithMethods("GET", "POST", "DELETE") 
+                    policy.WithMethods("GET", "POST", "DELETE") 
                           .WithHeaders("Authorization", "Content-Type")
                           .AllowCredentials();
                 });
