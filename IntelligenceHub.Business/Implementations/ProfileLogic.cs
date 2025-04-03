@@ -121,8 +121,8 @@ namespace IntelligenceHub.Business.Implementations
             var success = true;
             if (existingProfile != null)
             {
-                var updateProfileDto = DbMappingHandler.MapToDbProfile(existingProfile.Name, _defaulAzureModel, existingProfile, profileDto);
-                var rows = await _profileDb.UpdateAsync(updateProfileDto);
+                DbMappingHandler.MapToDbProfile(existingProfile.Name, _defaulAzureModel, existingProfile, profileDto);
+                var rows = await _profileDb.UpdateAsync(existingProfile); // Use the tracked entity
                 if (rows == null) success = false;
             }
             else
