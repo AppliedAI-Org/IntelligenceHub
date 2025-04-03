@@ -23,6 +23,7 @@ using static IntelligenceHub.Common.GlobalVariables;
 using IntelligenceHub.Business.Factories;
 using IntelligenceHub.Host.Swagger;
 using IntelligenceHub.Business.Handlers;
+using Microsoft.AspNetCore.Authentication;
 
 namespace IntelligenceHub.Host
 {
@@ -37,6 +38,9 @@ namespace IntelligenceHub.Host
             var settingsSection = builder.Configuration.GetRequiredSection(nameof(Settings));
             var settings = settingsSection.Get<Settings>();
 
+            var authSection = builder.Configuration.GetRequiredSection(nameof(AuthSettings));
+            var authSettings = authSection.Get<AuthSettings>();
+
             var insightSettingsSection = builder.Configuration.GetRequiredSection(nameof(AppInsightSettings));
             var insightSettings = insightSettingsSection.Get<AppInsightSettings>();
 
@@ -44,9 +48,13 @@ namespace IntelligenceHub.Host
             var agiClientSettings = agiClientSettingsSection.Get<AGIClientSettings>();
 
             builder.Services.Configure<Settings>(settingsSection);
+            builder.Services.Configure<AuthSettings>(authSection);
             builder.Services.Configure<AppInsightSettings>(insightSettingsSection);
             builder.Services.Configure<AGIClientSettings>(agiClientSettingsSection);
             builder.Services.Configure<SearchServiceClientSettings>(builder.Configuration.GetRequiredSection(nameof(SearchServiceClientSettings)));
+
+            // Register AuthSettings as a singleton
+            builder.Services.AddSingleton(authSettings);
 
             // Add Services
 
@@ -67,6 +75,7 @@ namespace IntelligenceHub.Host
             builder.Services.AddScoped<IMessageHistoryLogic, MessageHistoryLogic>();
             builder.Services.AddScoped<IProfileLogic, ProfileLogic>();
             builder.Services.AddScoped<IRagLogic, RagLogic>();
+            builder.Services.AddScoped<IAuthLogic, AuthLogic>();
 
             // Clients and Client Factory
             builder.Services.AddSingleton<IAGIClientFactory, AGIClientFactory>();
@@ -76,6 +85,7 @@ namespace IntelligenceHub.Host
             builder.Services.AddSingleton<AnthropicAIClient>();
             builder.Services.AddSingleton<IToolClient, ToolClient>();
             builder.Services.AddSingleton<IAISearchServiceClient, AISearchServiceClient>();
+            builder.Services.AddSingleton<IAIAuth0Client, Auth0Client>();
 
             // Repositories
             builder.Services.AddScoped<IProfileRepository, ProfileRepository>();
@@ -194,7 +204,6 @@ namespace IntelligenceHub.Host
             #region Authentication
 
             // Configure Auth
-            var authSettings = builder.Configuration.GetRequiredSection(nameof(AuthSettings)).Get<AuthSettings>();
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -210,6 +219,12 @@ namespace IntelligenceHub.Host
                     RoleClaimType = "roles"
                 };
             });
+
+            if (builder.Environment.IsDevelopment())
+            {
+                builder.Services.AddAuthentication("BasicAuthentication")
+                    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
+            }
 
             // Add role-based authorization policies
             builder.Services.AddAuthorization(options =>
@@ -284,12 +299,19 @@ namespace IntelligenceHub.Host
                           .AllowCredentials()
                           .SetIsOriginAllowed((host) => true);
                 });
+
+                // Serve static files in development environment
+                app.UseStaticFiles();
+                app.UseDefaultFiles(new DefaultFilesOptions
+                {
+                    DefaultFileNames = new List<string> { "index.html" }
+                });
             }
             else
             {
                 app.UseCors(policy =>
                 {
-                    policy.WithMethods("GET", "POST", "DELETE") 
+                    policy.WithMethods("GET", "POST", "DELETE")
                           .WithHeaders("Authorization", "Content-Type")
                           .AllowCredentials();
                 });
@@ -312,3 +334,4 @@ namespace IntelligenceHub.Host
         }
     }
 }
+
