@@ -1,9 +1,12 @@
 ﻿using IntelligenceHub.API.DTOs.Auth;
 using IntelligenceHub.Business.Interfaces;
+using IntelligenceHub.Common;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 using System.Threading.Tasks;
 using static IntelligenceHub.Common.GlobalVariables;
 
@@ -33,15 +36,22 @@ namespace IntelligenceHub.API.Controllers
         /// </summary>
         /// <returns>An <see cref="IActionResult"/> containing the admin authentication token.</returns>
         [HttpGet("admintoken")]
+        [SwaggerOperation(OperationId = "GetElevatedAuthToken")]
+        [ProducesResponseType(typeof(Auth0Response), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAdminToken()
         {
-            var tokenResponse = await _authLogic.GetAdminAuthToken();
-            if (tokenResponse == null)
+            try
             {
-                return Unauthorized();
+                var tokenResponse = await _authLogic.GetAdminAuthToken();
+                if (tokenResponse == null) return Unauthorized();
+                return Ok(tokenResponse);
             }
-
-            return Ok(tokenResponse);
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
+            }
         }
 
         /// <summary>
@@ -49,15 +59,23 @@ namespace IntelligenceHub.API.Controllers
         /// </summary>
         /// <returns>An <see cref="IActionResult"/> containing the default authentication token.</returns>
         [HttpGet("defaulttoken")]
+        [SwaggerOperation(OperationId = "GetDefaultAuthToken")]
+        [ProducesResponseType(typeof(Auth0Response), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetDefaultToken()
         {
-            var tokenResponse = await _authLogic.GetDefaultAuthToken();
-            if (tokenResponse == null)
+            try
             {
-                return Unauthorized();
+                var tokenResponse = await _authLogic.GetDefaultAuthToken();
+                if (tokenResponse == null) return Unauthorized();
+                return Ok(tokenResponse);
             }
-
-            return Ok(tokenResponse);
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
+            }
+            
         }
     }
 }
