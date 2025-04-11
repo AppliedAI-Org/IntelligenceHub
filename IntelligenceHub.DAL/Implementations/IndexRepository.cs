@@ -101,8 +101,8 @@ namespace IntelligenceHub.DAL.Implementations
         public async Task<bool> DeleteIndexAsync(string tableName)
         {
             var query = $@"DROP TABLE IF EXISTS [{tableName}]";
-            var rows = await _context.Database.ExecuteSqlRawAsync(query);
-            return rows > 0;
+            var result = await _context.Database.ExecuteSqlRawAsync(query);
+            return result == -1; // -1 is returned for scenarios where row number doesn't make sense
         }
 
         /// <summary>

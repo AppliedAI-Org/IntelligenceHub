@@ -16,6 +16,13 @@ namespace IntelligenceHub.DAL.Interfaces
         Task<List<DbProfileTool>> GetToolAssociationsAsync(int profileId);
 
         /// <summary>
+        /// Associates a profile with a tool in the associative database.
+        /// </summary>
+        /// <param name="profileTool">The DbProfiletTool model object.</param>
+        /// <returns>A boolean indicating the success of the operation.</returns>
+        Task<DbProfileTool> AddAsync(DbProfileTool profileTool);
+
+        /// <summary>
         /// Associates a list of tools with a profile by their IDs.
         /// </summary>
         /// <param name="profileId">The profile ID.</param>

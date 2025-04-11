@@ -6,6 +6,7 @@ namespace IntelligenceHub.API.DTOs
 {
     public class Message
     {
+        public int Id { get; set; }
         public Role? Role { get; set; }
         [JsonIgnore]
         public string User { get; set; } = string.Empty;
