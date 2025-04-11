@@ -1,4 +1,5 @@
-﻿using IntelligenceHub.Common.Config;
+﻿using IntelligenceHub.API.DTOs;
+using IntelligenceHub.Common.Config;
 using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
 using Microsoft.Data.SqlClient;
@@ -40,11 +41,23 @@ namespace IntelligenceHub.DAL.Implementations
         /// <returns>A boolean indicating the success of the operation.</returns>
         public async Task<bool> AddAssociationsByProfileIdAsync(int profileId, List<int> toolIds)
         {
+            var profile = await _context.Profiles.FindAsync(profileId);
+
+            if (profile == null)
+            {
+                throw new ArgumentException("Profile not found.", nameof(profileId));
+            }
+
             foreach (var toolId in toolIds)
             {
                 if (!await _context.ProfileTools.AnyAsync(pt => pt.ProfileID == profileId && pt.ToolID == toolId))
                 {
-                    _context.ProfileTools.Add(new DbProfileTool { ProfileID = profileId, ToolID = toolId });
+                    _context.ProfileTools.Add(new DbProfileTool
+                    {
+                        ProfileID = profileId,
+                        ToolID = toolId,
+                        Profile = profile
+                    });
                 }
             }
             await _context.SaveChangesAsync();

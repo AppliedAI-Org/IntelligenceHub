@@ -345,7 +345,7 @@ namespace IntelligenceHub.Business.Handlers
             if (index.IndexingInterval >= TimeSpan.FromDays(1)) return "The indexing interval must be less than 1 day.";
             if (!string.IsNullOrWhiteSpace(index.EmbeddingModel) && index.EmbeddingModel.Length > 255) return "The EmbeddingModel exceeds the maximum allowed length of 255 characters.";
             if (index.MaxRagAttachments < 0) return "MaxRagAttachments must be a non-negative integer greater than 0.";
-            if (index.MaxRagAttachments < 20) return "MaxRagAttachments cannot exceed 20.";
+            if (index.MaxRagAttachments > 20) return "MaxRagAttachments cannot exceed 20.";
             if (index.ChunkOverlap < 0 || index.ChunkOverlap > 1) return "ChunkOverlap must be between 0 and 1 (inclusive).";
 
             if (!string.IsNullOrEmpty(index.ScoringProfile?.Name))

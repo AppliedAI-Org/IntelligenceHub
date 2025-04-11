@@ -182,6 +182,7 @@ namespace IntelligenceHub.DAL
         {
             return new Message()
             {
+                Id = dbMessage.Id,
                 Content = dbMessage.Content,
                 Role = dbMessage.Role.ConvertStringToRole(),
                 User = dbMessage.User,
@@ -200,6 +201,7 @@ namespace IntelligenceHub.DAL
         {
             return new DbMessage()
             {
+                Id = message.Id,
                 Content = message.Content,
                 Role = message.Role.ToString() ?? string.Empty,
                 ConversationId = conversationId,
