@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="IntelligenceHub.DAL\Models\DbMessage.cs" />
+    <Compile Remove="IntelligenceHub.DAL\Models\DbProfile.cs" />
+    <Compile Remove="IntelligenceHub.DAL\Models\DbProfileTool.cs" />
+    <Compile Remove="IntelligenceHub.DAL\Models\DbProperty.cs" />
+    <Compile Remove="IntelligenceHub.DAL\Models\DbTool.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="IntelligenceHub.DAL\Models\DbMessage.cs" />
+    <Content Include="IntelligenceHub.DAL\Models\DbProfile.cs" />
+    <Content Include="IntelligenceHub.DAL\Models\DbProfileTool.cs" />
+    <Content Include="IntelligenceHub.DAL\Models\DbProperty.cs" />
+    <Content Include="IntelligenceHub.DAL\Models\DbTool.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="DAL\Migrations\" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols" Version="7.1.2" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.1.2" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IntelligenceHub.API\IntelligenceHub.API.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Common\IntelligenceHub.Common.csproj" />
+  </ItemGroup>
+
+</Project>

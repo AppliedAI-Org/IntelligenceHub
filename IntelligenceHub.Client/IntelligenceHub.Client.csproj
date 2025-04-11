@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Anthropic.SDK" Version="4.5.0" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.1" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols" Version="7.1.2" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.1.2" />
+    <PackageReference Include="OpenAI" Version="2.1.0" />
+	<PackageReference Include="System.ClientModel" Version="1.2.1" />
+	<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IntelligenceHub.API\IntelligenceHub.API.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.Common\IntelligenceHub.Common.csproj" />
+    <ProjectReference Include="..\IntelligenceHub.DAL\IntelligenceHub.DAL.csproj" />
+  </ItemGroup>
+
+</Project>

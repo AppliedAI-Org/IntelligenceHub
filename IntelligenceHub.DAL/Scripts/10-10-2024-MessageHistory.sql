@@ -1,0 +1,9 @@
+﻿CREATE TABLE MessageHistory (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    ConversationId UNIQUEIDENTIFIER,
+    [Role] NVARCHAR(255) NOT NULL,
+    [User] NVARCHAR(255),
+    Base64Image NVARCHAR(MAX),
+    [TimeStamp] DATETIME NOT NULL DEFAULT GETDATE(),
+    Content NVARCHAR(MAX) NOT NULL
+);
