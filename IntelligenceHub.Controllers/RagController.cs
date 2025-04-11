@@ -101,7 +101,7 @@ namespace IntelligenceHub.Controllers
                 else if (response.StatusCode == APIResponseStatusCodes.BadRequest) return BadRequest(response.ErrorMessage);
                 return StatusCode(StatusCodes.Status500InternalServerError, response.ErrorMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
@@ -131,7 +131,7 @@ namespace IntelligenceHub.Controllers
                 else if (response.StatusCode == APIResponseStatusCodes.InternalError) return StatusCode(StatusCodes.Status500InternalServerError, response.ErrorMessage);
                 return BadRequest(response.ErrorMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
@@ -249,7 +249,7 @@ namespace IntelligenceHub.Controllers
                 if (response.IsSuccess) return Ok(response.Data ?? new List<IndexDocument>());
                 return BadRequest(response.ErrorMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
@@ -308,7 +308,7 @@ namespace IntelligenceHub.Controllers
                 else if (response.StatusCode == APIResponseStatusCodes.InternalError) return StatusCode(StatusCodes.Status500InternalServerError, response.ErrorMessage);
                 else return BadRequest(response.ErrorMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }

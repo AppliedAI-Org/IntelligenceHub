@@ -219,7 +219,7 @@ namespace IntelligenceHub.Controllers
                 else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
                 return StatusCode(StatusCodes.Status500InternalServerError, response.ErrorMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }

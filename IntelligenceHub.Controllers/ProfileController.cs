@@ -111,7 +111,7 @@ namespace IntelligenceHub.Controllers
                 if (!profileResponse.IsSuccess) return StatusCode(StatusCodes.Status500InternalServerError, "Error returning the newly created profile details.");
                 else return Ok(profileResponse.Data);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
