@@ -297,6 +297,7 @@ namespace IntelligenceHub.Host
                     policy.AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials()
+                          .WithOrigins(settings.ValidOrigins)
                           .SetIsOriginAllowed((host) => true);
                 });
 
@@ -313,6 +314,7 @@ namespace IntelligenceHub.Host
                 {
                     policy.WithMethods("GET", "POST", "DELETE")
                           .WithHeaders("Authorization", "Content-Type")
+                          .WithOrigins(settings.ValidOrigins)
                           .AllowCredentials();
                 });
             }
