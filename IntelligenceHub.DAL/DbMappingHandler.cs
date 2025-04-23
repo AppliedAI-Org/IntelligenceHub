@@ -29,7 +29,8 @@ namespace IntelligenceHub.DAL
                 Name = dbProfile.Name,
                 Model = dbProfile.Model,
                 Host = dbProfile.Host.ConvertToServiceHost(),
-                ImageHost = dbProfile.ImageHost?.ConvertToServiceHost(), 
+                ImageHost = dbProfile.ImageHost?.ConvertToServiceHost(),
+                RagDatabase = dbProfile.RagDatabase,
                 FrequencyPenalty = (float?)dbProfile.FrequencyPenalty,
                 PresencePenalty = (float?)dbProfile.PresencePenalty,
                 Temperature = (float?)dbProfile.Temperature,
@@ -79,6 +80,7 @@ namespace IntelligenceHub.DAL
             existingProfile.ResponseFormat = profileUpdate?.ResponseFormat ?? existingProfile.ResponseFormat;
             existingProfile.User = profileUpdate?.User ?? existingProfile.User;
             existingProfile.SystemMessage = profileUpdate?.SystemMessage ?? existingProfile.SystemMessage;
+            existingProfile.RagDatabase = profileUpdate?.RagDatabase ?? existingProfile.RagDatabase;
             existingProfile.TopLogprobs = profileUpdate?.TopLogprobs ?? existingProfile.TopLogprobs;
             existingProfile.MaxTokens = profileUpdate?.MaxTokens ?? existingProfile.MaxTokens;
             existingProfile.Model = model;

@@ -298,6 +298,15 @@ namespace IntelligenceHub.Business.Implementations
                 profile.Tools.Add(recursionTool);
             }
 
+            var tools = await _toolDb.GetProfileToolsAsync(profile.Name);
+            foreach (var tool in tools)
+            {
+                var dbTool = await _toolDb.GetByNameAsync(tool);
+                if (dbTool == null) continue;
+                var toolObj = DbMappingHandler.MapFromDbTool(dbTool);
+                profile.Tools?.Add(toolObj);
+            }
+
             // overwrite defaults if ProfileOptions contains values
             return new Profile()
             {
