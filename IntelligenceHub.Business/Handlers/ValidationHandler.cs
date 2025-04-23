@@ -154,7 +154,7 @@ namespace IntelligenceHub.Business.Handlers
             if (profile.Model.Length > 255) return "The 'Model' field exceeds the maximum allowed length of 255 characters.";
             if (profile.ResponseFormat != null && profile.ResponseFormat.Length > 255) return "The 'ResponseFormat' field exceeds the maximum allowed length of 255 characters.";
             if (profile.User != null && profile.User.Length > 255) return "The 'User' field exceeds the maximum allowed length of 255 characters.";
-            if (profile.SystemMessage != null && profile.SystemMessage.Length > 2040) return "The 'SystemMessage' field exceeds the maximum allowed length of 2040 characters.";
+            //if (profile.SystemMessage != null && profile.SystemMessage.Length > 2040) return "The 'SystemMessage' field exceeds the maximum allowed length of 2040 characters.";
             if (profile.Stop != null && profile.Stop.ToCommaSeparatedString().Length > 255) return "The 'Stop' field exceeds the maximum allowed length of 255 characters. Please note that strings are added between each entry, adding +1 to each one's character count.";
             if (profile.ReferenceProfiles != null && profile.ReferenceProfiles.Length > 2040) return "The 'ReferenceProfiles' field exceeds the maximum allowed length of 2040 characters.";
             if (profile.Host.ToString().Length > 255) return "The 'Host' field exceeds the maximum allowed length of 255 characters.";
@@ -345,7 +345,7 @@ namespace IntelligenceHub.Business.Handlers
             if (index.IndexingInterval >= TimeSpan.FromDays(1)) return "The indexing interval must be less than 1 day.";
             if (!string.IsNullOrWhiteSpace(index.EmbeddingModel) && index.EmbeddingModel.Length > 255) return "The EmbeddingModel exceeds the maximum allowed length of 255 characters.";
             if (index.MaxRagAttachments < 0) return "MaxRagAttachments must be a non-negative integer greater than 0.";
-            if (index.MaxRagAttachments < 20) return "MaxRagAttachments cannot exceed 20.";
+            if (index.MaxRagAttachments > 20) return "MaxRagAttachments cannot exceed 20.";
             if (index.ChunkOverlap < 0 || index.ChunkOverlap > 1) return "ChunkOverlap must be between 0 and 1 (inclusive).";
 
             if (!string.IsNullOrEmpty(index.ScoringProfile?.Name))
@@ -385,7 +385,7 @@ namespace IntelligenceHub.Business.Handlers
             // Regular expression to match valid table names (alphanumeric characters and underscores only)
 
             // change this to mitigate possibility of DOS attacks
-            var pattern = @"^[a-zA-Z_][a-zA-Z0-9_]*$";
+            var pattern = @"^[a-zA-Z_][a-zA-Z0-9_-]*$";
             var isSuccess = false;
 
             // Check if the table name matches the pattern and is not a SQL keyword

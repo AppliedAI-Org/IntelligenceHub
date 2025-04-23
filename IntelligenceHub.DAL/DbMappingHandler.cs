@@ -29,7 +29,8 @@ namespace IntelligenceHub.DAL
                 Name = dbProfile.Name,
                 Model = dbProfile.Model,
                 Host = dbProfile.Host.ConvertToServiceHost(),
-                ImageHost = dbProfile.ImageHost?.ConvertToServiceHost(), 
+                ImageHost = dbProfile.ImageHost?.ConvertToServiceHost(),
+                RagDatabase = dbProfile.RagDatabase,
                 FrequencyPenalty = (float?)dbProfile.FrequencyPenalty,
                 PresencePenalty = (float?)dbProfile.PresencePenalty,
                 Temperature = (float?)dbProfile.Temperature,
@@ -59,52 +60,40 @@ namespace IntelligenceHub.DAL
         /// <returns>A database profile entity.</returns>
         public static DbProfile MapToDbProfile(string profileName, string defaultAzureModel, DbProfile? existingProfile = null, Profile? profileUpdate = null)
         {
-            var host = profileUpdate?.Host ?? existingProfile?.Host.ConvertToServiceHost() ?? AGIServiceHosts.OpenAI;
-            var model = profileUpdate?.Model ?? existingProfile?.Model ?? null;
+            if (existingProfile == null)
+            {
+                existingProfile = new DbProfile();
+            }
+
+            var host = profileUpdate?.Host ?? existingProfile.Host.ConvertToServiceHost();
+            if (host == AGIServiceHosts.None) host = AGIServiceHosts.OpenAI;
+
+            var model = profileUpdate?.Model ?? existingProfile.Model ?? null;
             if (string.IsNullOrEmpty(model))
             {
                 if (host == AGIServiceHosts.Azure) model = defaultAzureModel;
                 if (host == AGIServiceHosts.Anthropic) model = DefaultAnthropicModel;
                 if (host == AGIServiceHosts.OpenAI) model = DefaultOpenAIModel;
             }
-            return new DbProfile()
-            {
-                // update or set existing value
-                Id = existingProfile?.Id ?? 0,
-                Name = profileName, // this value should not be null when this method is called, so it is required as an argument
-                ResponseFormat = profileUpdate?.ResponseFormat ?? existingProfile?.ResponseFormat,
-                User = profileUpdate?.User ?? existingProfile?.User,
-                SystemMessage = profileUpdate?.SystemMessage ?? existingProfile?.SystemMessage,
-                TopLogprobs = profileUpdate?.TopLogprobs ?? existingProfile?.TopLogprobs,
-                MaxTokens = profileUpdate?.MaxTokens ?? existingProfile?.MaxTokens,
 
-                // Variables with default values during first database entry
-                Model = model,
-                Host = host.ToString(),
+            existingProfile.Name = profileName;
+            existingProfile.ResponseFormat = profileUpdate?.ResponseFormat ?? existingProfile.ResponseFormat;
+            existingProfile.User = profileUpdate?.User ?? existingProfile.User;
+            existingProfile.SystemMessage = profileUpdate?.SystemMessage ?? existingProfile.SystemMessage;
+            existingProfile.RagDatabase = profileUpdate?.RagDatabase ?? existingProfile.RagDatabase;
+            existingProfile.TopLogprobs = profileUpdate?.TopLogprobs ?? existingProfile.TopLogprobs;
+            existingProfile.MaxTokens = profileUpdate?.MaxTokens ?? existingProfile.MaxTokens;
+            existingProfile.Model = model;
+            existingProfile.Host = host.ToString();
+            existingProfile.ImageHost = profileUpdate?.ImageHost.ToString() ?? existingProfile.ImageHost ?? host.ToString();
+            existingProfile.FrequencyPenalty = profileUpdate?.FrequencyPenalty ?? existingProfile.FrequencyPenalty ?? 0;
+            existingProfile.PresencePenalty = profileUpdate?.PresencePenalty ?? existingProfile.PresencePenalty ?? 0;
+            existingProfile.Temperature = profileUpdate?.Temperature ?? existingProfile.Temperature ?? 1;
+            existingProfile.TopP = profileUpdate?.TopP ?? existingProfile.TopP ?? 1;
+            existingProfile.Stop = profileUpdate?.Stop?.ToCommaSeparatedString() ?? existingProfile.Stop;
+            existingProfile.ReferenceProfiles = profileUpdate?.ReferenceProfiles?.ToCommaSeparatedString() ?? existingProfile.ReferenceProfiles;
 
-                ImageHost = profileUpdate?.ImageHost.ToString()
-                    ?? existingProfile?.ImageHost?.ToString()
-                    ?? host.ToString(),
-    
-                FrequencyPenalty = profileUpdate?.FrequencyPenalty
-                    ?? existingProfile?.FrequencyPenalty
-                    ?? 0,
-
-                PresencePenalty = profileUpdate?.PresencePenalty
-                    ?? existingProfile?.PresencePenalty
-                    ?? 0,
-
-                Temperature = profileUpdate?.Temperature
-                    ?? existingProfile?.Temperature
-                    ?? 1,
-
-                TopP = profileUpdate?.TopP
-                    ?? existingProfile?.TopP
-                    ?? 1,
-
-                Stop = profileUpdate?.Stop?.ToCommaSeparatedString() ?? existingProfile?.Stop,
-                ReferenceProfiles = profileUpdate?.ReferenceProfiles?.ToCommaSeparatedString() ?? existingProfile?.ReferenceProfiles,
-            };
+            return existingProfile;
         }
         #endregion
 
@@ -195,6 +184,7 @@ namespace IntelligenceHub.DAL
         {
             return new Message()
             {
+                Id = dbMessage.Id,
                 Content = dbMessage.Content,
                 Role = dbMessage.Role.ConvertStringToRole(),
                 User = dbMessage.User,
@@ -213,6 +203,7 @@ namespace IntelligenceHub.DAL
         {
             return new DbMessage()
             {
+                Id = message.Id,
                 Content = message.Content,
                 Role = message.Role.ToString() ?? string.Empty,
                 ConversationId = conversationId,

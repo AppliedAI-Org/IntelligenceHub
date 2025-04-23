@@ -1,0 +1,412 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChatHub Client</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/5.0.11/signalr.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-height: 95vh;
+            min-height: 60vh;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+            flex: 1;
+            overflow-y: auto;
+            border-radius: 10px;
+            background-color: #f5f5f5;
+            color: #000000;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+
+        .message {
+            margin: 5px 0;
+        }
+
+            .message.user {
+                text-align: right;
+            }
+
+            .message.error {
+                color: darkred;
+            }
+
+        .separator {
+            border-top: 1px solid #e0e0e0;
+            margin: 10px 0;
+        }
+
+        .input-container {
+            margin: 1rem;
+            display: flex;
+        }
+
+            .input-container input {
+                flex: 1;
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+
+            .input-container button {
+                padding: 10px;
+                border: none;
+                background-color: #007bff;
+                color: white;
+                cursor: pointer;
+                border-radius: 4px;
+                margin-left: 10px;
+            }
+
+        .config-container {
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            border-radius: 10px;
+            background-color: #ffffff;
+            color: #000000;
+            overflow: hidden;
+            flex: 1;
+            padding-bottom: 4rem;
+        }
+
+        .config-scroll {
+            padding: 2rem;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 1rem;
+            height: 100%;
+        }
+
+        .config-container label {
+            display: block;
+            margin: 5px 0;
+        }
+
+        .config-container input,
+        .config-container select,
+        .config-container textarea {
+            width: 100%;
+            padding: 5px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .config-container textarea {
+            min-height: 100px;
+        }
+
+        .config-container input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .config-container button {
+            padding: 10px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        @media (min-width: 1200px) {
+            .container {
+                flex-direction: row;
+                justify-content: space-between;
+                height: 98vh;
+                overflow-y: auto;
+            }
+
+            .chat-container {
+                margin-bottom: 0;
+                margin-right: 20px;
+                overflow-y: auto;
+            }
+
+            .config-container {
+                margin-right: 20px;
+                max-width: 800px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="chat-container">
+            <div class="messages" id="messages"></div>
+            <div class="input-container">
+                <input type="text" id="messageInput" placeholder="Type a message..." />
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+        <div class="config-container">
+            <div class="config-scroll">
+                <h3>Configuration</h3>
+                <label for="profileName">Profile Name <span style="color: red;">*</span></label>
+                <input type="text" id="profileName" required />
+                <label for="conversationId">Conversation ID</label>
+                <input type="text" id="conversationId" />
+                <label for="systemMessage">System Message</label>
+                <textarea id="systemMessage"></textarea>
+                <label for="profileModel">Profile Model</label>
+                <input type="text" id="profileModel" />
+                <label for="profileHost">Profile Host</label>
+                <select id="profileHost">
+                    <option value="Azure">Azure</option>
+                    <option value="OpenAI">OpenAI</option>
+                    <option value="Anthropic">Anthropic</option>
+                    <option value="None">None</option>
+                </select>
+                <label for="profileImageHost">Profile Image Host</label>
+                <select id="profileImageHost">
+                    <option value="Azure">Azure</option>
+                    <option value="OpenAI">OpenAI</option>
+                    <option value="Anthropic">Anthropic</option>
+                    <option value="None">None</option>
+                </select>
+                <label for="ragDatabase">RAG Database</label>
+                <input type="text" id="ragDatabase" />
+                <label for="frequencyPenalty">Frequency Penalty</label>
+                <input type="number" step="0.01" id="frequencyPenalty" />
+                <label for="presencePenalty">Presence Penalty</label>
+                <input type="number" step="0.01" id="presencePenalty" />
+                <label for="temperature">Temperature</label>
+                <input type="number" step="0.01" id="temperature" />
+                <label for="topP">Top P</label>
+                <input type="number" step="0.01" id="topP" />
+                <label for="maxTokens">Max Tokens</label>
+                <input type="number" id="maxTokens" />
+                <label for="topLogprobs">Top Logprobs</label>
+                <input type="number" id="topLogprobs" />
+                <label for="logprobs">Logprobs</label>
+                <input type="checkbox" id="logprobs" />
+                <label for="user">User</label>
+                <input type="text" id="user" />
+                <label for="toolChoice">Tool Choice</label>
+                <input type="text" id="toolChoice" />
+                <label for="responseFormat">Response Format</label>
+                <input type="text" id="responseFormat" />
+                <label for="stop">Stop</label>
+                <input type="text" id="stop" />
+                <label for="maxMessageHistory">Max Message History</label>
+                <input type="number" id="maxMessageHistory" />
+                <label for="referenceProfiles">Reference Profiles</label>
+                <input type="text" id="referenceProfiles" />
+                <button onclick="saveConfig()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let connection;
+        let token;
+
+        async function startSignalRConnection() {
+            try {
+                const username = prompt("Enter your username:");
+                const password = prompt("Enter your password:");
+                const credentials = btoa(`${username}:${password}`);
+                const tokenResponse = await fetch('/auth/admintoken', {
+                    headers: {
+                        'Authorization': `Basic ${credentials}`
+                    }
+                });
+                if (!tokenResponse.ok) {
+                    throw new Error('Failed to fetch token from backend');
+                }
+                const tokenData = await tokenResponse.json();
+                token = tokenData.access_token;
+                connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/chatstream", { accessTokenFactory: () => token })
+                    .build();
+
+                connection.on("broadcastMessage", function (chunk) {
+                    // Try to parse the incoming chunk (if needed)
+                    let parsedChunk;
+                    try {
+                        parsedChunk = (typeof chunk === "string" ? JSON.parse(chunk) : chunk);
+                    } catch (parseError) {
+                        console.error("Error parsing incoming chunk:", parseError);
+                        parsedChunk = null;
+                    }
+
+                    // Create a visual separator for each new message chunk
+                    const separator = document.createElement("div");
+                    separator.className = "separator";
+                    document.getElementById("messages").appendChild(separator);
+
+                    // Process the parsed response
+                    if (parsedChunk) {
+                        if (parsedChunk.errorMessage) {
+                            const errorMsg = document.createElement("div");
+                            errorMsg.textContent = `Error: ${parsedChunk.errorMessage}`;
+                            errorMsg.className = "message error";
+                            document.getElementById("messages").appendChild(errorMsg);
+                        } else if (parsedChunk.completionUpdate) {
+                            const msg = document.createElement("div");
+                            msg.textContent = `chunk: ${parsedChunk.completionUpdate}`;
+                            msg.className = "message";
+                            document.getElementById("messages").appendChild(msg);
+                        } else if (parsedChunk.completionUpdate !== "") {
+                            // Fallback: display the raw content if it doesn't match expected structure
+                            const msg = document.createElement("div");
+                            msg.textContent = `chunk: ${chunk}`;
+                            msg.className = "message";
+                            document.getElementById("messages").appendChild(msg);
+                        }
+                    } else {
+                        // If parsing failed, display the raw chunk as an error
+                        const errorMsg = document.createElement("div");
+                        errorMsg.textContent = `Error: ${chunk}`;
+                        errorMsg.className = "message error";
+                        document.getElementById("messages").appendChild(errorMsg);
+                    }
+                });
+
+                await connection.start();
+                console.log("SignalR connection started with token authentication.");
+            } catch (err) {
+                console.error("Error starting SignalR connection:", err);
+            }
+        }
+
+        startSignalRConnection();
+
+        function sendMessage() {
+            const messageInput = document.getElementById("messageInput");
+            const message = messageInput.value;
+            const conversationIdInput = document.getElementById("conversationId").value.trim();
+            const responseFormatInput = document.getElementById("responseFormat").value.trim();
+
+            const completionRequest = {
+                conversationId: conversationIdInput === "" ? null : conversationIdInput,
+                profileOptions: {
+                    name: document.getElementById("profileName").value,
+                    model: document.getElementById("profileModel").value,
+                    host: document.getElementById("profileHost").value,
+                    imageHost: document.getElementById("profileImageHost").value,
+                    ragDatabase: document.getElementById("ragDatabase").value,
+                    frequencyPenalty: parseFloat(document.getElementById("frequencyPenalty").value),
+                    presencePenalty: parseFloat(document.getElementById("presencePenalty").value),
+                    temperature: parseFloat(document.getElementById("temperature").value),
+                    topP: parseFloat(document.getElementById("topP").value),
+                    maxTokens: parseInt(document.getElementById("maxTokens").value),
+                    topLogprobs: parseInt(document.getElementById("topLogprobs").value),
+                    logprobs: document.getElementById("logprobs").checked,
+                    user: document.getElementById("user").value,
+                    toolChoice: document.getElementById("toolChoice").value,
+                    responseFormat: responseFormatInput === "" ? null : responseFormatInput,
+                    systemMessage: document.getElementById("systemMessage").value,
+                    stop: document.getElementById("stop").value.split(','),
+                    maxMessageHistory: parseInt(document.getElementById("maxMessageHistory").value),
+                    referenceProfiles: document.getElementById("referenceProfiles").value.split(',')
+                },
+                messages: [{
+                    role: "User",
+                    content: message,
+                    timeStamp: new Date().toISOString()
+                }]
+            };
+
+            if (!connection) {
+                console.error("SignalR connection is not established yet.");
+                return;
+            }
+
+            connection.invoke("Send", completionRequest).catch(function (err) {
+                console.error(err.toString());
+            });
+
+            // Display the sent message in the chat area
+            const userMessage = document.createElement("div");
+            userMessage.textContent = message;
+            userMessage.className = "message user";
+            document.getElementById("messages").appendChild(userMessage);
+            messageInput.value = "";
+        }
+
+        async function saveConfig() {
+
+            const responseFormatInput = document.getElementById("responseFormat").value.trim();
+
+            const profile = {
+                name: document.getElementById("profileName").value,
+                model: document.getElementById("profileModel").value,
+                host: document.getElementById("profileHost").value,
+                imageHost: document.getElementById("profileImageHost").value,
+                ragDatabase: document.getElementById("ragDatabase").value,
+                frequencyPenalty: parseFloat(document.getElementById("frequencyPenalty").value),
+                presencePenalty: parseFloat(document.getElementById("presencePenalty").value),
+                temperature: parseFloat(document.getElementById("temperature").value),
+                topP: parseFloat(document.getElementById("topP").value),
+                maxTokens: parseInt(document.getElementById("maxTokens").value),
+                topLogprobs: parseInt(document.getElementById("topLogprobs").value),
+                logprobs: document.getElementById("logprobs").checked,
+                user: document.getElementById("user").value,
+                toolChoice: document.getElementById("toolChoice").value,
+                responseFormat: responseFormatInput === "" ? null : responseFormatInput,
+                systemMessage: document.getElementById("systemMessage").value,
+                stop: document.getElementById("stop").value.split(','),
+                maxMessageHistory: parseInt(document.getElementById("maxMessageHistory").value),
+                referenceProfiles: document.getElementById("referenceProfiles").value.split(',')
+            };
+
+            try {
+                const response = await fetch('/profile/upsert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(profile)
+                });
+
+                if (response.ok) {
+                    alert("Configuration saved!");
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error saving configuration: ${errorData.errorMessage}`);
+                }
+            } catch (error) {
+                console.error("Error saving configuration:", error);
+                alert("Error saving configuration. Please try again.");
+            }
+        }
+
+        // Add event listener for Enter key press
+        document.getElementById("messageInput").addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -110,8 +110,8 @@ namespace IntelligenceHub.Client.Implementations
             var searchClient = _indexClient.GetSearchClient(index.Name);
 
             var queryType = SearchQueryType.Simple;
-            if (index.QueryType.ToString()?.ToLower() == SearchQueryType.Full.ToString().ToLower()) queryType = SearchQueryType.Full;
-            else if (index.QueryType.ToString()?.ToLower() == SearchQueryType.Semantic.ToString().ToLower()) queryType = SearchQueryType.Semantic;
+            if (index.QueryType.ToString().Equals(SearchQueryType.Full.ToString(), StringComparison.OrdinalIgnoreCase)) queryType = SearchQueryType.Full;
+            else if (index.QueryType.ToString().Equals(SearchQueryType.Semantic.ToString(), StringComparison.OrdinalIgnoreCase)) queryType = SearchQueryType.Semantic;
 
             var vectorProfile = new VectorSearchOptions();
             var vectorizableQuery = new VectorizableTextQuery(query);
@@ -119,21 +119,31 @@ namespace IntelligenceHub.Client.Implementations
             vectorizableQuery.Fields.Add(RagField.titleVector.ToString());
             vectorizableQuery.Fields.Add(RagField.topicVector.ToString());
             vectorizableQuery.Fields.Add(RagField.keywordsVector.ToString());
-
             vectorProfile.Queries.Add(vectorizableQuery);
 
             var options = new SearchOptions()
             {
                 ScoringProfile = index.ScoringProfile?.Name,
                 Size = index.MaxRagAttachments,
-                QueryType = queryType,
-                SemanticSearch = new SemanticSearchOptions()
+                QueryType = queryType
+            };
+
+            if (index.QueryType.ToString().Equals(SearchQueryType.Semantic.ToString(), StringComparison.OrdinalIgnoreCase)
+                || index.QueryType.ToString().Equals("VectorSemanticHybrid", StringComparison.OrdinalIgnoreCase))
+            {
+                options.SemanticSearch = new SemanticSearchOptions()
                 {
                     ErrorMode = SemanticErrorMode.Partial,
                     SemanticConfigurationName = SearchQueryType.Semantic.ToString()
-                },
-                VectorSearch = vectorProfile
-            };
+                };
+            }
+
+            if (index.QueryType.ToString().Equals("Vector", StringComparison.OrdinalIgnoreCase)
+                || index.QueryType.ToString().Equals("VectorSimpleHybrid", StringComparison.OrdinalIgnoreCase)
+                || index.QueryType.ToString().Equals("VectorSemanticHybrid", StringComparison.OrdinalIgnoreCase))
+            {
+                options.VectorSearch = vectorProfile;
+            }
 
             options.HighlightFields.Add(RagField.chunk.ToString().ToLower());
 

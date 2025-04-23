@@ -75,7 +75,10 @@
         {
             Simple,
             Full,
-            Semantic
+            Semantic,
+            Vector,
+            VectorSemanticHybrid,
+            VectorSimpleHybrid
         }
 
         /// <summary>

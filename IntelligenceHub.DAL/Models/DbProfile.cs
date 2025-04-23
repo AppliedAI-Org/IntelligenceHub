@@ -15,6 +15,7 @@ namespace IntelligenceHub.DAL.Models
         public string Name { get; set; } = string.Empty;
         public string Model { get; set; } = string.Empty;
         public string Host { get; set; } = string.Empty;
+        public string? RagDatabase { get; set; }
         public string? ImageHost { get; set; }
         public double? FrequencyPenalty { get; set; }
         public double? PresencePenalty { get; set; }

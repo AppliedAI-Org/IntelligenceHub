@@ -5,6 +5,7 @@ using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common.Config;
 using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Interfaces;
+using IntelligenceHub.DAL.Models;
 using Microsoft.Extensions.Options;
 using static IntelligenceHub.Common.GlobalVariables;
 
@@ -85,7 +86,7 @@ namespace IntelligenceHub.Business.Implementations
         /// <returns>An <see cref="APIResponseWrapper{IEnumerable{Profile}}"/> containing a list of all existing profiles.</returns>
         public async Task<APIResponseWrapper<IEnumerable<Profile>>> GetAllProfiles(int page, int count)
         {
-            var response = await _profileDb.GetAllAsync(page, count);
+            var response = await _profileDb.GetAllAsync(count, page);
             var apiResponseList = new List<Profile>();
             if (response != null)
             {
@@ -121,8 +122,8 @@ namespace IntelligenceHub.Business.Implementations
             var success = true;
             if (existingProfile != null)
             {
-                var updateProfileDto = DbMappingHandler.MapToDbProfile(existingProfile.Name, _defaulAzureModel, existingProfile, profileDto);
-                var rows = await _profileDb.UpdateAsync(updateProfileDto);
+                DbMappingHandler.MapToDbProfile(existingProfile.Name, _defaulAzureModel, existingProfile, profileDto);
+                var rows = await _profileDb.UpdateAsync(existingProfile); // Use the tracked entity
                 if (rows == null) success = false;
             }
             else
@@ -182,6 +183,13 @@ namespace IntelligenceHub.Business.Implementations
         private async Task<bool> AddOrUpdateProfileTools(Profile profileDto, Profile existingProfile)
         {
             var toolIds = new List<int>();
+            if (existingProfile == null)
+            {
+                var existingProfileDto = await _profileDb.GetByNameAsync(profileDto.Name);
+                if (existingProfileDto == null) return false;
+                existingProfile = DbMappingHandler.MapFromDbProfile(existingProfileDto);
+                if (existingProfile == null) return false;
+            }
             await _profileToolsDb.DeleteAllProfileAssociationsAsync(existingProfile.Id);
             if (profileDto.Tools != null && profileDto.Tools.Count > 0)
             {
@@ -217,7 +225,7 @@ namespace IntelligenceHub.Business.Implementations
         public async Task<APIResponseWrapper<IEnumerable<Tool>>> GetAllTools(int page, int count)
         {
             var returnList = new List<Tool>();
-            var dbTools = await _toolDb.GetAllAsync(page, count);
+            var dbTools = await _toolDb.GetAllAsync(count, page);
             foreach (var dbTool in dbTools)
             {
                 var properties = await _propertyDb.GetToolProperties(dbTool.Id);
@@ -270,11 +278,16 @@ namespace IntelligenceHub.Business.Implementations
             {
                 var dbToolDTO = DbMappingHandler.MapToDbTool(tool);
                 var existingDbTool = await _toolDb.GetByNameAsync(tool.Function.Name);
-                var existingToolDTO = DbMappingHandler.MapFromDbTool(existingDbTool);
-                if (existingToolDTO != null)
+                if (existingDbTool != null)
                 {
-                    var existingTool = DbMappingHandler.MapToDbTool(existingToolDTO);
-                    await _toolDb.UpdateAsync(dbToolDTO);
+                    existingDbTool.ProfileTools = dbToolDTO.ProfileTools ?? existingDbTool.ProfileTools;
+                    existingDbTool.ExecutionBase64Key = dbToolDTO.ExecutionBase64Key ?? existingDbTool.ExecutionBase64Key;
+                    existingDbTool.Required = dbToolDTO.Required ?? existingDbTool.Required;
+                    existingDbTool.Description = dbToolDTO.Description ?? existingDbTool.Description;
+                    existingDbTool.ExecutionMethod = dbToolDTO.ExecutionMethod ?? existingDbTool.ExecutionMethod;
+                    existingDbTool.ExecutionUrl = dbToolDTO.ExecutionUrl ?? existingDbTool.ExecutionUrl;
+                    await _toolDb.UpdateAsync(existingDbTool);
+                    var existingToolDTO = DbMappingHandler.MapFromDbTool(existingDbTool);
                     await AddOrUpdateToolProperties(existingToolDTO, tool.Function.Parameters.properties);
                 }
                 else
@@ -377,24 +390,29 @@ namespace IntelligenceHub.Business.Implementations
         /// <returns>An <see cref="APIResponseWrapper{bool}"/> indicating the success of the operation.</returns>
         public async Task<APIResponseWrapper<bool>> DeleteTool(string name)
         {
+            // Retrieve the existing DbTool; this instance is now tracked
             var existingDbTool = await _toolDb.GetByNameAsync(name);
+
+            if (existingDbTool == null) return APIResponseWrapper<bool>.Failure($"A tool with the name '{name}' was not found.", APIResponseStatusCodes.NotFound);
+
+            // Delete related properties
             var dbProperites = await _propertyDb.GetToolProperties(existingDbTool.Id);
             var existingTool = DbMappingHandler.MapFromDbTool(existingDbTool, dbProperites.ToList());
-            if (existingTool != null)
+            foreach (var property in existingTool.Function.Parameters.properties)
             {
-                foreach (var property in existingTool.Function.Parameters.properties)
-                {
-                    var propertyDTO = DbMappingHandler.MapToDbProperty(property.Key, property.Value);
-                    await _propertyDb.DeleteAsync(propertyDTO);
-                }
-                await _profileToolsDb.DeleteAllToolAssociationsAsync(existingTool.Id);
-                var dbTool = DbMappingHandler.MapToDbTool(existingTool);
-                var success = await _toolDb.DeleteAsync(dbTool);
-                if (success) return APIResponseWrapper<bool>.Success(true);
-                return APIResponseWrapper<bool>.Failure("Something went wrong when attempting to delete the tool.", APIResponseStatusCodes.InternalError);
+                var propertyDTO = DbMappingHandler.MapToDbProperty(property.Key, property.Value);
+                await _propertyDb.DeleteAsync(propertyDTO);
             }
-            return APIResponseWrapper<bool>.Failure($"A tool with the name '{name}' was not found.", APIResponseStatusCodes.NotFound);
+
+            // Delete all associations related to the tool
+            await _profileToolsDb.DeleteAllToolAssociationsAsync(existingDbTool.Id);
+
+            // Use the already tracked instance for deletion
+            var success = await _toolDb.DeleteAsync(existingDbTool);
+            if (success) return APIResponseWrapper<bool>.Success(true);
+            return APIResponseWrapper<bool>.Failure("Something went wrong when attempting to delete the tool.", APIResponseStatusCodes.InternalError);
         }
+
 
         /// <summary>
         /// Adds or updates the properties associated with a tool.
@@ -409,7 +427,6 @@ namespace IntelligenceHub.Business.Implementations
             foreach (var property in existingProperties) await _propertyDb.DeleteAsync(property);
             foreach (var property in newProperties)
             {
-                property.Value.Id = existingTool.Id;
                 await _propertyDb.AddAsync(DbMappingHandler.MapToDbProperty(property.Key, property.Value));
             }
             return APIResponseWrapper<bool>.Success(true);

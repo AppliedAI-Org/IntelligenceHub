@@ -132,11 +132,11 @@ namespace IntelligenceHub.Business.Implementations
             var existingDefinition = await _metaRepository.GetByNameAsync(indexDefinition.Name);
             if (existingDefinition == null) return APIResponseWrapper<bool>.Failure($"An index with the name '{indexDefinition.Name}' was not found.", APIResponseStatusCodes.NotFound);
 
-            var success = await _searchClient.UpsertIndex(indexDefinition);
-            if (!success) return APIResponseWrapper<bool>.Failure("Failed to update the index against the search service.", APIResponseStatusCodes.InternalError);
+            //var success = await _searchClient.UpsertIndex(indexDefinition);
+            //if (!success) return APIResponseWrapper<bool>.Failure("Failed to update the index against the search service.", APIResponseStatusCodes.InternalError);
 
-            success = await _searchClient.UpsertIndexer(indexDefinition);
-            if (!success) return APIResponseWrapper<bool>.Failure("Failed to update the indexer against the search service.", APIResponseStatusCodes.InternalError);
+            //success = await _searchClient.UpsertIndexer(indexDefinition);
+            //if (!success) return APIResponseWrapper<bool>.Failure("Failed to update the indexer against the search service.", APIResponseStatusCodes.InternalError);
 
             var newDefinition = DbMappingHandler.MapToDbIndexMetadata(indexDefinition);
 
@@ -151,8 +151,29 @@ namespace IntelligenceHub.Business.Implementations
             if (!existingDefinition.GenerateTopic && newDefinition.GenerateTopic) generateMissingFields = true;
             else if (!existingDefinition.GenerateKeywords && newDefinition.GenerateKeywords) generateMissingFields = true;
 
+            existingDefinition.Name = newDefinition.Name;
+            existingDefinition.QueryType = newDefinition.QueryType?.ToString();
+            existingDefinition.GenerationHost = newDefinition.GenerationHost.ToString();
+            existingDefinition.ChunkOverlap = newDefinition.ChunkOverlap;
+            existingDefinition.IndexingInterval = newDefinition.IndexingInterval;
+            existingDefinition.MaxRagAttachments = newDefinition.MaxRagAttachments;
+            existingDefinition.EmbeddingModel = newDefinition.EmbeddingModel;
+            existingDefinition.GenerateTopic = newDefinition.GenerateTopic;
+            existingDefinition.GenerateKeywords = newDefinition.GenerateKeywords;
+            existingDefinition.GenerateTitleVector = newDefinition.GenerateTitleVector;
+            existingDefinition.GenerateContentVector = newDefinition.GenerateContentVector;
+            existingDefinition.GenerateTopicVector = newDefinition.GenerateTopicVector;
+            existingDefinition.GenerateKeywordVector = newDefinition.GenerateKeywordVector;
+            existingDefinition.DefaultScoringProfile = newDefinition.Name;
+            existingDefinition.ScoringAggregation = newDefinition.ScoringAggregation?.ToString();
+            existingDefinition.ScoringInterpolation = newDefinition.ScoringInterpolation?.ToString();
+            existingDefinition.ScoringFreshnessBoost = newDefinition.ScoringFreshnessBoost;
+            existingDefinition.ScoringBoostDurationDays = newDefinition.ScoringBoostDurationDays;
+            existingDefinition.ScoringTagBoost = newDefinition.ScoringTagBoost;
+            existingDefinition.ScoringWeights = newDefinition.ScoringWeights;
+
             // Update the SQL entry
-            await _metaRepository.UpdateAsync(newDefinition);
+            await _metaRepository.UpdateAsync(existingDefinition);
 
             // Create missing generative data if required
             if (updateAllDocs)
@@ -325,6 +346,8 @@ namespace IntelligenceHub.Business.Implementations
         public async Task<APIResponseWrapper<IEnumerable<IndexDocument>>> GetAllDocuments(string index, int count, int page)
         {
             if (!_validationHandler.IsValidIndexName(index)) return APIResponseWrapper<IEnumerable<IndexDocument>>.Failure($"The supplied index name, '{index}' is invalid. Please avoid reserved SQL words.", APIResponseStatusCodes.BadRequest);
+            var dbIndex = await _metaRepository.GetByNameAsync(index);
+            if (dbIndex == null) return APIResponseWrapper<IEnumerable<IndexDocument>>.Failure($"The supplied index '{index}' does not exist.", APIResponseStatusCodes.NotFound);
             var docList = new List<IndexDocument>();
             var dbDocumentList = await _ragRepository.GetAllAsync(index, count, page);
             foreach (var dbDocument in dbDocumentList) docList.Add(DbMappingHandler.MapFromDbIndexDocument(dbDocument));
@@ -442,7 +465,7 @@ namespace IntelligenceHub.Business.Implementations
 
             var aiClient = _agiClientFactory.GetClient(host);
             var response = await aiClient.PostCompletion(completionRequest); // create a seperate method for internal API completions
-            var content = response?.Messages.Last(m => m.Role == Role.Assistant).Content ?? string.Empty;
+            var content = response?.Messages?.Last(m => m.Role == Role.Assistant).Content ?? string.Empty;
             return content.Length > 255 ? content.Substring(0, 255) : content; // If content exceeds SQL column size, truncate.
         }
 

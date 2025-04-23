@@ -109,6 +109,7 @@ namespace IntelligenceHub.DAL
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
                 entity.HasIndex(e => e.Name).IsUnique();
                 entity.Property(e => e.Model).HasMaxLength(255);
+                entity.Property(e => e.RagDatabase).HasMaxLength(255);
                 entity.Property(e => e.FrequencyPenalty);
                 entity.Property(e => e.PresencePenalty);
                 entity.Property(e => e.Temperature);

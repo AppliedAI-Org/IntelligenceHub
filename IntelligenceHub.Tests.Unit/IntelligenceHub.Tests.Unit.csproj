@@ -27,10 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Client\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\IntelligenceHub.API\IntelligenceHub.API.csproj" />
     <ProjectReference Include="..\IntelligenceHub.Business\IntelligenceHub.Business.csproj" />
     <ProjectReference Include="..\IntelligenceHub.Client\IntelligenceHub.Client.csproj" />
