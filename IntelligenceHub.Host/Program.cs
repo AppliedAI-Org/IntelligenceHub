@@ -314,7 +314,7 @@ namespace IntelligenceHub.Host
                     policy.AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials()
-                          .WithOrigins(settings.ValidOrigins);
+                          .WithOrigins("https://jacobthomas-fmh4huhdhba7fvfq.centralus-01.azurewebsites.net/", "https://nlsequel.azurewebsites.net/", "https://intelligencehub-awcrbwdaccb9f8ch.centralus-01.azurewebsites.net/");
                 });
             }
 
