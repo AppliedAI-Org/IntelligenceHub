@@ -297,8 +297,7 @@ namespace IntelligenceHub.Host
                     policy.AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials()
-                          .WithOrigins(settings.ValidOrigins)
-                          .SetIsOriginAllowed((host) => true);
+                          .WithOrigins(settings.ValidOrigins);
                 });
 
                 // Serve static files in development environment
@@ -312,10 +311,10 @@ namespace IntelligenceHub.Host
             {
                 app.UseCors(policy =>
                 {
-                    policy.WithMethods("GET", "POST", "DELETE")
-                          .WithHeaders("Authorization", "Content-Type")
-                          .WithOrigins(settings.ValidOrigins)
-                          .AllowCredentials();
+                    policy.AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials()
+                          .WithOrigins(settings.ValidOrigins);
                 });
             }
 
