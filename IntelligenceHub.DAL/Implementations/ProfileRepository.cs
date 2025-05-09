@@ -28,6 +28,7 @@ namespace IntelligenceHub.DAL.Implementations
             return await _dbSet
                 .Include(p => p.ProfileTools)
                 .ThenInclude(pt => pt.Tool)
+                .ThenInclude(t => t.Properties)
                 .FirstOrDefaultAsync(p => p.Name == name);
         }
     }

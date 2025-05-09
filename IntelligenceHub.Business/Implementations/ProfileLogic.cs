@@ -427,7 +427,9 @@ namespace IntelligenceHub.Business.Implementations
             foreach (var property in existingProperties) await _propertyDb.DeleteAsync(property);
             foreach (var property in newProperties)
             {
-                await _propertyDb.AddAsync(DbMappingHandler.MapToDbProperty(property.Key, property.Value));
+                var dbProperty = DbMappingHandler.MapToDbProperty(property.Key, property.Value);
+                dbProperty.ToolId = existingTool.Id; // Ensure ToolId is set
+                await _propertyDb.AddAsync(dbProperty);
             }
             return APIResponseWrapper<bool>.Success(true);
         }

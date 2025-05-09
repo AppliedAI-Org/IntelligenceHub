@@ -172,6 +172,8 @@
                 <h3>Configuration</h3>
                 <label for="profileName">Profile Name <span style="color: red;">*</span></label>
                 <input type="text" id="profileName" required />
+                <button onclick="loadProfile()">Load</button>
+                <button onclick="saveConfig()">Save</button>
                 <label for="conversationId">Conversation ID</label>
                 <input type="text" id="conversationId" />
                 <label for="systemMessage">System Message</label>
@@ -213,14 +215,17 @@
                 <label for="toolChoice">Tool Choice</label>
                 <input type="text" id="toolChoice" />
                 <label for="responseFormat">Response Format</label>
-                <input type="text" id="responseFormat" />
+                <select id="responseFormat">
+                    <option value="">Not Specified</option>
+                    <option value="Json">Json</option>
+                    <option value="Text">Text</option>
+                </select>
                 <label for="stop">Stop</label>
                 <input type="text" id="stop" />
                 <label for="maxMessageHistory">Max Message History</label>
                 <input type="number" id="maxMessageHistory" />
                 <label for="referenceProfiles">Reference Profiles</label>
                 <input type="text" id="referenceProfiles" />
-                <button onclick="saveConfig()">Save</button>
             </div>
         </div>
     </div>
@@ -372,7 +377,7 @@
                 logprobs: document.getElementById("logprobs").checked,
                 user: document.getElementById("user").value,
                 toolChoice: document.getElementById("toolChoice").value,
-                responseFormat: responseFormatInput === "" ? null : responseFormatInput,
+                responseFormat: document.getElementById("responseFormat").value, // Updated to use dropdown
                 systemMessage: document.getElementById("systemMessage").value,
                 stop: document.getElementById("stop").value.split(','),
                 maxMessageHistory: parseInt(document.getElementById("maxMessageHistory").value),
@@ -399,6 +404,60 @@
                 console.error("Error saving configuration:", error);
                 alert("Error saving configuration. Please try again.");
             }
+        }
+
+        async function loadProfile() {
+            const profileName = document.getElementById("profileName").value.trim();
+            if (!profileName) {
+                alert("Please enter a profile name to load.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/profile/get/${profileName}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const profile = await response.json();
+                    populateProfileFields(profile);
+                    alert("Profile loaded successfully!");
+                } else if (response.status === 404) {
+                    alert("Profile not found.");
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error loading profile: ${errorData.errorMessage}`);
+                }
+            } catch (error) {
+                console.error("Error loading profile:", error);
+                alert("Error loading profile. Please try again.");
+            }
+        }
+
+        function populateProfileFields(profile) {
+            document.getElementById("profileName").value = profile.name ?? "";
+            document.getElementById("conversationId").value = profile.conversationId ?? "";
+            document.getElementById("systemMessage").value = profile.systemMessage ?? "";
+            document.getElementById("profileModel").value = profile.model ?? "";
+            document.getElementById("profileHost").value = profile.host ?? "None";
+            document.getElementById("profileImageHost").value = profile.imageHost ?? "None";
+            document.getElementById("ragDatabase").value = profile.ragDatabase ?? "";
+            document.getElementById("frequencyPenalty").value = profile.frequencyPenalty ?? "";
+            document.getElementById("presencePenalty").value = profile.presencePenalty ?? "";
+            document.getElementById("temperature").value = profile.temperature ?? "";
+            document.getElementById("topP").value = profile.topP ?? "";
+            document.getElementById("maxTokens").value = profile.maxTokens ?? "";
+            document.getElementById("topLogprobs").value = profile.topLogprobs ?? "";
+            document.getElementById("logprobs").checked = profile.logprobs ?? false;
+            document.getElementById("user").value = profile.user ?? "";
+            document.getElementById("toolChoice").value = profile.toolChoice ?? "";
+            document.getElementById("responseFormat").value = profile.responseFormat ?? "";
+            document.getElementById("stop").value = (profile.stop ?? []).join(",");
+            document.getElementById("maxMessageHistory").value = profile.maxMessageHistory ?? "";
+            document.getElementById("referenceProfiles").value = (profile.referenceProfiles ?? []).join(",");
         }
 
         // Add event listener for Enter key press

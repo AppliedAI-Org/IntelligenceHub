@@ -286,6 +286,8 @@ namespace IntelligenceHub.Host
 
             var app = builder.Build();
 
+            app.UseRouting();
+
             if (app.Environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -320,15 +322,13 @@ namespace IntelligenceHub.Host
 
             app.UseHttpsRedirection();
 
-            app.UseRouting();
-
             app.UseMiddleware<LoggingMiddleware>();
 
             app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllers();
-            app.MapHub<ChatHub>("/chatstream");
+            app.MapHub<ChatHub>("/chatstream").RequireCors();
 
             app.Run();
             #endregion

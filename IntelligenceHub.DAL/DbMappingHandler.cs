@@ -42,7 +42,7 @@ namespace IntelligenceHub.DAL
                 SystemMessage = dbProfile.SystemMessage,
                 Stop = dbProfile.Stop?.ToStringArray(),
                 ReferenceProfiles = dbProfile.ReferenceProfiles?.ToStringArray(),
-                Tools = tools,
+                Tools = tools ?? dbProfile.ProfileTools.Select(pt => new Tool { Id = pt.Tool.Id, Function = new Function() { Name = pt.Tool.Name, Description = pt.Tool.Description, Parameters = new Parameters() { type = "object", required = pt.Tool.Required.ToStringArray(),  properties = pt.Tool.Properties.ToDictionary(p => p.Name, p => new Property() { Id = p.Id, type = p.Type, description = p.Description }) } }, ExecutionUrl = pt.Tool.ExecutionUrl, ExecutionBase64Key = pt.Tool.ExecutionBase64Key, ExecutionMethod = pt.Tool.ExecutionMethod }).ToList(),
                 MaxMessageHistory = dbProfile.MaxMessageHistory,
             };
             profile.Logprobs = profile.TopLogprobs > 0 ? true : false;
