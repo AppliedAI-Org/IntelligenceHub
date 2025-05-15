@@ -249,11 +249,11 @@ namespace IntelligenceHub.Tests.Unit.DAL
             var dbDocument = new DbIndexDocument
             {
                 Id = 1,
-                Title = "Test Title",
+                Title = "Test title",
                 Content = "Test Content",
-                Topic = "Test Topic",
-                Keywords = "Test Keywords",
-                Source = "Test Source",
+                Topic = "Test topic",
+                Keywords = "Test keywords",
+                Source = "Test source",
                 Created = DateTimeOffset.Now,
                 Modified = DateTimeOffset.Now
             };
@@ -279,11 +279,11 @@ namespace IntelligenceHub.Tests.Unit.DAL
             var document = new IndexDocument
             {
                 Id = 1,
-                Title = "Test Title",
+                Title = "Test title",
                 Content = "Test Content",
-                Topic = "Test Topic",
-                Keywords = "Test Keywords",
-                Source = "Test Source",
+                Topic = "Test topic",
+                Keywords = "Test keywords",
+                Source = "Test source",
                 Created = DateTimeOffset.Now,
                 Modified = DateTimeOffset.Now
             };

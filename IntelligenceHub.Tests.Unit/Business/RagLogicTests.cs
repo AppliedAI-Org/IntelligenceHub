@@ -466,10 +466,10 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Create a sample document.
             var indexDefinition = new IndexDefinition
             {
-                Title = "doc1",
-                Keywords = "keyword1",
-                Topic = "topic1",
-                Source = "source1",
+                title = "doc1",
+                keywords = "keyword1",
+                topic = "topic1",
+                source = "source1",
                 chunk = "content1"
             };
 
@@ -497,10 +497,10 @@ namespace IntelligenceHub.Tests.Unit.Business
         {
             var indexDefinition = new IndexDefinition
             {
-                Title = "doc1",
-                Keywords = "keyword1",
-                Topic = "topic1",
-                Source = "source1",
+                title = "doc1",
+                keywords = "keyword1",
+                topic = "topic1",
+                source = "source1",
                 chunk = "content1"
             };
 

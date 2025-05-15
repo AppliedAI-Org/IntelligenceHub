@@ -484,9 +484,9 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Arrange: Create a valid index document.
             var document = new IndexDocument
             {
-                Title = "Doc Title",
+                Title = "Doc title",
                 Content = "Some content",
-                Topic = "Topic",
+                Topic = "topic",
                 Keywords = "keyword",
                 Source = "http://source.com"
             };

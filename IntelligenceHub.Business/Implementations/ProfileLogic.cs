@@ -59,15 +59,15 @@ namespace IntelligenceHub.Business.Implementations
             {
                 var profile = DbMappingHandler.MapFromDbProfile(dbProfile);
                 // package this into a separate method (same one as in GetAllProfiles())
-                var profileToolDTOs = await _profileToolsDb.GetToolAssociationsAsync(dbProfile.Id);
-                profile.Tools = new List<Tool>();
-                foreach (var association in profileToolDTOs)
-                {
-                    var dbTool = await _toolDb.GetByIdAsync(association.ToolID);
-                    if (dbTool == null) continue;
-                    var mappedTool = DbMappingHandler.MapFromDbTool(dbTool);
-                    profile.Tools.Add(mappedTool);
-                }
+                //var profileToolDTOs = await _profileToolsDb.GetToolAssociationsAsync(dbProfile.Id);
+                //profile.Tools = new List<Tool>();
+                //foreach (var association in profileToolDTOs)
+                //{
+                //    var dbTool = await _toolDb.GetByIdAsync(association.ToolID);
+                //    if (dbTool == null) continue;
+                //    var mappedTool = DbMappingHandler.MapFromDbTool(dbTool);
+                //    profile.Tools.Add(mappedTool);
+                //}
                 return APIResponseWrapper<Profile>.Success(profile);
             }
             else
@@ -153,10 +153,8 @@ namespace IntelligenceHub.Business.Implementations
             bool success;
             if (dbProfile != null)
             {
-                var tools = new List<Tool>();
                 var dbTools = dbProfile.ProfileTools.Select(pt => pt.Tool).ToList();
-                foreach (var tool in dbTools) tools.Add(DbMappingHandler.MapFromDbTool(tool));
-                var profile = DbMappingHandler.MapFromDbProfile(dbProfile, tools);
+                var profile = DbMappingHandler.MapFromDbProfile(dbProfile);
 
                 if (profile.Tools != null && profile.Tools.Count > 0) await _profileToolsDb.DeleteAllProfileAssociationsAsync(dbProfile.Id);
 
