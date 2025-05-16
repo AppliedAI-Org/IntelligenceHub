@@ -38,8 +38,8 @@ namespace IntelligenceHub.DAL.Implementations
         /// <returns>The document, or null if no matching entry is found.</returns>
         public async Task<DbIndexDocument?> GetDocumentAsync(string tableName, string title)
         {
-            var query = $@"SELECT * FROM [{tableName}] WHERE title = @title";
-            var parameters = new[] { new SqlParameter("@title", title) };
+            var query = $@"SELECT * FROM [{tableName}] WHERE Title = @Title";
+            var parameters = new[] { new SqlParameter("@Title", title) };
             return await _dbSet.FromSqlRaw(query, parameters).FirstOrDefaultAsync();
         }
 
@@ -52,13 +52,13 @@ namespace IntelligenceHub.DAL.Implementations
         {
             var query = $@"CREATE TABLE [{tableName}] (
                                 Id INT IDENTITY(1,1) PRIMARY KEY,
-                                title NVARCHAR(255) NOT NULL,
+                                Title NVARCHAR(255) NOT NULL,
                                 Content NVARCHAR(MAX) NOT NULL,
-                                topic NVARCHAR(255),
-                                keywords NVARCHAR(255),
-                                source NVARCHAR(4000) NOT NULL,
-                                created DATETIMEOFFSET NOT NULL,
-                                modified DATETIMEOFFSET NOT NULL
+                                Topic NVARCHAR(255),
+                                Keywords NVARCHAR(255),
+                                Source NVARCHAR(4000) NOT NULL,
+                                Created DATETIMEOFFSET NOT NULL,
+                                Modified DATETIMEOFFSET NOT NULL
                             );";
 
             await _context.Database.ExecuteSqlRawAsync(query);
@@ -88,7 +88,7 @@ namespace IntelligenceHub.DAL.Implementations
         public async Task<bool> MarkIndexForUpdateAsync(string tableName)
         {
             // Dummy operation to mark the whole index as updated
-            var query = $@"UPDATE [{tableName}] SET modified = modified";
+            var query = $@"UPDATE [{tableName}] SET Modified = Modified";
             await _context.Database.ExecuteSqlRawAsync(query);
             return true;
         }
@@ -136,18 +136,18 @@ namespace IntelligenceHub.DAL.Implementations
         /// <returns>The newly added document.</returns>
         public async Task<DbIndexDocument> AddAsync(DbIndexDocument document, string tableName)
         {
-            var query = $@"INSERT INTO [{tableName}] (title, Content, topic, keywords, source, created, modified)
-                               VALUES (@title, @Content, @topic, @keywords, @source, @created, @modified);
+            var query = $@"INSERT INTO [{tableName}] (Title, Content, Topic, Keywords, Source, Created, Modified)
+                               VALUES (@Title, @Content, @Topic, @Keywords, @Source, @Created, @Modified);
                                SELECT CAST(SCOPE_IDENTITY() as int);";
             var parameters = new[]
             {
-                    new SqlParameter("@title", document.Title),
+                    new SqlParameter("@Title", document.Title),
                     new SqlParameter("@Content", document.Content),
-                    new SqlParameter("@topic", document.Topic ?? (object)DBNull.Value),
-                    new SqlParameter("@keywords", document.Keywords ?? (object)DBNull.Value),
-                    new SqlParameter("@source", document.Source),
-                    new SqlParameter("@created", document.Created),
-                    new SqlParameter("@modified", document.Modified)
+                    new SqlParameter("@Topic", document.Topic ?? (object)DBNull.Value),
+                    new SqlParameter("@Keywords", document.Keywords ?? (object)DBNull.Value),
+                    new SqlParameter("@Source", document.Source),
+                    new SqlParameter("@Created", document.Created),
+                    new SqlParameter("@Modified", document.Modified)
                 };
             document.Id = await _context.Database.ExecuteSqlRawAsync(query, parameters);
             return document;
@@ -163,25 +163,25 @@ namespace IntelligenceHub.DAL.Implementations
         public async Task<bool> UpdateAsync(int id, DbIndexDocument document, string tableName)
         {
             var query = $@"UPDATE [{tableName}] SET 
-                               title = @title, 
+                               Title = @Title, 
                                Content = @Content, 
-                               topic = @topic, 
-                               keywords = @keywords, 
-                               source = @source, 
-                               created = @created, 
-                               modified = @modified 
+                               Topic = @Topic, 
+                               Keywords = @Keywords, 
+                               Source = @Source, 
+                               Created = @Created, 
+                               Modified = @Modified 
                                WHERE Id = @Id";
             var parameters = new[]
             {
-                    new SqlParameter("@Id", id),
-                    new SqlParameter("@title", document.Title),
-                    new SqlParameter("@Content", document.Content),
-                    new SqlParameter("@topic", document.Topic ?? (object)DBNull.Value),
-                    new SqlParameter("@keywords", document.Keywords ?? (object)DBNull.Value),
-                    new SqlParameter("@source", document.Source),
-                    new SqlParameter("@created", document.Created),
-                    new SqlParameter("@modified", document.Modified)
-                };
+                new SqlParameter("@Id", id),
+                new SqlParameter("@Title", document.Title),
+                new SqlParameter("@Content", document.Content),
+                new SqlParameter("@Topic", document.Topic ?? (object)DBNull.Value),
+                new SqlParameter("@Keywords", document.Keywords ?? (object)DBNull.Value),
+                new SqlParameter("@Source", document.Source),
+                new SqlParameter("@Created", document.Created),
+                new SqlParameter("@Modified", document.Modified)
+            };
             return await _context.Database.ExecuteSqlRawAsync(query, parameters) == 1;
         }
 
@@ -196,8 +196,8 @@ namespace IntelligenceHub.DAL.Implementations
             var query = $@"DELETE FROM [{tableName}] WHERE Id = @Id";
             var parameters = new[]
             {
-                    new SqlParameter("@Id", document.Id)
-                };
+                new SqlParameter("@Id", document.Id)
+            };
             return await _context.Database.ExecuteSqlRawAsync(query, parameters) == 1;
         }
     }
