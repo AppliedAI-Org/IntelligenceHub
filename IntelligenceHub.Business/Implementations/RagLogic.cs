@@ -21,7 +21,6 @@ namespace IntelligenceHub.Business.Implementations
     public class RagLogic : IRagLogic
     {
         private readonly IAGIClientFactory _agiClientFactory;
-        private readonly IProfileRepository _profileRepository;
         private readonly IAISearchServiceClient _searchClient;
         private readonly IIndexMetaRepository _metaRepository;
         private readonly IIndexRepository _ragRepository;
@@ -47,7 +46,6 @@ namespace IntelligenceHub.Business.Implementations
         {
             _defaultAzureModel = settings.CurrentValue.ValidAGIModels.FirstOrDefault() ?? string.Empty;
             _agiClientFactory = agiFactory;
-            _profileRepository = profileRepository;
             _searchClient = aISearchServiceClient;
             _metaRepository = metaRepository;
             _ragRepository = indexRepository;
@@ -164,7 +162,7 @@ namespace IntelligenceHub.Business.Implementations
             existingDefinition.GenerateContentVector = newDefinition.GenerateContentVector;
             existingDefinition.GenerateTopicVector = newDefinition.GenerateTopicVector;
             existingDefinition.GenerateKeywordVector = newDefinition.GenerateKeywordVector;
-            existingDefinition.DefaultScoringProfile = newDefinition.Name;
+            existingDefinition.DefaultScoringProfile = newDefinition.DefaultScoringProfile ?? DefaultVectorScoringProfile;
             existingDefinition.ScoringAggregation = newDefinition.ScoringAggregation?.ToString();
             existingDefinition.ScoringInterpolation = newDefinition.ScoringInterpolation?.ToString();
             existingDefinition.ScoringFreshnessBoost = newDefinition.ScoringFreshnessBoost;
@@ -307,12 +305,12 @@ namespace IntelligenceHub.Business.Implementations
             {
                 var newDoc = new IndexDocument()
                 {
-                    Title = res.Document.Title,
-                    Keywords = res.Document.Keywords,
-                    Topic = res.Document.Topic,
-                    Source = res.Document.Source,
-                    Created = res.Document.Created,
-                    Modified = res.Document.Modified
+                    Title = res.Document.title,
+                    Keywords = res.Document.keywords,
+                    Topic = res.Document.topic,
+                    Source = res.Document.source,
+                    Created = res.Document.created,
+                    Modified = res.Document.modified
                 };
                 if (indexDefinition.QueryType == QueryType.Semantic) foreach (var caption in res.SemanticSearch.Captions) newDoc.Content += $"Excerpt: {caption.Text}\n\n";
                 else newDoc.Content = res.Document.chunk;

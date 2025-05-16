@@ -1,5 +1,6 @@
 ﻿using Azure.Search.Documents.Models;
 using IntelligenceHub.API.DTOs;
+using IntelligenceHub.API.DTOs.RAG;
 using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Business.Factories;
 using IntelligenceHub.Business.Interfaces;
@@ -7,6 +8,7 @@ using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Extensions;
 using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Interfaces;
+using System.Text;
 using System.Text.Json;
 using static IntelligenceHub.Common.GlobalVariables;
 
@@ -298,15 +300,6 @@ namespace IntelligenceHub.Business.Implementations
                 profile.Tools.Add(recursionTool);
             }
 
-            var tools = await _toolDb.GetProfileToolsAsync(profile.Name);
-            foreach (var tool in tools)
-            {
-                var dbTool = await _toolDb.GetByNameAsync(tool);
-                if (dbTool == null) continue;
-                var toolObj = DbMappingHandler.MapFromDbTool(dbTool);
-                profile.Tools?.Add(toolObj);
-            }
-
             // overwrite defaults if ProfileOptions contains values
             return new Profile()
             {
@@ -512,68 +505,110 @@ namespace IntelligenceHub.Business.Implementations
             var dbIndex = await _ragMetaRepository.GetByNameAsync(indexName);
             if (!originalRequest.Messages.Any() || dbIndex == null) return null;
 
-            var originalMessageContent = originalRequest.Messages.LastOrDefault()?.Content ?? string.Empty;
 
-            // Create a copy of the original request with modified content (without altering the original)
-            var modifiedRequest = new CompletionRequest
-            {
-                // Only copy in relevant data to prevent unnescesary tool calls utilization, and similar issues
-                ProfileOptions = new Profile() { Name = originalRequest.ProfileOptions.Name, Model = originalRequest.ProfileOptions.Model }, 
-                Messages = new List<Message>(originalRequest.Messages)
-            };
-
-            var finalMessage = modifiedRequest.Messages.LastOrDefault() ?? new Message() { Role = Role.User, Content = "Please search the database for any information", TimeStamp = DateTime.UtcNow };
-            finalMessage.Content = "Please use the below data to construct an intentful natural language query that can be used to search a RAG database. " +
-                                   "If the message does not seem to require a query to be constructed, please respond with a single .\n\n" + originalMessageContent;
-
-            var completionResponse = await agiClient.PostCompletion(modifiedRequest);
-            var intentfulQuery = completionResponse.Messages.LastOrDefault()?.Content ?? string.Empty;
+            var intentfulQuery = await GenerateIntentfulQuery(agiClient, originalRequest);
             if (string.IsNullOrWhiteSpace(intentfulQuery)) return null;
 
             var indexData = DbMappingHandler.MapFromDbIndexMetadata(dbIndex);
             var ragData = await _searchClient.SearchIndex(indexData, intentfulQuery);
 
-            var resultCollection = ragData.GetResultsAsync();
-            var ragDataString = string.Empty;
-
-            await foreach (var item in resultCollection)
+            var sb = new StringBuilder();
+            await foreach (var item in ragData.GetResultsAsync())
             {
-                if (indexData.QueryType == QueryType.Semantic)
-                {
-                    var semanticResult = item.SemanticSearch;
-                    ragDataString += $"\n```" +
-                                     $"\nTitle: {item.Document.Title}" +
-                                     $"\nSource: {item.Document.Source}" +
-                                     $"\nCreation Date: {item.Document.Created:yyyy-MM-ddTHH:mm:ss}" +
-                                     $"\nLast Updated Date: {item.Document.Modified:yyyy-MM-ddTHH:mm:ss}";
-                    foreach (var caption in semanticResult.Captions) ragDataString += $"\nContent Chunk: {caption.Text}";
-                    ragDataString += $"\n```\n";
-                }
-                else
-                {
-                    ragDataString += $"\n```" +
-                                     $"\nTitle: {item.Document.Title}" +
-                                     $"\nSource: {item.Document.Source}" +
-                                     $"\nCreation Date: {item.Document.Created:yyyy-MM-ddTHH:mm:ss}" +
-                                     $"\nLast Updated Date: {item.Document.Modified:yyyy-MM-ddTHH:mm:ss}" +
-                                     $"\nContent: {item.Document.chunk}" +
-                                     $"\n```\n";
-                }
+                var doc = item.Document;
+                sb.AppendLine("```");
+                sb.AppendLine($"Title: {doc.title}");
+                sb.AppendLine($"Source: {doc.source}");
+                sb.AppendLine($"Creation Date: {doc.created:yyyy-MM-ddTHH:mm:ss}");
+                sb.AppendLine($"Last Updated Date: {doc.modified:yyyy-MM-ddTHH:mm:ss}");
+                sb.AppendLine("Content:");
+                if (indexData.QueryType == QueryType.Semantic) foreach (var cap in item.SemanticSearch.Captions) sb.AppendLine($"Excerpt: {cap.Text}\n");
+                else sb.AppendLine(doc.chunk);
+                sb.AppendLine("```");
             }
 
-            // Construct a new message with the appended RAG data
-            var messageWithRagAppended = new Message
+            var ragDataString = sb.ToString();
+            if (string.IsNullOrEmpty(ragDataString)) return null;
+
+            return new Message
             {
-                Role = finalMessage.Role,
-                User = finalMessage.User,
-                Base64Image = finalMessage.Base64Image,
-                TimeStamp = finalMessage.TimeStamp,
-                Content = $"\n\nBelow is a list of documents, each of which is delimited with triple backticks. If relevant, " +
-                          $"and a source is present, please cite these documents in markdown plain in-text citation when " +
-                          $"responding to the following prompt: {originalMessageContent}\n\n" + ragDataString
+                Role = originalRequest.Messages.Last().Role,
+                User = originalRequest.Messages.Last().User,
+                Base64Image = originalRequest.Messages.Last().Base64Image,
+                TimeStamp = originalRequest.Messages.Last().TimeStamp,
+                Content = RagRequestPrependedInstructions
+                            + "\n\n"
+                            + originalRequest.Messages.Last().Content
+                            + "\n\n"
+                            + ragDataString
             };
-            return messageWithRagAppended;
         }
+
+        /// <summary>
+        /// Generates an intentful query based on the original request's messages and other context.
+        /// </summary>
+        /// <param name="originalRequest">The original Completion used to start this request.</param>
+        /// <param name="agiClient">The AGI client that will be used to generate a search intent.</param>
+        /// <returns>Returns an intentful query as a string that can be used to search a RAG database.</returns>
+        private async Task<string> GenerateIntentfulQuery(IAGIClient agiClient, CompletionRequest originalRequest)
+        {
+            var additionalContext = $"Provided below is a system message that the final LLM in this AI orchestration pipeline uses to answer the user's question, " +
+                $"after your intent is used to retrieve relevant documents. Please use this context, and any other existing message history in order to construct " +
+                $"a short search intent string similar to an internet search in order to retrieve these documents, providing keywords as the primary input " +
+                $"whenever possible." +
+                $"\n\n" +
+                $"Final LLM Name: {originalRequest.ProfileOptions.Name}" +
+                $"Final LLM System Message: {originalRequest.ProfileOptions.SystemMessage}";
+
+            var modifiedRequest = new CompletionRequest
+            {
+                ProfileOptions = new Profile { Model = originalRequest.ProfileOptions.Model, SystemMessage = RagIntentGenSystemMessage },
+                Messages = ShallowCloneAndModifyLast(originalRequest.Messages, additionalContext)
+            };
+
+            var completionResponse = await agiClient.PostCompletion(modifiedRequest);
+            var intentfulQuery = completionResponse.Messages.LastOrDefault()?.Content ?? string.Empty;
+            return intentfulQuery;
+        }
+
+        /// <summary>
+        /// Shallow-clones the given list of messages, but replaces the last message
+        /// with a new Message whose Content is prefix + original.Content.
+        /// </summary>
+        private List<Message> ShallowCloneAndModifyLast(IList<Message> originalMessages, string prefix)
+        {
+            var cloned = new List<Message>(originalMessages.Count);
+            if (originalMessages == null || originalMessages.Count == 0)
+                return cloned;
+
+            // Copy everything except the last message
+            for (int i = 0; i < originalMessages.Count - 1; i++)
+            {
+                var m = originalMessages[i];
+                cloned.Add(new Message
+                {
+                    Role = m.Role,
+                    Content = m.Content,
+                    TimeStamp = m.TimeStamp,
+                    User = m.User,
+                    Base64Image = m.Base64Image
+                });
+            }
+
+            // Create a brand-new last message with modified content
+            var last = originalMessages[^1];
+            cloned.Add(new Message
+            {
+                Role = last.Role,
+                Content = prefix + last.Content,
+                TimeStamp = last.TimeStamp,
+                User = last.User,
+                Base64Image = last.Base64Image
+            });
+
+            return cloned;
+        }
+
 
         /// <summary>
         /// Generates an image based on the prompt provided in the completion request.
