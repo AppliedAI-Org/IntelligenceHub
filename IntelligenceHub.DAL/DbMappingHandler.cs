@@ -185,7 +185,7 @@ namespace IntelligenceHub.DAL
         {
             return new DbProperty()
             {
-                ToolId = property.Id ?? 0,
+                Id = property.Id ?? 0,
                 Name = name,
                 Type = property.type,
                 Description = property.description ?? string.Empty,
