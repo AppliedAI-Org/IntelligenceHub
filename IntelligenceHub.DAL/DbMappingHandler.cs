@@ -54,7 +54,7 @@ namespace IntelligenceHub.DAL
                             required = pt.Tool.Required.ToStringArray(),  
                             properties = pt.Tool.Properties.ToDictionary(p => p.Name, p => new Property() 
                             { 
-                                Id = p.Id, 
+                                ToolId = p.Id, 
                                 type = p.Type, 
                                 description = p.Description 
                             }) 
@@ -146,7 +146,7 @@ namespace IntelligenceHub.DAL
             {
                 var convertedProp = new Property()
                 {
-                    Id = property.Id,
+                    ToolId = property.Id,
                     type = property.Type,
                     description = property.Description,
                 };
@@ -185,7 +185,7 @@ namespace IntelligenceHub.DAL
         {
             return new DbProperty()
             {
-                ToolId = property.Id ?? 0,
+                ToolId = property.ToolId ?? 0,
                 Name = name,
                 Type = property.type,
                 Description = property.description ?? string.Empty,

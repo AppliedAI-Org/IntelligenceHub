@@ -27,7 +27,7 @@ namespace IntelligenceHub.Business.Interfaces
         /// <param name="toolCalls">A dictionary of function names, and their arguments.</param>
         /// <param name="messages">The conversation history used as context for the Chat Recursion system tool.</param>
         /// <param name="options">The AI client profile options associated with the request being processed.</param>
-        /// <param name="conversationId">The Id of the conversation being processed.</param>
+        /// <param name="conversationId">The ToolId of the conversation being processed.</param>
         /// <param name="currentRecursionDepth">The current depth of recursion used to prevent infinite looping
         /// resulting from the Chat Recursion system tool.</param>
         /// <returns>An <see cref="APIResponseWrapper{Tuple}"/> containing a tuple of the HTTP responses associated with tools executed by the tool client, and any 

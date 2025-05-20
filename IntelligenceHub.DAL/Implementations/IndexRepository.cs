@@ -51,7 +51,7 @@ namespace IntelligenceHub.DAL.Implementations
         public async Task<bool> CreateIndexAsync(string tableName)
         {
             var query = $@"CREATE TABLE [{tableName}] (
-                                Id INT IDENTITY(1,1) PRIMARY KEY,
+                                ToolId INT IDENTITY(1,1) PRIMARY KEY,
                                 Title NVARCHAR(255) NOT NULL,
                                 Content NVARCHAR(MAX) NOT NULL,
                                 Topic NVARCHAR(255),
@@ -119,7 +119,7 @@ namespace IntelligenceHub.DAL.Implementations
 
             // Formulate the SQL query for pagination
             var query = $@"SELECT * FROM [{tableName}]
-                           ORDER BY Id
+                           ORDER BY ToolId
                            OFFSET {skip} ROWS
                            FETCH NEXT {count} ROWS ONLY";
 
@@ -170,10 +170,10 @@ namespace IntelligenceHub.DAL.Implementations
                                Source = @Source, 
                                Created = @Created, 
                                Modified = @Modified 
-                               WHERE Id = @Id";
+                               WHERE ToolId = @ToolId";
             var parameters = new[]
             {
-                new SqlParameter("@Id", id),
+                new SqlParameter("@ToolId", id),
                 new SqlParameter("@Title", document.Title),
                 new SqlParameter("@Content", document.Content),
                 new SqlParameter("@Topic", document.Topic ?? (object)DBNull.Value),
@@ -193,10 +193,10 @@ namespace IntelligenceHub.DAL.Implementations
         /// <returns>A bool indicating the success or failure of the operation.</returns>
         public async Task<bool> DeleteAsync(DbIndexDocument document, string tableName)
         {
-            var query = $@"DELETE FROM [{tableName}] WHERE Id = @Id";
+            var query = $@"DELETE FROM [{tableName}] WHERE ToolId = @ToolId";
             var parameters = new[]
             {
-                new SqlParameter("@Id", document.Id)
+                new SqlParameter("@ToolId", document.Id)
             };
             return await _context.Database.ExecuteSqlRawAsync(query, parameters) == 1;
         }

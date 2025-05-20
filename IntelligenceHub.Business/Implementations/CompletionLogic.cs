@@ -254,7 +254,7 @@ namespace IntelligenceHub.Business.Implementations
         /// <summary>
         /// Retrieves and builds the message history for a conversation.
         /// </summary>
-        /// <param name="conversationId">The Id of the conversation being retrieved from the database.</param>
+        /// <param name="conversationId">The ToolId of the conversation being retrieved from the database.</param>
         /// <param name="requestMessages">The list of messages associated with the current completion request.</param>
         /// <param name="maxMessageHistory">The maximum amount of messages to include in the list of messages.</param>
         /// <returns>A list of messages associated with the conversationId.</returns>
@@ -352,7 +352,7 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="toolCalls">A dictionary of function names, and their arguments.</param>
         /// <param name="messages">The conversation history used as context for the Chat Recursion system tool.</param>
         /// <param name="options">The AI client profile options associated with the request being processed.</param>
-        /// <param name="conversationId">The Id of the conversation being processed.</param>
+        /// <param name="conversationId">The ToolId of the conversation being processed.</param>
         /// <param name="currentRecursionDepth">The current depth of recursion used to prevent infinite looping
         /// resulting from the Chat Recursion system tool.</param>
         /// <returns>An <see cref="APIResponseWrapper{Tuple}"/> containing a tuple of the HTTP responses associated with tools executed by the tool client, and any 
@@ -381,7 +381,7 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="toolCall">The arguments passed to the Recursive Chat tool.</param>
         /// <param name="messages">A list of messages representing the conversation context.</param>
         /// <param name="options">The options associated with the current profile to generate the next completion.</param>
-        /// <param name="conversationId">The Id of the conversation if the conversation is being saved.</param>
+        /// <param name="conversationId">The ToolId of the conversation if the conversation is being saved.</param>
         /// <param name="currentRecursionDepth">The current depth of recursion used to prevent infinite looping
         /// resulting from the Chat Recursion system tool.</param>
         /// <returns>An updated <see cref="List{Message}"/> representing the conversation context.</returns>

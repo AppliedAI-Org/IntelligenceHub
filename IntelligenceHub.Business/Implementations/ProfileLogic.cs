@@ -59,7 +59,7 @@ namespace IntelligenceHub.Business.Implementations
             {
                 var profile = DbMappingHandler.MapFromDbProfile(dbProfile);
                 // package this into a separate method (same one as in GetAllProfiles())
-                //var profileToolDTOs = await _profileToolsDb.GetToolAssociationsAsync(dbProfile.Id);
+                //var profileToolDTOs = await _profileToolsDb.GetToolAssociationsAsync(dbProfile.ToolId);
                 //profile.Tools = new List<Tool>();
                 //foreach (var association in profileToolDTOs)
                 //{

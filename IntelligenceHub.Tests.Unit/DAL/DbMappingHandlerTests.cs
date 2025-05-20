@@ -176,7 +176,7 @@ namespace IntelligenceHub.Tests.Unit.DAL
             // Arrange
             var property = new Property
             {
-                Id = 1,
+                ToolId = 1,
                 type = "string",
                 description = "Test Description"
             };
@@ -185,7 +185,7 @@ namespace IntelligenceHub.Tests.Unit.DAL
             var result = DbMappingHandler.MapToDbProperty("Test Property", property);
 
             // Assert
-            Assert.Equal(property.Id, result.Id);
+            Assert.Equal(property.ToolId, result.ToolId);
             Assert.Equal("Test Property", result.Name);
             Assert.Equal(property.type, result.Type);
             Assert.Equal(property.description, result.Description);

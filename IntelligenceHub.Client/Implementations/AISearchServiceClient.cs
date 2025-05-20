@@ -288,9 +288,9 @@ namespace IntelligenceHub.Client.Implementations
             if (index.IndexingInterval.HasValue) interval = index.IndexingInterval.Value;
             var indexer = new SearchIndexer($"{index.Name}{_indexerSuffix }", index.Name, index.Name) { Schedule = new IndexingSchedule(interval) };
 
-            // Map the existing "Id" column to the parent_id and chunk_id fields
-            indexer.FieldMappings.Add(new FieldMapping("Id") { TargetFieldName = RagField.parent_id.ToString() });
-            indexer.FieldMappings.Add(new FieldMapping("Id") { TargetFieldName = RagField.chunk_id.ToString() });
+            // Map the existing "ToolId" column to the parent_id and chunk_id fields
+            indexer.FieldMappings.Add(new FieldMapping("ToolId") { TargetFieldName = RagField.parent_id.ToString() });
+            indexer.FieldMappings.Add(new FieldMapping("ToolId") { TargetFieldName = RagField.chunk_id.ToString() });
 
             indexer.SkillsetName = await UpsertSkillset(index);
             await _indexerClient.CreateOrUpdateIndexerAsync(indexer);
