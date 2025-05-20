@@ -278,8 +278,8 @@
                     .withUrl("/chatstream", { accessTokenFactory: () => token })
                     .build();
 
+                // Define the ReceiveMessage handler
                 connection.on("broadcastMessage", function (chunk) {
-                    // Try to parse the incoming chunk (if needed)
                     let parsedChunk;
                     try {
                         parsedChunk = (typeof chunk === "string" ? JSON.parse(chunk) : chunk);
@@ -288,36 +288,58 @@
                         parsedChunk = null;
                     }
 
-                    // Create a visual separator for each new message chunk
-                    const separator = document.createElement("div");
-                    separator.className = "separator";
-                    document.getElementById("messages").appendChild(separator);
+                    function appendNode(node) {
+                        const separator = document.createElement("div");
+                        separator.className = "separator";
+                        document.getElementById("messages").appendChild(separator);
+                        document.getElementById("messages").appendChild(node);
+                    }
 
-                    // Process the parsed response
-                    if (parsedChunk) {
-                        if (parsedChunk.errorMessage) {
-                            const errorMsg = document.createElement("div");
-                            errorMsg.textContent = `Error: ${parsedChunk.errorMessage}`;
-                            errorMsg.className = "message error";
-                            document.getElementById("messages").appendChild(errorMsg);
-                        } else if (parsedChunk.completionUpdate) {
-                            const msg = document.createElement("div");
-                            msg.textContent = `chunk: ${parsedChunk.completionUpdate}`;
-                            msg.className = "message";
-                            document.getElementById("messages").appendChild(msg);
-                        } else if (parsedChunk.completionUpdate !== "") {
-                            // Fallback: display the raw content if it doesn't match expected structure
-                            const msg = document.createElement("div");
-                            msg.textContent = `chunk: ${chunk}`;
-                            msg.className = "message";
-                            document.getElementById("messages").appendChild(msg);
-                        }
-                    } else {
-                        // If parsing failed, display the raw chunk as an error
+                    if (!parsedChunk) {
+                        const err = document.createElement("div");
+                        err.textContent = `Error parsing chunk: ${chunk}`;
+                        err.className = "message error";
+                        appendNode(err);
+                        return;
+                    }
+
+                    // 1) ToolCalls (Pascal or camel)
+                    const calls = parsedChunk.ToolCalls || parsedChunk.toolCalls;
+                    if (calls && Object.keys(calls).length > 0) {
+                        const toolDiv = document.createElement("div");
+                        toolDiv.className = "message tool-call";
+
+                        // Build one block containing every tool in this chunk
+                        let html = "<strong>🛠 Tool call:</strong>";
+                        Object.entries(calls).forEach(([toolName, args]) => {
+                            html += `
+                                        <div style="margin-top:0.5em;">
+                                          <em>Tool Call: ${toolName} - ${JSON.stringify(parsedChunk.toolCalls)}</em>
+                                        </div>
+                                    `;
+                        });
+
+                        toolDiv.innerHTML = html;
+                        appendNode(toolDiv);
+                        return;
+                    }
+
+                    // 2) Error message from API
+                    if (parsedChunk.errorMessage) {
                         const errorMsg = document.createElement("div");
-                        errorMsg.textContent = `Error: ${chunk}`;
+                        errorMsg.textContent = `Error: ${parsedChunk.errorMessage}`;
                         errorMsg.className = "message error";
-                        document.getElementById("messages").appendChild(errorMsg);
+                        appendNode(errorMsg);
+                        return;
+                    }
+
+                    // 3) Raw text completion
+                    if (parsedChunk.completionUpdate) {
+                        const msg = document.createElement("div");
+                        msg.textContent = parsedChunk.completionUpdate;
+                        msg.className = "message";
+                        appendNode(msg);
+                        return;
                     }
                 });
 
