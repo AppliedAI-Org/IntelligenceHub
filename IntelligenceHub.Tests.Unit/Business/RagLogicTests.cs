@@ -466,10 +466,10 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Create a sample document.
             var indexDefinition = new IndexDefinition
             {
-                Title = "doc1",
-                Keywords = "keyword1",
-                Topic = "topic1",
-                Source = "source1",
+                title = "doc1",
+                keywords = "keyword1",
+                topic = "topic1",
+                source = "source1",
                 chunk = "content1"
             };
 
@@ -497,10 +497,10 @@ namespace IntelligenceHub.Tests.Unit.Business
         {
             var indexDefinition = new IndexDefinition
             {
-                Title = "doc1",
-                Keywords = "keyword1",
-                Topic = "topic1",
-                Source = "source1",
+                title = "doc1",
+                keywords = "keyword1",
+                topic = "topic1",
+                source = "source1",
                 chunk = "content1"
             };
 
@@ -729,6 +729,7 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
             _mockRagRepository.Setup(repo => repo.GetAllAsync(indexName, count, page)).ReturnsAsync(dbDocuments);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync(new DbIndexMetadata { Name = indexName });
 
             // Act
             var result = await _ragLogic.GetAllDocuments(indexName, count, page);
@@ -768,6 +769,7 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
             _mockRagRepository.Setup(repo => repo.GetAllAsync(indexName, count, page)).ReturnsAsync(dbDocuments);
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync(new DbIndexMetadata { Name = indexName });
 
             // Act
             var result = await _ragLogic.GetAllDocuments(indexName, count, page);
@@ -787,6 +789,7 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             _mockValidationHandler.Setup(v => v.IsValidIndexName(indexName)).Returns(true);
             _mockRagRepository.Setup(repo => repo.GetAllAsync(indexName, count, page)).ThrowsAsync(new Exception("Database error"));
+            _mockMetaRepository.Setup(repo => repo.GetByNameAsync(indexName)).ReturnsAsync(new DbIndexMetadata { Name = indexName });
 
             // Act & Assert
             await Assert.ThrowsAsync<Exception>(() => _ragLogic.GetAllDocuments(indexName, count, page));

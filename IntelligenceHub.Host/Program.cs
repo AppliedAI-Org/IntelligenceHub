@@ -286,6 +286,8 @@ namespace IntelligenceHub.Host
 
             var app = builder.Build();
 
+            app.UseRouting();
+
             if (app.Environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -314,13 +316,11 @@ namespace IntelligenceHub.Host
                     policy.AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials()
-                          .WithOrigins("https://jacobthomas-fmh4huhdhba7fvfq.centralus-01.azurewebsites.net", "https://nlsequel.azurewebsites.net/", "https://intelligencehub-awcrbwdaccb9f8ch.centralus-01.azurewebsites.net/");
+                          .WithOrigins("https://jacobthomas-fmh4huhdhba7fvfq.centralus-01.azurewebsites.net", "https://nlsequel.azurewebsites.net/", "https://nlsequel-dev-ama2dtd8eghhe0d9.eastus2-01.azurewebsites.net");
                 });
             }
 
             app.UseHttpsRedirection();
-
-            app.UseRouting();
 
             app.UseMiddleware<LoggingMiddleware>();
 
@@ -328,7 +328,7 @@ namespace IntelligenceHub.Host
             app.UseAuthorization();
 
             app.MapControllers();
-            app.MapHub<ChatHub>("/chatstream");
+            app.MapHub<ChatHub>("/chatstream").RequireCors();
 
             app.Run();
             #endregion

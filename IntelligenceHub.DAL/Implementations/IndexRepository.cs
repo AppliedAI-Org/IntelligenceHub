@@ -173,15 +173,15 @@ namespace IntelligenceHub.DAL.Implementations
                                WHERE Id = @Id";
             var parameters = new[]
             {
-                    new SqlParameter("@Id", id),
-                    new SqlParameter("@Title", document.Title),
-                    new SqlParameter("@Content", document.Content),
-                    new SqlParameter("@Topic", document.Topic ?? (object)DBNull.Value),
-                    new SqlParameter("@Keywords", document.Keywords ?? (object)DBNull.Value),
-                    new SqlParameter("@Source", document.Source),
-                    new SqlParameter("@Created", document.Created),
-                    new SqlParameter("@Modified", document.Modified)
-                };
+                new SqlParameter("@Id", id),
+                new SqlParameter("@Title", document.Title),
+                new SqlParameter("@Content", document.Content),
+                new SqlParameter("@Topic", document.Topic ?? (object)DBNull.Value),
+                new SqlParameter("@Keywords", document.Keywords ?? (object)DBNull.Value),
+                new SqlParameter("@Source", document.Source),
+                new SqlParameter("@Created", document.Created),
+                new SqlParameter("@Modified", document.Modified)
+            };
             return await _context.Database.ExecuteSqlRawAsync(query, parameters) == 1;
         }
 
@@ -196,8 +196,8 @@ namespace IntelligenceHub.DAL.Implementations
             var query = $@"DELETE FROM [{tableName}] WHERE Id = @Id";
             var parameters = new[]
             {
-                    new SqlParameter("@Id", document.Id)
-                };
+                new SqlParameter("@Id", document.Id)
+            };
             return await _context.Database.ExecuteSqlRawAsync(query, parameters) == 1;
         }
     }

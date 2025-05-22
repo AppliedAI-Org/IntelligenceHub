@@ -197,7 +197,7 @@
         /// <summary>
         /// The system message for RAG requests.
         /// </summary>
-        public const string RagRequestSystemMessage =
+        public const string RagMetadataGenSystemMessage =
             "You are part of an API that chunks documents for retrieval augmented generation tasks. Your job " +
             "is to take the requests, which are sent to you programatically, and shorten the data into a topic, " +
             "keywords, or another form of data. Take care to only provide the data requested in the completion, " +
@@ -210,9 +210,24 @@
         /// </summary>
         public const string RagRequestPrependedInstructions =
             "Below you will find a set of documents, each delimited with tripple backticks. " +
-                "Please use these documents to inform your response to the dialogue below the documents. " +
-                "If you use one of the sources, please reference it in your response using markdown like so: [SourceName](SourceLink)." +
-                "If no SourceLink is present, only provide the sourcename.\n\n";
+            "Please use these documents to inform your response to the dialogue below the documents. " +
+            "If you use one of the sources, please reference it in your response using markdown like so: [SourceName](SourceLink)." +
+            "If no SourceLink is present, only provide the sourcename. If no documents were provided, simply respond to the user's" +
+            "message like you normally would.";
+
+        /// <summary>
+        /// System message instructions for generating a RAG search intent.
+        /// </summary>
+        public const string RagIntentGenSystemMessage =
+            "You are part of an API that generates search intents for retrieval augmented generation tasks. Your job is to look at all of the current context," +
+            "and attempt to create a simple query consisting of a few key words, or a short search intent, similar to values that you would feed into a search" +
+            "engine. Only provide the query itself with no additional data, as your output will be fed directly to an Azure AI search service query request, " +
+            "and this will obfuscate the result.";
+
+        /// <summary>
+        /// The default vector scoring profile name.
+        /// </summary>
+        public const string DefaultVectorScoringProfile = "vector-search-profile";
 
         /// <summary>
         /// The default model for embeddings.

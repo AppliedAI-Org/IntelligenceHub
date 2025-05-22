@@ -13,5 +13,7 @@ namespace IntelligenceHub.DAL.Models
         public string Type { get; set; }
         public string Description { get; set; }
         public int ToolId { get; set; }
+        [ForeignKey(nameof(ToolId))]
+        public DbTool Tool { get; set; } = null!;
     }
 }

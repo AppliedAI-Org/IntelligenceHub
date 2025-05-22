@@ -26,7 +26,6 @@ namespace IntelligenceHub.Client.Implementations
         private readonly string _openaiUrl;
 
         private readonly int _defaultRagDimensions = 3072; // move to globalvariables
-        private readonly string _defaultVectorSearchProfile = "vector-search-profile";
         private readonly string _defaultVectorAlgConfig = "hnsw";
         private readonly string _defaultKnnSearchProfile = "ExhaustiveKnnProfile";
         private readonly string _defaultKnnConfig = "ExhaustiveKnn";
@@ -167,7 +166,7 @@ namespace IntelligenceHub.Client.Implementations
 
             if (indexDefinition.ScoringProfile != null)
             {
-                if (string.IsNullOrEmpty(indexDefinition.ScoringProfile.Name)) indexDefinition.ScoringProfile.Name = _defaultVectorSearchProfile;
+                if (string.IsNullOrEmpty(indexDefinition.ScoringProfile.Name)) indexDefinition.ScoringProfile.Name = DefaultVectorScoringProfile;
                 var scoringProfile = new ScoringProfile(indexDefinition.ScoringProfile?.Name);
                 if (indexDefinition.ScoringProfile?.Weights != null && indexDefinition.ScoringProfile.Weights.Any()) scoringProfile.TextWeights = new TextWeights(indexDefinition.ScoringProfile.Weights);
 
@@ -443,7 +442,7 @@ namespace IntelligenceHub.Client.Implementations
                 {
                     Profiles =
                     {
-                        new VectorSearchProfile(_defaultVectorSearchProfile, _defaultVectorAlgConfig) { VectorizerName = _defaultVectorizer, },
+                        new VectorSearchProfile(DefaultVectorScoringProfile, _defaultVectorAlgConfig) { VectorizerName = _defaultVectorizer, },
                         new VectorSearchProfile(_defaultKnnSearchProfile, _defaultKnnConfig)
                     },
                     Algorithms =
@@ -497,25 +496,25 @@ namespace IntelligenceHub.Client.Implementations
                     {
                         IsSearchable = true,
                         VectorSearchDimensions = ragDimensions,
-                        VectorSearchProfileName = _defaultVectorSearchProfile
+                        VectorSearchProfileName = DefaultVectorScoringProfile
                     },
                     new SearchField(RagField.titleVector.ToString(), SearchFieldDataType.Collection(SearchFieldDataType.Single))
                     {
                         IsSearchable = true,
                         VectorSearchDimensions = ragDimensions,
-                        VectorSearchProfileName = _defaultVectorSearchProfile
+                        VectorSearchProfileName = DefaultVectorScoringProfile
                     },
                     new SearchField(RagField.topicVector.ToString(), SearchFieldDataType.Collection(SearchFieldDataType.Single))
                     {
                         IsSearchable = true,
                         VectorSearchDimensions = ragDimensions,
-                        VectorSearchProfileName = _defaultVectorSearchProfile
+                        VectorSearchProfileName = DefaultVectorScoringProfile
                     },
                     new SearchField(RagField.keywordsVector.ToString(), SearchFieldDataType.Collection(SearchFieldDataType.Single))
                     {
                         IsSearchable = true,
                         VectorSearchDimensions = ragDimensions,
-                        VectorSearchProfileName = _defaultVectorSearchProfile
+                        VectorSearchProfileName = DefaultVectorScoringProfile
                     },
                 },
             };
