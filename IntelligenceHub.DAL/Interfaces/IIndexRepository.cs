@@ -37,6 +37,13 @@ namespace IntelligenceHub.DAL.Interfaces
         Task<bool> EnableChangeTrackingAsync(string tableName);
 
         /// <summary>
+        /// Creates or updates the SQL view that merges the main table and its tombstone table,
+        /// exposing an IsDeleted flag for Azure Search’s soft‐delete policy.
+        /// </summary>
+        /// <param name="tableName">Base name of the index/content table (without “vw_” prefix or “_Deleted” suffix).</param>
+        Task<bool> CreateDatasourceViewAsync(string tableName);
+
+        /// <summary>
         /// Marks the index to be updated by an indexer by setting its state to modified.
         /// </summary>
         /// <param name="tableName">The name of the index.</param>
