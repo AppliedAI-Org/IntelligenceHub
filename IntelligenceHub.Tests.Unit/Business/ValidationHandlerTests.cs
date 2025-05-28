@@ -401,7 +401,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "ValidIndex",
                 IndexingInterval = TimeSpan.FromHours(1),
-                EmbeddingModel = "embedding-model",
+                EmbeddingModel = "text-embedding-3-large",
                 MaxRagAttachments = 20,
                 ChunkOverlap = 0.5,
                 GenerateKeywords = false,
