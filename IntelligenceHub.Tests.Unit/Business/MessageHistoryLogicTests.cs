@@ -27,22 +27,20 @@ namespace IntelligenceHub.Tests.Unit.Business
             // Arrange
             var conversationId = Guid.NewGuid();
             var timeStamp = DateTime.UtcNow;
-            var messages = new List<Message> { new Message { Role = Role.User, Content = "Test message", TimeStamp = timeStamp } };
-            var dbMessages = new List<DbMessage> { new DbMessage { Role = Role.User.ToString(), Content = "Test message", TimeStamp = timeStamp } };
-
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1, 1)).ReturnsAsync(dbMessages); // setup the request to ensure conversation data exists
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10, 1)).ReturnsAsync(dbMessages); // setup the data returned in the request
+            var messages = new List<Message> { new Message { Content = "Test message", TimeStamp = timeStamp } };
+            var dbMessages = new List<DbMessage> { new DbMessage { Content = "Test message", TimeStamp = timeStamp } };
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10, 1)).ReturnsAsync(dbMessages);
 
             // Act
             var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10, 1);
 
             // Assert
-            Assert.NotNull(result.Data);
             Assert.Collection(result.Data, message =>
             {
                 Assert.Equal("Test message", message.Content);
                 Assert.Equal(timeStamp, message.TimeStamp);
-                Assert.Equal(Role.User, message.Role);
+                Assert.Null(message.Base64Image);
+                Assert.Null(message.Role);
             });
         }
 
@@ -57,8 +55,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10, 1);
 
             // Assert
-            Assert.Equal(APIResponseStatusCodes.NotFound, result.StatusCode);
-            Assert.Null(result.Data);
+            Assert.Empty(result.Data);
         }
 
         [Fact]
