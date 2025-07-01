@@ -1,9 +1,6 @@
 ﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Interfaces;
-using IntelligenceHub.Common;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using static IntelligenceHub.Common.GlobalVariables;
 
@@ -12,7 +9,6 @@ namespace IntelligenceHub.Hubs
     /// <summary>
     /// A SignalR hub used to stream chat completions to the client
     /// </summary>
-    [Authorize]
     public class ChatHub : Hub
     {
         private readonly ICompletionLogic _completionLogic;

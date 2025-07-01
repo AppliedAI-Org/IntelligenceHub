@@ -56,14 +56,6 @@ required_env_vars = [
     "AllowedHosts",
     "Azure_SignalR_Enabled",
     "Settings_DbConnectionString",
-    "AuthSettings_Domain",
-    "AuthSettings_Audience",
-    "AuthSettings_BasicUsername"
-    "AuthSettings_BasicPassword"
-    "AuthSettings_DefaultClientId",
-    "AuthSettings_DefaultClientSecret",
-    "AuthSettings_AdminClientId",
-    "AuthSettings_AdminClientSecret",
     "AppInsightSettings_ConnectionString",
     "AGIClientSettings_AzureOpenAIServices_0_Endpoint",
     "AGIClientSettings_AzureOpenAIServices_0_Key",

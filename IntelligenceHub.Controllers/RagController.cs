@@ -1,10 +1,8 @@
-﻿using IntelligenceHub.API.DTOs;
-using IntelligenceHub.API.DTOs.RAG;
+﻿using IntelligenceHub.API.DTOs.RAG;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
 using IntelligenceHub.Common.Extensions;
 using static IntelligenceHub.Common.GlobalVariables;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -16,7 +14,6 @@ namespace IntelligenceHub.Controllers
     /// </summary>
     [Route("Rag")]
     [ApiController]
-    [Authorize(Policy = ElevatedAuthPolicy)]
     public class RagController : ControllerBase
     {
         private readonly IRagLogic _ragLogic;

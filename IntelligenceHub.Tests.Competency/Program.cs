@@ -1,6 +1,5 @@
 ﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Common;
-using IntelligenceHub.Tests.Common.Auth;
 using IntelligenceHub.Tests.Common.Config;
 using IntelligenceHub.Tests.Competency.Config;
 using Microsoft.Extensions.Configuration;
@@ -32,24 +31,7 @@ namespace IntelligenceHub.Tests.Competency
             var intelligenceHubSettings = configuration.GetRequiredSection(nameof(IntelligenceHubSettings)).Get<IntelligenceHubSettings>()
                 ?? throw new ArgumentNullException(nameof(IntelligenceHubSettings));
 
-            var authSettings = configuration.GetRequiredSection(nameof(AuthTestingSettings)).Get<AuthTestingSettings>()
-                ?? throw new ArgumentNullException(nameof(AuthTestingSettings));
-
             _url = intelligenceHubSettings.TestingUrl;
-
-            // Authentication setup
-            var authClient = new AuthClient(
-                authSettings.AuthEndpoint,
-                authSettings.AuthClientId,
-                authSettings.AuthClientSecret,
-                authSettings.ElevatedAuthClientId,
-                authSettings.AuthClientSecret,
-                authSettings.Audience);
-
-            var authResponse = await authClient.RequestAuthToken();
-            if (string.IsNullOrEmpty(authResponse?.AccessToken)) throw new InvalidOperationException("Auth token retrieval failed.");
-
-            _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {authResponse.AccessToken}");
 
             // Load messages for testing
             var completionList = intelligenceHubSettings.Completions;

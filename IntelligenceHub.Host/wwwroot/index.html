@@ -261,21 +261,8 @@
 
         async function startSignalRConnection() {
             try {
-                const username = prompt("Enter your username:");
-                const password = prompt("Enter your password:");
-                const credentials = btoa(`${username}:${password}`);
-                const tokenResponse = await fetch('/auth/admintoken', {
-                    headers: {
-                        'Authorization': `Basic ${credentials}`
-                    }
-                });
-                if (!tokenResponse.ok) {
-                    throw new Error('Failed to fetch token from backend');
-                }
-                const tokenData = await tokenResponse.json();
-                token = tokenData.access_token;
                 connection = new signalR.HubConnectionBuilder()
-                    .withUrl("/chatstream", { accessTokenFactory: () => token })
+                    .withUrl("/chatstream")
                     .build();
 
                 // Define the ReceiveMessage handler
@@ -464,7 +451,6 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(profile)
                 });
@@ -622,10 +608,7 @@
 
             try {
                 const response = await fetch(`/profile/get/${profileName}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    method: 'GET'
                 });
 
                 if (response.ok) {

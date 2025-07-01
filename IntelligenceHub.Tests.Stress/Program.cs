@@ -1,6 +1,5 @@
 ﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Common;
-using IntelligenceHub.Tests.Common.Auth;
 using IntelligenceHub.Tests.Common.Config;
 using IntelligenceHub.Tests.Stress.Config;
 using Microsoft.Extensions.Configuration;
@@ -32,25 +31,8 @@ namespace IntelligenceHub.Tests.Stress
             var intelligenceHubSettings = configuration.GetRequiredSection(nameof(IntelligenceHubSettings)).Get<IntelligenceHubSettings>()
                 ?? throw new ArgumentNullException(nameof(IntelligenceHubSettings));
 
-            var authSettings = configuration.GetRequiredSection(nameof(AuthTestingSettings)).Get<AuthTestingSettings>()
-                ?? throw new ArgumentNullException("Auth settings failed to be configured...");
-
             // validation checks
             if (settings.TotalRequests < settings.ConcurrencyLevel) throw new ArgumentException("The number of requests must be greater than the concurrency level.");
-
-            // Set authentication headers
-            var authClient = new AuthClient(
-                authSettings.AuthEndpoint,
-                authSettings.AuthClientId,
-                authSettings.AuthClientSecret,
-                authSettings.ElevatedAuthClientId,
-                authSettings.AuthClientSecret,
-                authSettings.Audience);
-
-            var authResponse = await authClient.RequestAuthToken();
-
-            if (string.IsNullOrEmpty(authResponse?.AccessToken)) throw new InvalidOperationException("The auth token failed to be retrieved. Testing could not continue...");
-            _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {authResponse.AccessToken}");
 
             // Calculate the number of batches needed  
             var batches = (int)Math.Ceiling((double)settings.TotalRequests / settings.ConcurrencyLevel);

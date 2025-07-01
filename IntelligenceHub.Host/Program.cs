@@ -1,4 +1,3 @@
-using DotNetEnv;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Business.Implementations;
 using IntelligenceHub.Client.Implementations;
@@ -11,9 +10,7 @@ using IntelligenceHub.Host.Config;
 using IntelligenceHub.Host.Logging;
 using IntelligenceHub.Host.Policies;
 using IntelligenceHub.Hubs;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Polly;
 using Polly.Extensions.Http;
@@ -23,7 +20,6 @@ using static IntelligenceHub.Common.GlobalVariables;
 using IntelligenceHub.Business.Factories;
 using IntelligenceHub.Host.Swagger;
 using IntelligenceHub.Business.Handlers;
-using Microsoft.AspNetCore.Authentication;
 
 namespace IntelligenceHub.Host
 {
@@ -38,9 +34,6 @@ namespace IntelligenceHub.Host
             var settingsSection = builder.Configuration.GetRequiredSection(nameof(Settings));
             var settings = settingsSection.Get<Settings>();
 
-            var authSection = builder.Configuration.GetRequiredSection(nameof(AuthSettings));
-            var authSettings = authSection.Get<AuthSettings>();
-
             var insightSettingsSection = builder.Configuration.GetRequiredSection(nameof(AppInsightSettings));
             var insightSettings = insightSettingsSection.Get<AppInsightSettings>();
 
@@ -48,13 +41,9 @@ namespace IntelligenceHub.Host
             var agiClientSettings = agiClientSettingsSection.Get<AGIClientSettings>();
 
             builder.Services.Configure<Settings>(settingsSection);
-            builder.Services.Configure<AuthSettings>(authSection);
             builder.Services.Configure<AppInsightSettings>(insightSettingsSection);
             builder.Services.Configure<AGIClientSettings>(agiClientSettingsSection);
             builder.Services.Configure<SearchServiceClientSettings>(builder.Configuration.GetRequiredSection(nameof(SearchServiceClientSettings)));
-
-            // Register AuthSettings as a singleton
-            builder.Services.AddSingleton(authSettings);
 
             // Add Services
 
@@ -75,7 +64,6 @@ namespace IntelligenceHub.Host
             builder.Services.AddScoped<IMessageHistoryLogic, MessageHistoryLogic>();
             builder.Services.AddScoped<IProfileLogic, ProfileLogic>();
             builder.Services.AddScoped<IRagLogic, RagLogic>();
-            builder.Services.AddScoped<IAuthLogic, AuthLogic>();
 
             // Clients and Client Factory
             builder.Services.AddSingleton<IAGIClientFactory, AGIClientFactory>();
@@ -85,7 +73,6 @@ namespace IntelligenceHub.Host
             builder.Services.AddSingleton<AnthropicAIClient>();
             builder.Services.AddSingleton<IToolClient, ToolClient>();
             builder.Services.AddSingleton<IAISearchServiceClient, AISearchServiceClient>();
-            builder.Services.AddSingleton<IAIAuth0Client, Auth0Client>();
 
             // Repositories
             builder.Services.AddScoped<IProfileRepository, ProfileRepository>();
@@ -123,7 +110,7 @@ namespace IntelligenceHub.Host
                 .OrResult(r => r.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                 .WaitAndRetryAsync(settings.AGIClientMaxRetries, _ =>
                 {
-                    // Add random jitter up to 5 seconds.
+                    // Add random jitter
                     var maxJitter = settings.AGIClientMaxJitter * 1000; // convert to milliseconds
                     var jitter = TimeSpan.FromMilliseconds(new Random().Next(0, maxJitter));
                     return TimeSpan.FromSeconds(settings.AGIClientInitialRetryDelay) + jitter;
@@ -201,40 +188,6 @@ namespace IntelligenceHub.Host
             });
             #endregion
 
-            #region Authentication
-
-            // Configure Auth
-            builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            }).AddJwtBearer(options =>
-            {
-                options.Authority = authSettings.Domain;
-                options.Audience = authSettings.Audience;
-
-                // Specify the Role Claim Type if necessary
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    RoleClaimType = "roles"
-                };
-            });
-
-            if (builder.Environment.IsDevelopment())
-            {
-                builder.Services.AddAuthentication("BasicAuthentication")
-                    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
-            }
-
-            // Add role-based authorization policies
-            builder.Services.AddAuthorization(options =>
-            {
-                options.AddPolicy(ElevatedAuthPolicy, policy =>
-                    policy.RequireAssertion(context =>
-                        context.User.HasClaim(c => (c.Type == "scope" || c.Type == "permissions") && c.Value.Split(' ').Contains("all:admin"))));
-            });
-            #endregion
-
             #region Swagger
             builder.Services.AddSwaggerGen(options =>
             {
@@ -251,33 +204,6 @@ namespace IntelligenceHub.Host
 
                 // Enable annotations to set NSwag generated names for client methods
                 options.EnableAnnotations();
-
-                // Define the security scheme for bearer tokens
-                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-                {
-                    Name = "Authorization",
-                    Type = SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT",
-                    In = ParameterLocation.Header,
-                    Description = "Enter 'Bearer' followed by a space and the JWT token."
-                });
-
-                // Apply the security scheme globally
-                options.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
-                    {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        Array.Empty<string>()
-                    }
-                });
             });
 
             #endregion
@@ -298,8 +224,7 @@ namespace IntelligenceHub.Host
                 {
                     policy.AllowAnyMethod()
                           .AllowAnyHeader()
-                          .AllowCredentials()
-                          .WithOrigins(settings.ValidOrigins);
+                          .AllowAnyOrigin();
                 });
 
                 // Serve static files in development environment
@@ -323,9 +248,6 @@ namespace IntelligenceHub.Host
             app.UseHttpsRedirection();
 
             app.UseMiddleware<LoggingMiddleware>();
-
-            app.UseAuthentication();
-            app.UseAuthorization();
 
             app.MapControllers();
             app.MapHub<ChatHub>("/chatstream").RequireCors();

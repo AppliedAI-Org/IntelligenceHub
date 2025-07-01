@@ -190,11 +190,6 @@
             };
 
         /// <summary>
-        /// The policy for elevated authentication.
-        /// </summary>
-        public const string ElevatedAuthPolicy = "AdminPolicy";
-
-        /// <summary>
         /// The system message for RAG requests.
         /// </summary>
         public const string RagMetadataGenSystemMessage =

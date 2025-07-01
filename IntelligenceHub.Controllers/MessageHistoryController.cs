@@ -1,8 +1,6 @@
 ﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
-using static IntelligenceHub.Common.GlobalVariables;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -14,7 +12,6 @@ namespace IntelligenceHub.Controllers
     /// </summary>
     [Route("[controller]")]
     [ApiController]
-    [Authorize(Policy = ElevatedAuthPolicy)]
     public class MessageHistoryController : ControllerBase
     {
         private readonly IMessageHistoryLogic _messageHistoryLogic;

@@ -2,12 +2,10 @@ using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Swashbuckle.AspNetCore.Annotations;
-using System.Net;
 using System.Text;
 using static IntelligenceHub.Common.GlobalVariables;
 
@@ -19,7 +17,6 @@ namespace IntelligenceHub.Controllers
     /// </summary>
     [Route("[controller]")]
     [ApiController]
-    [Authorize]
     public class CompletionController : ControllerBase
     {
         private readonly ICompletionLogic _completionLogic;

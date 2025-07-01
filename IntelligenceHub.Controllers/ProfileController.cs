@@ -1,7 +1,6 @@
 ﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -15,7 +14,6 @@ namespace IntelligenceHub.Controllers
     /// </summary>
     [Route("[controller]")]
     [ApiController]
-    [Authorize(Policy = ElevatedAuthPolicy)]
     public class ProfileController : ControllerBase
     {
         private readonly IProfileLogic _profileLogic;
