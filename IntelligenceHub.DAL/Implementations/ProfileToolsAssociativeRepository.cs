@@ -34,18 +34,6 @@ namespace IntelligenceHub.DAL.Implementations
         }
 
         /// <summary>
-        /// Retrieves a list of profile associations for a given tool ID.
-        /// </summary>
-        /// <param name="toolId">The ID of the tool.</param>
-        /// <returns>A list of profile tools.</returns>
-        public async Task<List<DbProfileTool>> GetProfileAssociationsAsync(int toolId)
-        {
-            return await _context.ProfileTools
-                .Where(pt => pt.ToolID == toolId)
-                .ToListAsync();
-        }
-
-        /// <summary>
         /// Associates a list of tools with a profile by their IDs.
         /// </summary>
         /// <param name="profileId">The profile ID.</param>

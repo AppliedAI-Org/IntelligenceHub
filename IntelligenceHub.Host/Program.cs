@@ -316,7 +316,7 @@ namespace IntelligenceHub.Host
                     policy.AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials()
-                          .WithOrigins(settings.ValidOrigins);
+                          .WithOrigins("https://jacobthomas-fmh4huhdhba7fvfq.centralus-01.azurewebsites.net", "https://nlsequel.azurewebsites.net/", "https://nlsequel-dev-ama2dtd8eghhe0d9.eastus2-01.azurewebsites.net");
                 });
             }
 

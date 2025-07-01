@@ -4,7 +4,7 @@ namespace IntelligenceHub.API.DTOs.RAG
 {
     public class IndexScoringProfile
     {
-        public string? Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public SearchAggregation? SearchAggregation {  get; set; }
         public SearchInterpolation? SearchInterpolation { get; set; }
         public double FreshnessBoost { get; set; }

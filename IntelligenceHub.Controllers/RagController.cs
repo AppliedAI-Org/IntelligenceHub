@@ -302,7 +302,6 @@ namespace IntelligenceHub.Controllers
             {
                 if (documentUpsertRequest == null || documentUpsertRequest.Documents.Count < 1) return BadRequest("The request body is malformed or contains less than 1 document.");
                 if (string.IsNullOrEmpty(index)) return BadRequest($"Invalid index name: '{index}'.");
-                foreach (var doc in documentUpsertRequest.Documents) if (doc.Title.Contains('/') || doc.Title.Contains('\\')) return BadRequest($"Document titles cannot contain slashes. Document: {doc.Title}");
                 var response = await _ragLogic.UpsertDocuments(index, documentUpsertRequest);
                 if (response.IsSuccess) return Ok(documentUpsertRequest);
                 else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
