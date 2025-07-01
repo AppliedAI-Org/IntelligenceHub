@@ -9,11 +9,18 @@ namespace IntelligenceHub.DAL.Interfaces
     public interface IProfileRepository
     {
         /// <summary>
-        /// Retrieves a profiles from the database by name.
+        /// Retrieves a profile from the database by name.
         /// </summary>
         /// <param name="name">The name of the profile.</param>
         /// <returns>The matching profile, or null if no results are found.</returns>
         Task<DbProfile?> GetByNameAsync(string name);
+
+        /// <summary>
+        /// Retrieves a profile from the database by id.
+        /// </summary>
+        /// <param name="id">The Id of the profile.</param>
+        /// <returns>The profile.</returns>
+        Task<DbProfile?> GetAsync(int id);
 
         /// <summary>
         /// Retrieves all profiles from the database.

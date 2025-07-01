@@ -147,7 +147,7 @@ namespace IntelligenceHub.Business.Handlers
             }
 
             if (profile.TopLogprobs < 0 || profile.TopLogprobs > 5) return "Top_Logprobs must be a value between 0 and 5";
-            if (profile.ResponseFormat != null && profile.ResponseFormat != "text" && profile.ResponseFormat != ResponseFormat.Json.ToString()) return $"If ResponseType is set, it must either be equal to '{ResponseFormat.Text}' or '{ResponseFormat.Json}'.";
+            if (profile.ResponseFormat != null && profile.ResponseFormat.ToLower() != ResponseFormat.Text.ToString().ToLower() && profile.ResponseFormat.ToLower() != ResponseFormat.Json.ToString().ToLower()) return $"If ResponseType is set, it must either be equal to '{ResponseFormat.Text}' or '{ResponseFormat.Json}'.";
 
             // Validate SQL constraints
             if (profile.Name.Length > 40) return "The 'Name' field exceeds the maximum allowed length of 40 characters.";
@@ -347,6 +347,7 @@ namespace IntelligenceHub.Business.Handlers
             if (index.MaxRagAttachments < 0) return "MaxRagAttachments must be a non-negative integer greater than 0.";
             if (index.MaxRagAttachments > 20) return "MaxRagAttachments cannot exceed 20.";
             if (index.ChunkOverlap < 0 || index.ChunkOverlap > 1) return "ChunkOverlap must be between 0 and 1 (inclusive).";
+            if (index.EmbeddingModel?.ToLower() != "text-embedding-ada-002" && index.EmbeddingModel?.ToLower() != "text-embedding-3-small" && index.EmbeddingModel?.ToLower() != "text-embedding-3-large") return $"The provided embedding model '{index.EmbeddingModel}' is not supported. Currently, the supported embedding models are limited to text-embedding-3-large, text-embedding-3-small, and text-embedding-ada-002";
 
             if (!string.IsNullOrEmpty(index.ScoringProfile?.Name))
             {
@@ -354,8 +355,6 @@ namespace IntelligenceHub.Business.Handlers
                 if (index.ScoringProfile.Name.Length > 128) return "The ScoringProfile name exceeds the maximum allowed length of 255 characters.";
                 if (index.QueryType.ToString().Length > 255) return "The QueryType exceeds the maximum allowed length of 255 characters.";
                 if (index.GenerationHost?.ToString().Length > 255) return "The GenerationHost exceeds the maximum allowed length of 255 characters.";
-                if (index.ScoringProfile.SearchAggregation == null) return "The Aggregation property provided is invalid.";
-                if (index.ScoringProfile.SearchInterpolation == null) return "The Interpolation property provided is invalid.";
                 if (index.ScoringProfile.FreshnessBoost < 0) return "FreshnessBoost must be a non-negative value.";
                 if (index.ScoringProfile.BoostDurationDays < 0) return "BoostDurationDays must be a non-negative integer.";
                 if (index.ScoringProfile.TagBoost < 0) return "TagBoost must be a non-negative value.";

@@ -136,6 +136,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             _mockMetaRepository.Setup(repo => repo.AddAsync(It.IsAny<DbIndexMetadata>())).ReturnsAsync(dbIndexMetadata);
             _mockRagRepository.Setup(repo => repo.CreateIndexAsync(indexMetadata.Name)).ReturnsAsync(true);
             _mockRagRepository.Setup(repo => repo.EnableChangeTrackingAsync(indexMetadata.Name)).ReturnsAsync(true);
+            _mockRagRepository.Setup(repo => repo.CreateDatasourceViewAsync(indexMetadata.Name)).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.UpsertIndex(indexMetadata)).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.CreateDatasource(indexMetadata.Name)).ReturnsAsync(true);
             _mockSearchClient.Setup(client => client.UpsertIndexer(indexMetadata)).ReturnsAsync(true);

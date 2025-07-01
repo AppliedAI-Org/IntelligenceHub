@@ -225,7 +225,7 @@ namespace IntelligenceHub.Client.Implementations
         public async Task<bool> DeleteIndexer(string indexName)
         {
             var skillsetDeletionResponse = await _indexerClient.DeleteSkillsetAsync(indexName.ToLower() + _skillsetSuffix );
-            if (skillsetDeletionResponse == null || skillsetDeletionResponse.IsError) return false;
+            if (skillsetDeletionResponse == null || skillsetDeletionResponse.IsError && skillsetDeletionResponse.Status != 404) return false;
 
             var response = await _indexerClient.DeleteIndexerAsync(indexName + _indexerSuffix );
             return response.Status > 199 && response.Status < 300;
@@ -238,21 +238,42 @@ namespace IntelligenceHub.Client.Implementations
         /// <returns>A boolean indicating success or failure of the operation.</returns>
         public async Task<bool> CreateDatasource(string indexName)
         {
+            // Name of the SQL view
+            string viewName = $"vw_{indexName}";
+
+            // Build the container off the view
+            var container = new SearchIndexerDataContainer(viewName);
+
+            var dataSource = new SearchIndexerDataSourceConnection(
+                name: indexName,
+                type: SearchIndexerDataSourceType.AzureSql,
+                connectionString: _sqlRagDbConnectionString,
+                container: container)
+            {
+                // Use high-water-mark (HWM) on the Modified column in the view
+                DataChangeDetectionPolicy = new HighWaterMarkChangeDetectionPolicy(highWaterMarkColumnName: "Modified"),
+
+                // Soft-delete on IsDeleted = true
+                DataDeletionDetectionPolicy = new SoftDeleteColumnDeletionDetectionPolicy()
+                {
+                    SoftDeleteColumnName = "IsDeleted",
+                    SoftDeleteMarkerValue = "true"
+                }
+            };
+
             try
             {
-                var container = new SearchIndexerDataContainer(indexName);
-                var connection = new SearchIndexerDataSourceConnection(indexName, SearchIndexerDataSourceType.AzureSql, _sqlRagDbConnectionString, container)
-                {
-                    DataChangeDetectionPolicy = new SqlIntegratedChangeTrackingPolicy(),
-                };
-                var response = await _indexerClient.CreateDataSourceConnectionAsync(connection);
+                await _indexerClient.CreateOrUpdateDataSourceConnectionAsync(dataSource);
                 return true;
             }
             catch (RequestFailedException ex) when (ex.Status == 409)
             {
+                // Already exists
                 return false;
             }
         }
+
+
 
         /// <summary>
         /// Deletes a datasource connection to the SQL database table created for this index.
