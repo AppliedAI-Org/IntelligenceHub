@@ -104,6 +104,9 @@ namespace IntelligenceHub.Business.Implementations
             success = await _ragRepository.EnableChangeTrackingAsync(indexDefinition.Name);
             if (!success) return APIResponseWrapper<bool>.Failure($"Partially failed to add index '{indexDefinition.Name}' to the database.", APIResponseStatusCodes.InternalError);
 
+            success = await _ragRepository.CreateDatasourceViewAsync(indexDefinition.Name);
+            if (!success) return APIResponseWrapper<bool>.Failure($"Partially failed to add index '{indexDefinition.Name}' to the database.", APIResponseStatusCodes.InternalError);
+
             // create the index in Azure AI Search
             success = await _searchClient.UpsertIndex(indexDefinition);
             if (!success) return APIResponseWrapper<bool>.Failure("Failed to add the index to the corresponding search service resource.", APIResponseStatusCodes.InternalError);

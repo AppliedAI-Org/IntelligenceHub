@@ -50,7 +50,7 @@ namespace IntelligenceHub.DAL.Implementations
         /// <returns>A boolean indicating the success or failure of the operation.</returns>
         public async Task<bool> CreateIndexAsync(string tableName)
         {
-            var query = $@"CREATE TABLE [{tableName}] (
+            var contentTableQuery = $@"CREATE TABLE [{tableName}] (
                                 Id INT IDENTITY(1,1) PRIMARY KEY,
                                 Title NVARCHAR(255) NOT NULL,
                                 Content NVARCHAR(MAX) NOT NULL,
@@ -61,7 +61,13 @@ namespace IntelligenceHub.DAL.Implementations
                                 Modified DATETIMEOFFSET NOT NULL
                             );";
 
-            await _context.Database.ExecuteSqlRawAsync(query);
+            var tombstoneTableQuery = $@"CREATE TABLE [{tableName}_Deleted] (
+                Id INT PRIMARY KEY,
+                DeletedAt DATETIMEOFFSET NOT NULL DEFAULT SYSUTCDATETIME()
+            );";
+
+            await _context.Database.ExecuteSqlRawAsync(contentTableQuery);
+            await _context.Database.ExecuteSqlRawAsync(tombstoneTableQuery);
             return true;
         }
 
@@ -72,13 +78,62 @@ namespace IntelligenceHub.DAL.Implementations
         /// <returns>A boolean indicating the success of the operation.</returns>
         public async Task<bool> EnableChangeTrackingAsync(string tableName)
         {
-            var query = $@"ALTER TABLE [dbo].[{tableName}]
-                           ENABLE CHANGE_TRACKING 
-                           WITH (TRACK_COLUMNS_UPDATED = ON);";
+            var contentTrackingQuery = $@"ALTER TABLE [dbo].[{tableName}]
+                                  ENABLE CHANGE_TRACKING 
+                                  WITH (TRACK_COLUMNS_UPDATED = ON);";
 
-            await _context.Database.ExecuteSqlRawAsync(query);
+            var tombstoneTrackingQuery = $@"ALTER TABLE [dbo].[{tableName}_Deleted]
+                                    ENABLE CHANGE_TRACKING 
+                                    WITH (TRACK_COLUMNS_UPDATED = OFF);";
+
+            await _context.Database.ExecuteSqlRawAsync(contentTrackingQuery);
+            await _context.Database.ExecuteSqlRawAsync(tombstoneTrackingQuery);
             return true;
         }
+
+        /// <summary>
+        /// Creates or updates the SQL view that merges the main table and its tombstone table,
+        /// exposing an IsDeleted flag for Azure Search’s soft‐delete policy.
+        /// </summary>
+        /// <param name="tableName">Base name of the index/content table (without “vw_” prefix or “_Deleted” suffix).</param>
+        public async Task<bool> CreateDatasourceViewAsync(string tableName)
+        {
+            // Build the view name and the SQL statement
+            string viewName = $"vw_{tableName}";
+            string sql = $@"
+                CREATE OR ALTER VIEW [dbo].[{viewName}] AS
+                SELECT
+                    Id,
+                    Title,
+                    Content,
+                    Topic,
+                    Keywords,
+                    Source,
+                    Created,
+                    Modified,
+                    CAST(0 AS BIT) AS IsDeleted
+                FROM [dbo].[{tableName}]
+
+                UNION ALL
+
+                SELECT
+                    Id,
+                    NULL       AS Title,
+                    NULL       AS Content,
+                    NULL       AS Topic,
+                    NULL       AS Keywords,
+                    NULL       AS Source,
+                    DeletedAt  AS Created,
+                    DeletedAt  AS Modified,
+                    CAST(1 AS BIT) AS IsDeleted
+                FROM [dbo].[{tableName}_Deleted];
+            ";
+
+            // Execute the DDL
+            await _context.Database.ExecuteSqlRawAsync(sql);
+            return true;
+        }
+
 
         /// <summary>
         /// Marks the index to be updated by an indexer by setting its state to modified.
@@ -100,10 +155,15 @@ namespace IntelligenceHub.DAL.Implementations
         /// <returns>A boolean indicating the success of the operation.</returns>
         public async Task<bool> DeleteIndexAsync(string tableName)
         {
-            var query = $@"DROP TABLE IF EXISTS [{tableName}]";
-            var result = await _context.Database.ExecuteSqlRawAsync(query);
-            return result == -1; // -1 is returned for scenarios where row number doesn't make sense
+            var dropMainTableQuery = $@"DROP TABLE IF EXISTS [{tableName}];";
+            var dropTombstoneQuery = $@"DROP TABLE IF EXISTS [{tableName}_Deleted];";
+
+            await _context.Database.ExecuteSqlRawAsync(dropMainTableQuery);
+            await _context.Database.ExecuteSqlRawAsync(dropTombstoneQuery);
+
+            return true;
         }
+
 
         /// <summary>
         /// Retrieves all documents from the RAG index.
@@ -193,12 +253,40 @@ namespace IntelligenceHub.DAL.Implementations
         /// <returns>A bool indicating the success or failure of the operation.</returns>
         public async Task<bool> DeleteAsync(DbIndexDocument document, string tableName)
         {
-            var query = $@"DELETE FROM [{tableName}] WHERE Id = @Id";
-            var parameters = new[]
+            // Wrap both operations in a single transaction
+            await using var tx = await _context.Database.BeginTransactionAsync();
+
+            var insertTombstone = $@"
+                INSERT INTO [{tableName}_Deleted] (Id)
+                VALUES (@Id);
+            ";
+
+            var deleteContent = $@"
+                DELETE FROM [{tableName}]
+                WHERE Id = @Id;
+            ";
+
+            var idParam = new SqlParameter("@Id", document.Id);
+
+            // 1) Insert tombstone entry
+            var tombstoneRows = await _context.Database
+                .ExecuteSqlRawAsync(insertTombstone, idParam);
+
+            // 2) Delete from main table
+            var contentRows = await _context.Database
+                .ExecuteSqlRawAsync(deleteContent, idParam);
+
+            if (tombstoneRows == 1 && contentRows == 1)
             {
-                new SqlParameter("@Id", document.Id)
-            };
-            return await _context.Database.ExecuteSqlRawAsync(query, parameters) == 1;
+                await tx.CommitAsync();
+                return true;
+            }
+            else
+            {
+                await tx.RollbackAsync();
+                return false;
+            }
         }
+
     }
 }
