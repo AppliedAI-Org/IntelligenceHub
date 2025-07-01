@@ -45,9 +45,12 @@ namespace IntelligenceHub.Common.Extensions
         /// <returns>The converted query type.</returns>
         public static QueryType? ConvertStringToQueryType(this string queryType)
         {
-            if (queryType == QueryType.Simple.ToString()) return QueryType.Simple;
-            if (queryType == QueryType.Semantic.ToString()) return QueryType.Semantic;
-            if (queryType == QueryType.Full.ToString()) return QueryType.Full;
+            if (queryType.ToLower() == QueryType.Simple.ToString().ToLower()) return QueryType.Simple;
+            if (queryType.ToLower() == QueryType.Semantic.ToString().ToLower()) return QueryType.Semantic;
+            if (queryType.ToLower() == QueryType.Full.ToString().ToLower()) return QueryType.Full;
+            if (queryType.ToLower() == QueryType.VectorSimpleHybrid.ToString().ToLower()) return QueryType.VectorSimpleHybrid;
+            if (queryType.ToLower() == QueryType.VectorSemanticHybrid.ToString().ToLower()) return QueryType.VectorSemanticHybrid;
+            if (queryType.ToLower() == QueryType.Vector.ToString().ToLower()) return QueryType.Vector;
             return null;
         }
 

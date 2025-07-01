@@ -31,5 +31,19 @@ namespace IntelligenceHub.DAL.Implementations
                 .ThenInclude(t => t.Properties)
                 .FirstOrDefaultAsync(p => p.Name == name);
         }
+
+        /// <summary>
+        /// Retrieves a profiles from the database by name.
+        /// </summary>
+        /// <param name="name">The name of the profile.</param>
+        /// <returns>The matching profile, or null if no results are found.</returns>
+        public async Task<DbProfile?> GetAsync(int id)
+        {
+            return await _dbSet
+                .Include(p => p.ProfileTools)
+                .ThenInclude(pt => pt.Tool)
+                .ThenInclude(t => t.Properties)
+                .FirstOrDefaultAsync(p => p.Id == id);
+        }
     }
 }
