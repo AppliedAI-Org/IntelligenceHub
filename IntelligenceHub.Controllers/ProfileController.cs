@@ -52,9 +52,9 @@ namespace IntelligenceHub.Controllers
                 var profileDto = response.Data;
                 return Ok(profileDto);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }
         }
 
