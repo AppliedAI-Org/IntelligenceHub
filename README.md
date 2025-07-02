@@ -1223,22 +1223,22 @@ with body:
 
 ###### Base URL `/MessageHistory`
 
-The Message History API provides endpoints to retrieve conversation history, upsert conversations, and remove conversations or individual messages.
+The Message History API provides endpoints to manage message histories. You can retrieve messages, update or create a message history, delete an entire message history, add individual messages, or remove specific messages.
 
 ### Endpoints
 
--#### 1. Get Conversation History
-- **HTTP Request**: `GET /MessageHistory/conversation/{id}/page/{page}/count/{count}`
-- **Description**: Retrieves the conversation history for the specified conversation identifier.
+#### 1. Get Message History
+- **HTTP Request**: `GET /MessageHistory/{id}`
+- **Description**: Retrieves the message history for the specified message history identifier.
 - **Route Parameters**:
-  - `id` (string): The unique identifier for the conversation.
-  - `page` (integer): The page number to retrieve (must be ≥ 1).
-  - `count` (integer): The number of messages to retrieve (must be ≥ 1).
+  - `id` (string): The unique identifier for the message history.
+- **Query Parameters**:
+  - `count` (integer, required): Number of messages to retrieve.
+  - `page` (integer, required): Page offset for pagination.
 - **Responses**:
   - `200 OK`: Returns a list of message objects.
   - `400 Bad Request`: If parameters are invalid.
   - `404 Not Found`: If the message history is not found.
-
 **Example Response**:
 ```json
 {
@@ -1260,12 +1260,12 @@ The Message History API provides endpoints to retrieve conversation history, ups
 }
 ```
 
-#### 2\. Upsert Conversation
+#### 2\. Update or Create Message History
 
--   **HTTP Request**: `POST /MessageHistory/conversation/{id}`
--   **Description**: Creates a new conversation or appends messages to an existing conversation.
+-   **HTTP Request**: `POST /MessageHistory/{messageHistoryId}`
+-   **Description**: Validates and updates (or creates) a message history by adding the provided list of messages.
 -   **Route Parameters**:
-    -   `id` (string): The unique identifier for the conversation.
+    -   `messageHistoryId` (string): The unique identifier for the message history.
 -   **Request Body**:
     -   **Content-Type**: `application/json`
     -   **Payload**: JSON array of `Message` objects.
@@ -1285,31 +1285,68 @@ The Message History API provides endpoints to retrieve conversation history, ups
             }
         ]
         ```
-
 -   **Responses**:
     -   `200 OK`: Returns the successfully added messages.
     -   `400 Bad Request`: Validation errors.
 
-#### 3\. Delete Conversation
+#### 3\. Delete Message History
 
--   **HTTP Request**: `DELETE /MessageHistory/conversation/{id}`
--   **Description**: Deletes the entire conversation identified by the provided ID.
+-   **HTTP Request**: `DELETE /MessageHistory/{id}`
+-   **Description**: Deletes the entire message history identified by the provided ID.
 -   **Route Parameters**:
-    -   `id` (string): The unique identifier for the conversation.
+    -   `id` (string): The unique identifier for the message history.
 -   **Responses**:
-    -   `204 No Content`: Conversation deleted successfully.
-    -   `404 Not Found`: If the conversation does not exist.
+    -   `200 OK`: Indicates successful deletion.
+    -   `404 Not Found`: If the message history is not found.
 
-#### 4\. Delete Message from Conversation
+**Example Response**:
+```json
+{
+    "status": "Ok",
+    "data": true
+}
+```
 
--   **HTTP Request**: `DELETE /MessageHistory/conversation/{conversationId}/message/{messageId}`
--   **Description**: Deletes a specific message from a conversation.
+#### 4\. Add Message to Message History
+
+-   **HTTP Request**: `POST /MessageHistory/{messageHistoryId}/message`
+-   **Description**: Adds a single message to an existing message history.
 -   **Route Parameters**:
-    -   `conversationId` (string): The unique identifier for the conversation.
-    -   `messageId` (integer): The unique identifier for the message.
+    -   `messageHistoryId` (string): The unique identifier for the message history.
+-   **Request Body**:
+    -   **Content-Type**: `application/json`
+    -   **Payload**: JSON representation of a `Message` object.
+        ```json
+        {
+            "Role": "User",
+            "Content": "Can I update my shipping address?",
+            "Base64Image": null,
+            "TimeStamp": "2025-03-05T12:45:00Z"
+        }
+        ```
+
 -   **Responses**:
-    -   `204 No Content`: Message deleted successfully.
-    -   `404 Not Found`: If the conversation or message does not exist.
+    -   `200 OK`: Returns the newly added message.
+    -   `404 Not Found`: If the message history is not found.
+
+#### 5\. Delete Message from Message History
+
+-   **HTTP Request**: `DELETE /MessageHistory/{messageHistoryId}/message/{messageId}`
+-   **Description**: Deletes a specific message from the message history.
+-   **Route Parameters**:
+    -   `messageHistoryId` (string): The unique identifier for the message history.
+    -   `messageId` (string): The unique identifier for the message.
+-   **Responses**:
+    -   `200 OK`: Indicates successful deletion.
+    -   `404 Not Found`: If the message history or message is not found.
+
+**Example Response**:
+```json
+{
+    "status": "Ok",
+    "data": true
+}
+```
 
 ### RAG Index API Reference
 ###### Base URL `/Rag`
