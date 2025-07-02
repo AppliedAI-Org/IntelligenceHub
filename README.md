@@ -1239,6 +1239,7 @@ The Message History API provides endpoints to manage message histories. You can 
   - `200 OK`: Returns a list of message objects.
   - `400 Bad Request`: If parameters are invalid.
   - `404 Not Found`: If the message history is not found.
+
 **Example Response**:
 ```json
 {
@@ -1285,6 +1286,7 @@ The Message History API provides endpoints to manage message histories. You can 
             }
         ]
         ```
+
 -   **Responses**:
     -   `200 OK`: Returns the successfully added messages.
     -   `400 Bad Request`: Validation errors.
