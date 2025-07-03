@@ -49,12 +49,18 @@ namespace IntelligenceHub.Tests.Unit.Business
         {
             // Arrange
             var conversationId = Guid.NewGuid();
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10, 1)).ReturnsAsync(new List<DbMessage>());
+
+            // First call: existence check (count = 1, page = 1)
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1, 1)).ReturnsAsync(new List<DbMessage>());   // empty list ⇒ conversation exists but has no messages
+
+            // Second call: actual fetch (count = 10, page = 1)
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10, 1)).ReturnsAsync(new List<DbMessage>());   // same empty result
 
             // Act
             var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10, 1);
 
             // Assert
+            Assert.True(result.IsSuccess);
             Assert.Empty(result.Data);
         }
 
