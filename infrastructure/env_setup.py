@@ -63,6 +63,10 @@ required_env_vars = [
     "AGIClientSettings_OpenAIServices_0_Key",
     "AGIClientSettings_AnthropicServices_0_Endpoint",
     "AGIClientSettings_AnthropicServices_0_Key",
+    "AGIClientSettings_SearchServiceCompletionServiceEndpoint",
+    "AGIClientSettings_SearchServiceCompletionServiceKey",
+    "SearchServiceClientSettings_Endpoint",
+    "SearchServiceClientSettings_Key",
     "Settings_DefaultImageHost"  # token for DefaultImageGenHost
 ]
 
@@ -120,6 +124,17 @@ for service_type in additional_services.keys():
 for service_type, services in additional_services.items():
     if services:
         replacements[f"AGIClientSettings_{service_type}"] = services
+
+# Prompt for multiple ValidOrigins entries
+if "Settings_ValidOrigins" not in replacements:
+    valid_origins = []
+    print("Enter values for ValidOrigins (leave blank when finished):")
+    while True:
+        origin = input("  ValidOrigin: ").strip()
+        if not origin:
+            break
+        valid_origins.append(origin)
+    replacements["Settings_ValidOrigins"] = valid_origins
 
 # Prompt for multiple ValidAGIModels entries
 if "Settings_ValidAGIModels" not in replacements:

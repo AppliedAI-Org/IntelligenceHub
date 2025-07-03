@@ -2,6 +2,7 @@
 using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Common.Extensions;
 using IntelligenceHub.DAL.Models;
+using IntelligenceHub.API.DTOs.RAG;
 using System.Text.Json;
 using static IntelligenceHub.Common.GlobalVariables;
 
@@ -18,9 +19,8 @@ namespace IntelligenceHub.DAL
         /// Maps a database profile entity to a profile DTO.
         /// </summary>
         /// <param name="dbProfile">The database profile entity.</param>
-        /// <param name="tools">Optional list of tools associated with the profile.</param>
         /// <returns>A profile DTO.</returns>
-        public static Profile MapFromDbProfile(DbProfile dbProfile, List<Tool>? tools = null)
+        public static Profile MapFromDbProfile(DbProfile dbProfile)
         {
             var profile = new Profile()
             {
@@ -28,7 +28,8 @@ namespace IntelligenceHub.DAL
                 Name = dbProfile.Name,
                 Model = dbProfile.Model,
                 Host = dbProfile.Host.ConvertToServiceHost(),
-                ImageHost = dbProfile.ImageHost?.ConvertToServiceHost(), 
+                ImageHost = dbProfile.ImageHost?.ConvertToServiceHost(),
+                RagDatabase = dbProfile.RagDatabase,
                 FrequencyPenalty = (float?)dbProfile.FrequencyPenalty,
                 PresencePenalty = (float?)dbProfile.PresencePenalty,
                 Temperature = (float?)dbProfile.Temperature,
@@ -40,7 +41,29 @@ namespace IntelligenceHub.DAL
                 SystemMessage = dbProfile.SystemMessage,
                 Stop = dbProfile.Stop?.ToStringArray(),
                 ReferenceProfiles = dbProfile.ReferenceProfiles?.ToStringArray(),
-                Tools = tools,
+                Tools = dbProfile.ProfileTools.Select(pt => new Tool 
+                { 
+                    Id = pt.Tool.Id, 
+                    Function = new Function() 
+                    { 
+                        Name = pt.Tool.Name, 
+                        Description = pt.Tool.Description, 
+                        Parameters = new Parameters() 
+                        { 
+                            type = "object", 
+                            required = pt.Tool.Required.ToStringArray(),  
+                            properties = pt.Tool.Properties.ToDictionary(p => p.Name, p => new Property() 
+                            { 
+                                Id = p.Id, 
+                                type = p.Type, 
+                                description = p.Description 
+                            }) 
+                        } 
+                    }, 
+                    ExecutionUrl = pt.Tool.ExecutionUrl, 
+                    ExecutionBase64Key = pt.Tool.ExecutionBase64Key, 
+                    ExecutionMethod = pt.Tool.ExecutionMethod 
+                }).ToList(),
                 MaxMessageHistory = dbProfile.MaxMessageHistory,
             };
             profile.Logprobs = profile.TopLogprobs > 0 ? true : false;
@@ -58,10 +81,7 @@ namespace IntelligenceHub.DAL
         /// <returns>A database profile entity.</returns>
         public static DbProfile MapToDbProfile(string profileName, string defaultAzureModel, DbProfile? existingProfile = null, Profile? profileUpdate = null)
         {
-            if (existingProfile == null)
-            {
-                existingProfile = new DbProfile();
-            }
+            if (existingProfile == null) existingProfile = new DbProfile();
 
             var host = profileUpdate?.Host ?? existingProfile.Host.ConvertToServiceHost();
             if (host == AGIServiceHosts.None) host = AGIServiceHosts.OpenAI;
@@ -78,6 +98,7 @@ namespace IntelligenceHub.DAL
             existingProfile.ResponseFormat = profileUpdate?.ResponseFormat ?? existingProfile.ResponseFormat;
             existingProfile.User = profileUpdate?.User ?? existingProfile.User;
             existingProfile.SystemMessage = profileUpdate?.SystemMessage ?? existingProfile.SystemMessage;
+            existingProfile.RagDatabase = profileUpdate?.RagDatabase ?? existingProfile.RagDatabase;
             existingProfile.TopLogprobs = profileUpdate?.TopLogprobs ?? existingProfile.TopLogprobs;
             existingProfile.MaxTokens = profileUpdate?.MaxTokens ?? existingProfile.MaxTokens;
             existingProfile.Model = model;
@@ -162,7 +183,6 @@ namespace IntelligenceHub.DAL
             return new DbProperty()
             {
                 Id = property.Id ?? 0,
-                ToolId = property.Id ?? 0,
                 Name = name,
                 Type = property.type,
                 Description = property.description ?? string.Empty,
@@ -209,6 +229,140 @@ namespace IntelligenceHub.DAL
                 TimeStamp = message.TimeStamp,
             };
         }
+        #endregion
+
+        #region RAG Indexing
+
+        /// <summary>
+        /// Maps a database index document entity to an index document DTO.
+        /// </summary>
+        /// <param name="dbDocument">The database index document entity.</param>
+        /// <returns>An index document DTO.</returns>
+        public static IndexDocument MapFromDbIndexDocument(DbIndexDocument dbDocument)
+        {
+            return new IndexDocument()
+            {
+                Id = dbDocument.Id,
+                Title = dbDocument.Title,
+                Content = dbDocument.Content,
+                Topic = dbDocument.Topic,
+                Keywords = dbDocument.Keywords,
+                Source = dbDocument.Source,
+                Created = dbDocument.Created,
+                Modified = dbDocument.Modified
+            };
+        }
+
+        /// <summary>
+        /// Maps an index document DTO to a database index document entity.
+        /// </summary>
+        /// <param name="document">The index document DTO.</param>
+        /// <returns>A database index document entity.</returns>
+        public static DbIndexDocument MapToDbIndexDocument(IndexDocument document)
+        {
+            return new DbIndexDocument()
+            {
+                Id = document.Id,
+                Title = document.Title,
+                Content = document.Content,
+                Topic = document.Topic,
+                Keywords = document.Keywords,
+                Source = document.Source,
+                Created = document.Created,
+                Modified = document.Modified
+            };
+        }
+
+        /// <summary>
+        /// Maps a database index metadata entity to an index metadata DTO.
+        /// </summary>
+        /// <param name="dbIndexData">The database index metadata entity.</param>
+        /// <returns>An index metadata DTO.</returns>
+        public static IndexMetadata MapFromDbIndexMetadata(DbIndexMetadata dbIndexData)
+        {
+            return new IndexMetadata()
+            {
+                Name = dbIndexData.Name,
+                QueryType = dbIndexData.QueryType?.ConvertStringToQueryType() ?? QueryType.Simple,
+                GenerationHost = dbIndexData.GenerationHost.ConvertToServiceHost(),
+                ChunkOverlap = dbIndexData.ChunkOverlap ?? DefaultChunkOverlap, // make this a global variable
+                IndexingInterval = dbIndexData.IndexingInterval,
+                MaxRagAttachments = dbIndexData.MaxRagAttachments ?? DefaultRagAttachmentNumber, // make this a global variable
+                EmbeddingModel = dbIndexData.EmbeddingModel,
+                GenerateTopic = dbIndexData.GenerateTopic,
+                GenerateKeywords = dbIndexData.GenerateKeywords,
+                GenerateTitleVector = dbIndexData.GenerateTitleVector,
+                GenerateContentVector = dbIndexData.GenerateContentVector,
+                GenerateTopicVector = dbIndexData.GenerateTopicVector,
+                GenerateKeywordVector = dbIndexData.GenerateKeywordVector,
+                ScoringProfile = new IndexScoringProfile()
+                {
+                    Name = dbIndexData.DefaultScoringProfile ?? string.Empty,
+                    SearchAggregation = dbIndexData.ScoringAggregation?.ConvertStringToSearchAggregation(),
+                    SearchInterpolation = dbIndexData.ScoringInterpolation?.ConvertStringToSearchInterpolation(),
+                    BoostDurationDays = dbIndexData.ScoringBoostDurationDays ?? DefaultScoringBoostDurationDays,
+                    FreshnessBoost = dbIndexData.ScoringFreshnessBoost ?? DefaultScoringFreshnessBoost,
+                    TagBoost = dbIndexData.ScoringTagBoost ?? DefaultScoringTagBoost,
+                    Weights = DeserializeDbWeights(dbIndexData.ScoringWeights) ?? new Dictionary<string, double>()
+                }
+            };
+        }
+
+        /// <summary>
+        /// Maps an index metadata DTO to a database index metadata entity.
+        /// </summary>
+        /// <param name="indexData">The index metadata DTO.</param>
+        /// <returns>A database index metadata entity.</returns>
+        public static DbIndexMetadata MapToDbIndexMetadata(IndexMetadata indexData)
+        {
+            if (indexData.ScoringProfile == null) indexData.ScoringProfile = new IndexScoringProfile();
+            var chunkOverlap = indexData.ChunkOverlap;
+            return new DbIndexMetadata()
+            {
+                Name = indexData.Name,
+                QueryType = indexData.QueryType.ToString(),
+                GenerationHost = indexData.GenerationHost.ToString() ?? AGIServiceHosts.None.ToString(),
+                ChunkOverlap = chunkOverlap ?? DefaultChunkOverlap,
+                IndexingInterval = indexData.IndexingInterval ?? TimeSpan.FromHours(23.99), // only slightly under 1 day is supported
+                MaxRagAttachments = indexData.MaxRagAttachments ?? DefaultRagAttachmentNumber, // make this a global variable,
+                EmbeddingModel = indexData.EmbeddingModel ?? DefaultEmbeddingModel,
+                GenerateTopic = indexData.GenerateTopic ?? false,
+                GenerateKeywords = indexData.GenerateKeywords ?? false,
+                GenerateTitleVector = indexData.GenerateTitleVector ?? true,
+                GenerateContentVector = indexData.GenerateContentVector ?? true,
+                GenerateTopicVector = indexData.GenerateTopicVector ?? false,
+                GenerateKeywordVector = indexData.GenerateKeywordVector ?? false,
+                DefaultScoringProfile = indexData.ScoringProfile?.Name ?? DefaultVectorScoringProfile,
+                ScoringAggregation = indexData.ScoringProfile?.SearchAggregation.ToString(),
+                ScoringInterpolation = indexData.ScoringProfile?.SearchInterpolation.ToString(),
+                ScoringFreshnessBoost = indexData.ScoringProfile?.FreshnessBoost ?? DefaultScoringFreshnessBoost,
+                ScoringBoostDurationDays = indexData.ScoringProfile?.BoostDurationDays ?? DefaultScoringBoostDurationDays,
+                ScoringTagBoost = indexData.ScoringProfile?.TagBoost ?? DefaultScoringTagBoost,
+                ScoringWeights = indexData.ScoringProfile?.Weights?.Count > 0 ? SerializeDbWeights(indexData.ScoringProfile.Weights) : string.Empty,
+            };
+        }
+
+        /// <summary>
+        /// Deserializes a JSON string to a dictionary of weights.
+        /// </summary>
+        /// <param name="serializedWeights">The JSON string representing the weights.</param>
+        /// <returns>A dictionary of weights.</returns>
+        private static Dictionary<string, double>? DeserializeDbWeights(string? serializedWeights)
+        {
+            if (string.IsNullOrEmpty(serializedWeights)) return null;
+            return JsonSerializer.Deserialize<Dictionary<string, double>>(serializedWeights) ?? null;
+        }
+
+        /// <summary>
+        /// Serializes a dictionary of weights to a JSON string.
+        /// </summary>
+        /// <param name="weights">The dictionary of weights.</param>
+        /// <returns>A JSON string representing the weights.</returns>
+        private static string SerializeDbWeights(Dictionary<string, double> weights)
+        {
+            return JsonSerializer.Serialize(weights);
+        }
+
         #endregion
     }
 }

@@ -1,4 +1,5 @@
 ﻿using IntelligenceHub.API.DTOs;
+using IntelligenceHub.API.DTOs.RAG;
 using IntelligenceHub.API.DTOs.Tools;
 
 namespace IntelligenceHub.Business.Handlers
@@ -58,5 +59,26 @@ namespace IntelligenceHub.Business.Handlers
         /// <param name="message">The message to validate.</param>
         /// <returns>An error message string, or null if validation passes.</returns>
         public string? ValidateMessage(Message message);
+
+        /// <summary>
+        /// Validates the index definition DTO for RAG operations.
+        /// </summary>
+        /// <param name="index">The index definition.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
+        public string? ValidateIndexDefinition(IndexMetadata index);
+
+        /// <summary>
+        /// Validates the index name for RAG operations.
+        /// </summary>
+        /// <param name="tableName">The RAG index name that will be used to create an SQL table.</param>
+        /// <returns>A bool indicating if validation passed.</returns>
+        public bool IsValidIndexName(string tableName);
+
+        /// <summary>
+        /// Validates the RAG document upsert request DTO.
+        /// </summary>
+        /// <param name="request">The document upsert request to validate.</param>
+        /// <returns>An error message string, or null if validation passes.</returns>
+        public string? IsValidRagUpsertRequest(RagUpsertRequest documentName);
     }
 }

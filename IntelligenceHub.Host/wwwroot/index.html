@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ChatHub Client</title>
+    <link href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/5.0.11/signalr.min.js"></script>
     <style>
         body {
@@ -83,6 +85,22 @@
                 border-radius: 4px;
                 margin-left: 10px;
             }
+
+        /* Style the Tagify input to match other inputs */
+        .tagify {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 5px;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+        }
+
+        /* Add horizontal spacing between buttons */
+        .tool button {
+            margin-right: 10px; /* Add 10px of space between buttons */
+        }
 
         .config-container {
             border: 1px solid #ccc;
@@ -172,6 +190,8 @@
                 <h3>Configuration</h3>
                 <label for="profileName">Profile Name <span style="color: red;">*</span></label>
                 <input type="text" id="profileName" required />
+                <button onclick="loadProfile()">Load</button>
+                <button onclick="saveConfig()">Save</button>
                 <label for="conversationId">Conversation ID</label>
                 <input type="text" id="conversationId" />
                 <label for="systemMessage">System Message</label>
@@ -192,6 +212,8 @@
                     <option value="Anthropic">Anthropic</option>
                     <option value="None">None</option>
                 </select>
+                <label for="ragDatabase">RAG Database</label>
+                <input type="text" id="ragDatabase" />
                 <label for="frequencyPenalty">Frequency Penalty</label>
                 <input type="number" step="0.01" id="frequencyPenalty" />
                 <label for="presencePenalty">Presence Penalty</label>
@@ -211,20 +233,31 @@
                 <label for="toolChoice">Tool Choice</label>
                 <input type="text" id="toolChoice" />
                 <label for="responseFormat">Response Format</label>
-                <input type="text" id="responseFormat" />
+                <select id="responseFormat">
+                    <option value="">Not Specified</option>
+                    <option value="Json">Json</option>
+                    <option value="Text">Text</option>
+                </select>
                 <label for="stop">Stop</label>
                 <input type="text" id="stop" />
                 <label for="maxMessageHistory">Max Message History</label>
                 <input type="number" id="maxMessageHistory" />
                 <label for="referenceProfiles">Reference Profiles</label>
                 <input type="text" id="referenceProfiles" />
-                <button onclick="saveConfig()">Save</button>
+                <h3>Tools</h3>
+                <div id="toolsContainer"></div>
+                <button onclick="addTool()">Add Tool</button>
             </div>
         </div>
     </div>
 
     <script>
         let connection;
+        let token;
+
+        // Initialize Tagify for Required Properties
+        const requiredPropertiesInput = document.getElementById("requiredProperties");
+        const tagifyRequiredProperties = new Tagify(requiredPropertiesInput);
 
         async function startSignalRConnection() {
             try {
@@ -232,8 +265,8 @@
                     .withUrl("/chatstream")
                     .build();
 
+                // Define the ReceiveMessage handler
                 connection.on("broadcastMessage", function (chunk) {
-                    // Try to parse the incoming chunk (if needed)
                     let parsedChunk;
                     try {
                         parsedChunk = (typeof chunk === "string" ? JSON.parse(chunk) : chunk);
@@ -242,41 +275,63 @@
                         parsedChunk = null;
                     }
 
-                    // Create a visual separator for each new message chunk
-                    const separator = document.createElement("div");
-                    separator.className = "separator";
-                    document.getElementById("messages").appendChild(separator);
+                    function appendNode(node) {
+                        const separator = document.createElement("div");
+                        separator.className = "separator";
+                        document.getElementById("messages").appendChild(separator);
+                        document.getElementById("messages").appendChild(node);
+                    }
 
-                    // Process the parsed response
-                    if (parsedChunk) {
-                        if (parsedChunk.errorMessage) {
-                            const errorMsg = document.createElement("div");
-                            errorMsg.textContent = `Error: ${parsedChunk.errorMessage}`;
-                            errorMsg.className = "message error";
-                            document.getElementById("messages").appendChild(errorMsg);
-                        } else if (parsedChunk.completionUpdate) {
-                            const msg = document.createElement("div");
-                            msg.textContent = `chunk: ${parsedChunk.completionUpdate}`;
-                            msg.className = "message";
-                            document.getElementById("messages").appendChild(msg);
-                        } else if (parsedChunk.completionUpdate !== "") {
-                            // Fallback: display the raw content if it doesn't match expected structure
-                            const msg = document.createElement("div");
-                            msg.textContent = `chunk: ${chunk}`;
-                            msg.className = "message";
-                            document.getElementById("messages").appendChild(msg);
-                        }
-                    } else {
-                        // If parsing failed, display the raw chunk as an error
+                    if (!parsedChunk) {
+                        const err = document.createElement("div");
+                        err.textContent = `Error parsing chunk: ${chunk}`;
+                        err.className = "message error";
+                        appendNode(err);
+                        return;
+                    }
+
+                    // 1) ToolCalls (Pascal or camel)
+                    const calls = parsedChunk.ToolCalls || parsedChunk.toolCalls;
+                    if (calls && Object.keys(calls).length > 0) {
+                        const toolDiv = document.createElement("div");
+                        toolDiv.className = "message tool-call";
+
+                        // Build one block containing every tool in this chunk
+                        let html = "<strong>🛠 Tool call:</strong>";
+                        Object.entries(calls).forEach(([toolName, args]) => {
+                            html += `
+                                        <div style="margin-top:0.5em;">
+                                          <em>Tool Call: ${toolName} - ${JSON.stringify(parsedChunk.toolCalls)}</em>
+                                        </div>
+                                    `;
+                        });
+
+                        toolDiv.innerHTML = html;
+                        appendNode(toolDiv);
+                        return;
+                    }
+
+                    // 2) Error message from API
+                    if (parsedChunk.errorMessage) {
                         const errorMsg = document.createElement("div");
-                        errorMsg.textContent = `Error: ${chunk}`;
+                        errorMsg.textContent = `Error: ${parsedChunk.errorMessage}`;
                         errorMsg.className = "message error";
-                        document.getElementById("messages").appendChild(errorMsg);
+                        appendNode(errorMsg);
+                        return;
+                    }
+
+                    // 3) Raw text completion
+                    if (parsedChunk.completionUpdate) {
+                        const msg = document.createElement("div");
+                        msg.textContent = parsedChunk.completionUpdate;
+                        msg.className = "message";
+                        appendNode(msg);
+                        return;
                     }
                 });
 
                 await connection.start();
-                console.log("SignalR connection started.");
+                console.log("SignalR connection started with token authentication.");
             } catch (err) {
                 console.error("Error starting SignalR connection:", err);
             }
@@ -297,6 +352,7 @@
                     model: document.getElementById("profileModel").value,
                     host: document.getElementById("profileHost").value,
                     imageHost: document.getElementById("profileImageHost").value,
+                    ragDatabase: document.getElementById("ragDatabase").value,
                     frequencyPenalty: parseFloat(document.getElementById("frequencyPenalty").value),
                     presencePenalty: parseFloat(document.getElementById("presencePenalty").value),
                     temperature: parseFloat(document.getElementById("temperature").value),
@@ -337,14 +393,42 @@
         }
 
         async function saveConfig() {
+            const tools = Array.from(document.querySelectorAll(".tool")).map(toolDiv => {
+                const properties = {};
+                Array.from(toolDiv.querySelectorAll(".property")).forEach(propertyDiv => {
+                    const propertyName = propertyDiv.querySelector(".property-name").value;
+                    if (propertyName) {
+                        properties[propertyName] = {
+                            type: propertyDiv.querySelector(".property-type").value,
+                            description: propertyDiv.querySelector(".property-description").value
+                        };
+                    }
+                });
 
-            const responseFormatInput = document.getElementById("responseFormat").value.trim();
+                const requiredPropertiesInput = toolDiv.querySelector(".required-properties");
+                const tagifyRequiredProperties = new Tagify(requiredPropertiesInput);
+
+                return {
+                    Function: {
+                        Name: toolDiv.querySelector(".tool-name").value,
+                        Description: toolDiv.querySelector(".tool-description").value,
+                        Parameters: {
+                            properties: properties, // Constructed as a Dictionary<string, Property>
+                            required: tagifyRequiredProperties.value.map(tag => tag.value) // Get tags as an array
+                        }
+                    },
+                    ExecutionUrl: toolDiv.querySelector(".tool-execution-url").value,
+                    ExecutionMethod: toolDiv.querySelector(".tool-execution-method").value,
+                    ExecutionBase64Key: toolDiv.querySelector(".tool-execution-base64-key").value
+                };
+            });
 
             const profile = {
                 name: document.getElementById("profileName").value,
                 model: document.getElementById("profileModel").value,
                 host: document.getElementById("profileHost").value,
                 imageHost: document.getElementById("profileImageHost").value,
+                ragDatabase: document.getElementById("ragDatabase").value,
                 frequencyPenalty: parseFloat(document.getElementById("frequencyPenalty").value),
                 presencePenalty: parseFloat(document.getElementById("presencePenalty").value),
                 temperature: parseFloat(document.getElementById("temperature").value),
@@ -354,18 +438,19 @@
                 logprobs: document.getElementById("logprobs").checked,
                 user: document.getElementById("user").value,
                 toolChoice: document.getElementById("toolChoice").value,
-                responseFormat: responseFormatInput === "" ? null : responseFormatInput,
+                responseFormat: document.getElementById("responseFormat").value, // Updated to use dropdown
                 systemMessage: document.getElementById("systemMessage").value,
                 stop: document.getElementById("stop").value.split(','),
                 maxMessageHistory: parseInt(document.getElementById("maxMessageHistory").value),
-                referenceProfiles: document.getElementById("referenceProfiles").value.split(',')
+                referenceProfiles: document.getElementById("referenceProfiles").value.split(','),
+                tools: tools // Include tools in the profile payload
             };
 
             try {
                 const response = await fetch('/profile/upsert', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(profile)
                 });
@@ -380,6 +465,202 @@
                 console.error("Error saving configuration:", error);
                 alert("Error saving configuration. Please try again.");
             }
+        }
+
+        /**
+         * Renders a single tool editor, pre-populating name/description,
+         * execution settings, properties (dictionary) and required-tags.
+         * @param {object} tool  JSON from backend, e.g.
+         *   {
+         *     function: {
+         *       name: "initiateTest",
+         *       description: "...",
+         *       parameters: {
+         *         type: "object",
+         *         properties: {
+         *           Message: { id:116, type:"string", description:"..." }
+         *         },
+         *         required: []
+         *       }
+         *     },
+         *     executionUrl: null,
+         *     executionMethod: null,
+         *     executionBase64Key: null
+         *   }
+         * @returns {HTMLDivElement} the `.tool` container
+         */
+        function addTool(tool = {}) {
+            const toolsContainer = document.getElementById("toolsContainer");
+            const toolDiv = document.createElement("div");
+            toolDiv.className = "tool";
+
+            // --- build all inputs + buttons ---
+            toolDiv.innerHTML = `
+                <label>Tool Name</label>
+                <input type="text" class="tool-name" 
+                       value="${tool.function?.name || ""}" />
+
+                <label>Tool Description</label>
+                <input type="text" class="tool-description"
+                       value="${tool.function?.description || ""}" />
+
+                <label>Execution URL</label>
+                <input type="text" class="tool-execution-url"
+                       value="${tool.executionUrl || ""}" />
+
+                <label>Execution Method</label>
+                <input type="text" class="tool-execution-method"
+                       value="${tool.executionMethod || ""}" />
+
+                <label>Execution Base64 Key</label>
+                <input type="text" class="tool-execution-base64-key"
+                       value="${tool.executionBase64Key || ""}" />
+
+                <h4>Properties</h4>
+                <div class="properties-container"></div>
+
+                <label>Required Properties</label>
+                <input type="text" class="required-properties"
+                       placeholder="Add required properties" />
+
+                <button type="button" class="add-property-btn">Add Property</button>
+                <button type="button" class="remove-tool-btn">Remove Tool</button>
+            `;
+
+            // append to DOM, then wire up dynamic pieces
+            toolsContainer.appendChild(toolDiv);
+            const propertiesContainer = toolDiv.querySelector(".properties-container");
+            const reqInput = toolDiv.querySelector(".required-properties");
+            const addPropBtn = toolDiv.querySelector(".add-property-btn");
+            const removeToolBtn = toolDiv.querySelector(".remove-tool-btn");
+
+            // click handlers
+            addPropBtn.addEventListener("click", () => addProperty(propertiesContainer));
+            removeToolBtn.addEventListener("click", () => toolDiv.remove());
+
+            // pre-populate "properties" dictionary
+            const props = tool.function?.parameters?.properties || {};
+            Object.entries(props).forEach(([propName, propDef]) => {
+                addProperty(propertiesContainer, {
+                    name: propName,
+                    type: propDef.type,
+                    description: propDef.description
+                });
+            });
+
+            // init Tagify & restore any required-tags
+            const tagify = new Tagify(reqInput, {
+                delimiters: " ",
+                maxTags: 20,
+                trim: true
+            });
+            tagify.addTags(tool.function?.parameters?.required || []);
+
+            return toolDiv;
+        }
+
+        function removeTool(button) {
+            const toolDiv = button.parentElement;
+            toolDiv.remove();
+        }
+
+        function addProperty(buttonOrContainer, property = {}) {
+            const propertiesContainer = buttonOrContainer.className === "properties-container"
+                ? buttonOrContainer
+                : buttonOrContainer.previousElementSibling;
+
+            const propertyDiv = document.createElement("div");
+            propertyDiv.className = "property";
+
+            propertyDiv.innerHTML = `
+                <label>Property Name</label>
+                <input type="text" class="property-name" value="${property.name ?? ""}" />
+                <label>Property Type</label>
+                <select class="property-type">
+                    <option value="char" ${property.type === "char" ? "selected" : ""}>char</option>
+                    <option value="string" ${property.type === "string" ? "selected" : ""}>string</option>
+                    <option value="bool" ${property.type === "bool" ? "selected" : ""}>bool</option>
+                    <option value="int" ${property.type === "int" ? "selected" : ""}>int</option>
+                    <option value="double" ${property.type === "double" ? "selected" : ""}>double</option>
+                    <option value="float" ${property.type === "float" ? "selected" : ""}>float</option>
+                    <option value="date" ${property.type === "date" ? "selected" : ""}>date</option>
+                    <option value="enum" ${property.type === "enum" ? "selected" : ""}>enum</option>
+                </select>
+                <label>Property Description</label>
+                <input type="text" class="property-description" value="${property.description ?? ""}" />
+                <button onclick="removeProperty(this)">Remove Property</button>
+            `;
+
+            propertiesContainer.appendChild(propertyDiv);
+        }
+
+        function removeProperty(button) {
+            const propertyDiv = button.parentElement;
+            propertyDiv.remove();
+        }
+
+        async function loadProfile() {
+            const profileName = document.getElementById("profileName").value.trim();
+            if (!profileName) {
+                alert("Please enter a profile name to load.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/profile/get/${profileName}`, {
+                    method: 'GET'
+                });
+
+                if (response.ok) {
+                    const profile = await response.json();
+                    populateProfileFields(profile);
+                    alert("Profile loaded successfully!");
+                } else if (response.status === 404) {
+                    alert("Profile not found.");
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error loading profile: ${errorData.errorMessage}`);
+                }
+            } catch (error) {
+                console.error("Error loading profile:", error);
+                alert("Error loading profile. Please try again.");
+            }
+        }
+
+        /**
+         * Fills out the profile form (all basic settings + tools).
+         * @param {object} profile  JSON from backend, including `profile.tools`
+         */
+        function populateProfileFields(profile) {
+            // --- basic profile fields ---
+            document.getElementById("profileName").value = profile.name || "";
+            document.getElementById("conversationId").value = profile.conversationId || "";
+            document.getElementById("systemMessage").value = profile.systemMessage || "";
+            document.getElementById("profileModel").value = profile.model || "";
+            document.getElementById("profileHost").value = profile.host || "None";
+            document.getElementById("profileImageHost").value = profile.imageHost || "None";
+            document.getElementById("ragDatabase").value = profile.ragDatabase || "";
+            document.getElementById("frequencyPenalty").value = profile.frequencyPenalty ?? "";
+            document.getElementById("presencePenalty").value = profile.presencePenalty ?? "";
+            document.getElementById("temperature").value = profile.temperature ?? "";
+            document.getElementById("topP").value = profile.topP ?? "";
+            document.getElementById("maxTokens").value = profile.maxTokens ?? "";
+            document.getElementById("topLogprobs").value = profile.topLogprobs ?? "";
+            document.getElementById("logprobs").checked = profile.logprobs || false;
+            document.getElementById("user").value = profile.user || "";
+            document.getElementById("toolChoice").value = profile.toolChoice || "";
+            document.getElementById("responseFormat").value = profile.responseFormat || "";
+            document.getElementById("stop").value = (profile.stop || []).join(",");
+            document.getElementById("maxMessageHistory").value = profile.maxMessageHistory || "";
+            document.getElementById("referenceProfiles").value = (profile.referenceProfiles || []).join(",");
+
+            // --- clear + render tools ---
+            const toolsContainer = document.getElementById("toolsContainer");
+            toolsContainer.innerHTML = "";  // remove any existing .tool divs
+
+            (profile.tools || []).forEach(toolJson => {
+                addTool(toolJson);
+            });
         }
 
         // Add event listener for Enter key press

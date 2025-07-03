@@ -2,7 +2,6 @@
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
 using static IntelligenceHub.Common.GlobalVariables;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -99,6 +98,7 @@ namespace IntelligenceHub.Controllers
             {
                 if (string.IsNullOrEmpty(name)) return BadRequest("Invalid request. Please check the route parameter for the profile name.");
                 var response = await _profileLogic.GetToolProfileAssociations(name);
+                if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
                 return Ok(response.Data ?? new List<string>());
             }
             catch (Exception)

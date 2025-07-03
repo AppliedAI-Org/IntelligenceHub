@@ -1,8 +1,6 @@
 ﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Interfaces;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using static IntelligenceHub.Common.GlobalVariables;
 
@@ -34,21 +32,28 @@ namespace IntelligenceHub.Hubs
         /// <returns>An awaitable task after sending the completion response chunks back to the client</returns>
         public async Task Send(CompletionRequest completionRequest)
         {
-            var errorMessage = _validationLogic.ValidateChatRequest(completionRequest);
-            if (!string.IsNullOrEmpty(errorMessage))
+            try
             {
-                await Clients.Caller.SendAsync("broadcastMessage", errorMessage);
-                return;
-            }
+                var errorMessage = _validationLogic.ValidateChatRequest(completionRequest);
+                if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    await Clients.Caller.SendAsync("broadcastMessage", errorMessage);
+                    return;
+                }
 
-            var response = _completionLogic.StreamCompletion(completionRequest);
-            await foreach (var chunk in response)
+                var response = _completionLogic.StreamCompletion(completionRequest);
+                await foreach (var chunk in response)
+                {
+                    if (chunk.IsSuccess) await Clients.Caller.SendAsync("broadcastMessage", chunk.Data);
+                    else if (chunk.StatusCode == APIResponseStatusCodes.NotFound) await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");
+                    else if (chunk.StatusCode == APIResponseStatusCodes.TooManyRequests) await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");
+                    else if (chunk.StatusCode == APIResponseStatusCodes.InternalError) await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");
+                    else await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");
+                }
+            }
+            catch (Exception)
             {
-                if (chunk.IsSuccess) await Clients.Caller.SendAsync("broadcastMessage", chunk.Data);
-                else if (chunk.StatusCode == APIResponseStatusCodes.NotFound) await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");
-                else if (chunk.StatusCode == APIResponseStatusCodes.TooManyRequests) await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");
-                else if (chunk.StatusCode == APIResponseStatusCodes.InternalError) await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");
-                else await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {chunk.StatusCode}. Error message: {chunk.ErrorMessage}");
+                await Clients.Caller.SendAsync("broadcastMessage", $"Response Status: {500}. Error message: {DefaultExceptionMessage}");
             }
         }
     }

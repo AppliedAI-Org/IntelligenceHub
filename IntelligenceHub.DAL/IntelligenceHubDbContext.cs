@@ -27,6 +27,8 @@ namespace IntelligenceHub.DAL
 
         // Define DbSet properties for each entity type
         public DbSet<DbMessage> Messages { get; set; }
+        public DbSet<DbIndexMetadata> IndexMetadata { get; set; }
+        public DbSet<DbIndexDocument> IndexDocuments { get; set; }
         public DbSet<DbProfile> Profiles { get; set; }
         public DbSet<DbProfileTool> ProfileTools { get; set; }
         public DbSet<DbTool> Tools { get; set; }
@@ -55,6 +57,50 @@ namespace IntelligenceHub.DAL
                 entity.Property(e => e.TimeStamp).IsRequired().HasDefaultValueSql("GETDATE()");
             });
 
+            modelBuilder.Entity<DbIndexMetadata>(entity =>
+            {
+                entity.ToTable("IndexMetadata");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).ValueGeneratedOnAdd();
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+                entity.HasIndex(e => e.Name).IsUnique();
+                entity.Property(e => e.GenerationHost).HasMaxLength(255).IsRequired();
+                entity.Property(e => e.QueryType).HasMaxLength(255);
+                entity.Property(e => e.IndexingInterval).IsRequired().HasConversion(
+                    v => (long)v.TotalMilliseconds,  // Convert TimeSpan to BigInt (milliseconds)
+                    v => TimeSpan.FromMilliseconds(v)  // Convert BigInt back to TimeSpan
+                );
+                entity.Property(e => e.EmbeddingModel).HasMaxLength(255);
+                entity.Property(e => e.MaxRagAttachments).HasDefaultValue(DefaultRagAttachmentNumber);
+                entity.Property(e => e.ChunkOverlap).HasDefaultValue(DefaultChunkOverlap);
+                entity.Property(e => e.GenerateTopic).IsRequired();
+                entity.Property(e => e.GenerateKeywords).IsRequired();
+                entity.Property(e => e.GenerateTitleVector).IsRequired();
+                entity.Property(e => e.GenerateContentVector).IsRequired();
+                entity.Property(e => e.GenerateTopicVector).IsRequired();
+                entity.Property(e => e.GenerateKeywordVector).IsRequired();
+                entity.Property(e => e.DefaultScoringProfile).HasMaxLength(255);
+                entity.Property(e => e.ScoringAggregation).HasMaxLength(255);
+                entity.Property(e => e.ScoringInterpolation).HasMaxLength(255);
+                entity.Property(e => e.ScoringFreshnessBoost).HasDefaultValue(0.0);
+                entity.Property(e => e.ScoringBoostDurationDays).HasDefaultValue(0);
+                entity.Property(e => e.ScoringTagBoost).HasDefaultValue(0.0);
+                entity.Property(e => e.ScoringWeights).HasColumnType("nvarchar(max)");
+            });
+
+            modelBuilder.Entity<DbIndexDocument>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).ValueGeneratedOnAdd();
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.Content).IsRequired();
+                entity.Property(e => e.Topic).HasMaxLength(255);
+                entity.Property(e => e.Keywords).HasMaxLength(255);
+                entity.Property(e => e.Source).IsRequired().HasMaxLength(510);
+                entity.Property(e => e.Created).IsRequired();
+                entity.Property(e => e.Modified).IsRequired();
+            });
+
             modelBuilder.Entity<DbProfile>(entity =>
             {
                 entity.ToTable("Profiles");
@@ -63,6 +109,7 @@ namespace IntelligenceHub.DAL
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
                 entity.HasIndex(e => e.Name).IsUnique();
                 entity.Property(e => e.Model).HasMaxLength(255);
+                entity.Property(e => e.RagDatabase).HasMaxLength(255);
                 entity.Property(e => e.FrequencyPenalty);
                 entity.Property(e => e.PresencePenalty);
                 entity.Property(e => e.Temperature);
@@ -97,6 +144,12 @@ namespace IntelligenceHub.DAL
                       .WithOne(pt => pt.Tool)
                       .HasForeignKey(pt => pt.ToolID)
                       .OnDelete(DeleteBehavior.Cascade);
+
+                // Define relationship with Properties
+                entity.HasMany(e => e.Properties)
+                      .WithOne(p => p.Tool) // point at the new DbProperty.Tool nav
+                      .HasForeignKey(p => p.ToolId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<DbProperty>(entity =>
@@ -110,9 +163,9 @@ namespace IntelligenceHub.DAL
                 entity.Property(e => e.ToolId).IsRequired();
 
                 // Define foreign key relationship with Tools table
-                entity.HasOne<DbTool>()
-                      .WithMany()
-                      .HasForeignKey(e => e.ToolId);
+                entity.HasOne(p => p.Tool)
+                    .WithMany(t => t.Properties)
+                    .HasForeignKey(p => p.ToolId);
             });
 
             modelBuilder.Entity<DbProfileTool>(entity =>

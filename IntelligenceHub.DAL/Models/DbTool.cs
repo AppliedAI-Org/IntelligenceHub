@@ -18,5 +18,6 @@ namespace IntelligenceHub.DAL.Models
         public string? ExecutionMethod { get; set; }
         public string? ExecutionBase64Key { get; set; }
         public ICollection<DbProfileTool> ProfileTools { get; set; } = new List<DbProfileTool>();
+        public ICollection<DbProperty> Properties { get; set; } = new List<DbProperty>();
     }
 }

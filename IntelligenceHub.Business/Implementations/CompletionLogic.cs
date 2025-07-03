@@ -1,5 +1,6 @@
 ﻿using Azure.Search.Documents.Models;
 using IntelligenceHub.API.DTOs;
+using IntelligenceHub.API.DTOs.RAG;
 using IntelligenceHub.API.DTOs.Tools;
 using IntelligenceHub.Business.Factories;
 using IntelligenceHub.Business.Interfaces;
@@ -7,6 +8,7 @@ using IntelligenceHub.Client.Interfaces;
 using IntelligenceHub.Common.Extensions;
 using IntelligenceHub.DAL;
 using IntelligenceHub.DAL.Interfaces;
+using System.Text;
 using System.Text.Json;
 using static IntelligenceHub.Common.GlobalVariables;
 
@@ -23,10 +25,12 @@ namespace IntelligenceHub.Business.Implementations
         private const string _defaultUser = "User";
 
         private readonly IAGIClientFactory _agiClientFactory;
+        private readonly IAISearchServiceClient _searchClient;
         private readonly IToolClient _ToolClient;
         private readonly IProfileRepository _profileDb;
         private readonly IToolRepository _toolDb;
         private readonly IMessageHistoryRepository _messageHistoryRepository;
+        private readonly IIndexMetaRepository _ragMetaRepository;
 
         /// <summary>
         /// A constructor utilized to resolve dependencies for the completion logic via dependency injection.
@@ -40,15 +44,19 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="indexMetaRepository">DAL repository to retrieve information about existing RAG tables.</param>
         public CompletionLogic(
             IAGIClientFactory agiClientFactory,
+            IAISearchServiceClient searchClient,
             IToolClient toolClient,
             IToolRepository toolRepository,
             IProfileRepository profileRepository,
-            IMessageHistoryRepository messageHistoryRepository)
+            IMessageHistoryRepository messageHistoryRepository,
+            IIndexMetaRepository indexMetaRepository)
         {
             _toolDb = toolRepository;
             _ToolClient = toolClient;
             _profileDb = profileRepository;
             _messageHistoryRepository = messageHistoryRepository;
+            _ragMetaRepository = indexMetaRepository;
+            _searchClient = searchClient;
             _agiClientFactory = agiClientFactory;
         }
 
@@ -93,6 +101,24 @@ namespace IntelligenceHub.Business.Implementations
                 yield break;
             }
             var agiClient = _agiClientFactory.GetClient(completionRequest.ProfileOptions.Host);
+
+            // Add data retrieved from RAG indexing
+            if (!string.IsNullOrEmpty(completionRequest.ProfileOptions.RagDatabase))
+            {
+                var completionMessage = completionRequest.Messages.LastOrDefault();
+                if (completionMessage == null)
+                {
+                    yield return APIResponseWrapper<CompletionStreamChunk>.Failure("The completion request must contain a message, but none were found.", APIResponseStatusCodes.BadRequest);
+                    yield break;
+                }
+
+                var completionMessageWithRagData = await RetrieveRagData(completionRequest.ProfileOptions.RagDatabase, completionRequest, agiClient);
+                if (completionMessageWithRagData != null)
+                {
+                    completionRequest.Messages.Remove(completionMessage);
+                    completionRequest.Messages.Add(completionMessageWithRagData);
+                }
+            }
 
             var completionCollection = agiClient.StreamCompletion(completionRequest);
             if (completionCollection == null)
@@ -187,6 +213,17 @@ namespace IntelligenceHub.Business.Implementations
             if (completionRequest.ProfileOptions?.Host == null) return APIResponseWrapper<CompletionResponse>.Failure($"The required property 'Host' was not found in the Profile or ProfileOptions.", APIResponseStatusCodes.BadRequest);
             var agiClient = _agiClientFactory.GetClient(completionRequest.ProfileOptions.Host);
 
+            if (!string.IsNullOrEmpty(completionRequest.ProfileOptions.RagDatabase))
+            {
+                var completionMessageWithRagData = await RetrieveRagData(completionRequest.ProfileOptions.RagDatabase, completionRequest, agiClient);
+                if (completionMessageWithRagData != null)
+                {
+                    var completionMessage = completionRequest.Messages.LastOrDefault();
+                    completionRequest.Messages.Remove(completionMessage);
+                    completionRequest.Messages.Add(completionMessageWithRagData);
+                }
+            }
+
             var completion = await agiClient.PostCompletion(completionRequest);
             if (completion.FinishReason == FinishReasons.Error) return APIResponseWrapper<CompletionResponse>.Failure(completion, "An error was encountered when trying to generate a completion.", APIResponseStatusCodes.InternalError);
             if (completion.FinishReason == FinishReasons.TooManyRequests) return APIResponseWrapper<CompletionResponse>.Failure(completion, $"The Host service quota has been exceeded. Please check your API quota details for '{completionRequest.ProfileOptions.Host}'.", APIResponseStatusCodes.TooManyRequests);
@@ -269,6 +306,7 @@ namespace IntelligenceHub.Business.Implementations
                 Id = profile.Id,
                 Name = string.IsNullOrEmpty(profileOptions?.Name) ? profile.Name : profileOptions?.Name,
                 Model = string.IsNullOrEmpty(profileOptions?.Model) ? profile.Model : profileOptions?.Model,
+                RagDatabase = string.IsNullOrEmpty(profileOptions?.RagDatabase) ? profile.RagDatabase : profileOptions?.RagDatabase,
                 MaxMessageHistory = profileOptions?.MaxMessageHistory ?? profile.MaxMessageHistory,
                 MaxTokens = profileOptions?.MaxTokens ?? profile.MaxTokens,
                 Temperature = profileOptions?.Temperature ?? profile.Temperature,
@@ -418,6 +456,18 @@ namespace IntelligenceHub.Business.Implementations
             // construct AGI Client based on the required host
             var agiClient = _agiClientFactory.GetClient(completionRequest.ProfileOptions.Host);
 
+            // Add data retrieved from RAG indexing
+            if (!string.IsNullOrEmpty(completionRequest.ProfileOptions.RagDatabase) && completionRequest.Messages.Any())
+            {
+                var completionMessage = completionRequest.Messages.LastOrDefault() ?? new Message() { Role = Role.User, User = _defaultUser, Content = string.Empty, TimeStamp = DateTime.UtcNow };
+                var completionMessageWithRagData = await RetrieveRagData(completionRequest.ProfileOptions.RagDatabase, completionRequest, agiClient);
+                if (completionMessageWithRagData != null)
+                {
+                    completionRequest.Messages.Remove(completionMessage);
+                    completionRequest.Messages.Add(completionMessageWithRagData);
+                }
+            }
+
             var completion = await agiClient.PostCompletion(completionRequest);
             if (completion.FinishReason == FinishReasons.Error) return completion;
 
@@ -442,6 +492,123 @@ namespace IntelligenceHub.Business.Implementations
             }
             return completion;
         }
+
+        /// <summary>
+        /// Retrieves RAG data from the specified index and appends it to the last message in the completion request.
+        /// </summary>
+        /// <param name="indexName">The name of the RAG index to search.</param>
+        /// <param name="originalRequest">The original completion request used to generate a search intent.</param>
+        /// <param name="agiClient">The AGI client that will be used to generate a search intent.</param>
+        /// <returns>The original <see cref="Message?"> with any relevant RAG documents attached in the content.</returns>
+        private async Task<Message?> RetrieveRagData(string indexName, CompletionRequest originalRequest, IAGIClient agiClient)
+        {
+            var dbIndex = await _ragMetaRepository.GetByNameAsync(indexName);
+            if (!originalRequest.Messages.Any() || dbIndex == null) return null;
+
+
+            var intentfulQuery = await GenerateIntentfulQuery(agiClient, originalRequest);
+            if (string.IsNullOrWhiteSpace(intentfulQuery)) return null;
+
+            var indexData = DbMappingHandler.MapFromDbIndexMetadata(dbIndex);
+            var ragData = await _searchClient.SearchIndex(indexData, intentfulQuery);
+
+            var sb = new StringBuilder();
+            await foreach (var item in ragData.GetResultsAsync())
+            {
+                var doc = item.Document;
+                sb.AppendLine("```");
+                sb.AppendLine($"Title: {doc.title}");
+                sb.AppendLine($"Source: {doc.source}");
+                sb.AppendLine($"Creation Date: {doc.created:yyyy-MM-ddTHH:mm:ss}");
+                sb.AppendLine($"Last Updated Date: {doc.modified:yyyy-MM-ddTHH:mm:ss}");
+                sb.AppendLine("Content:");
+                if (indexData.QueryType == QueryType.Semantic) foreach (var cap in item.SemanticSearch.Captions) sb.AppendLine($"Excerpt: {cap.Text}\n");
+                else sb.AppendLine(doc.chunk);
+                sb.AppendLine("```");
+            }
+
+            var ragDataString = sb.ToString();
+            if (string.IsNullOrEmpty(ragDataString)) return null;
+
+            return new Message
+            {
+                Role = originalRequest.Messages.Last().Role,
+                User = originalRequest.Messages.Last().User,
+                Base64Image = originalRequest.Messages.Last().Base64Image,
+                TimeStamp = originalRequest.Messages.Last().TimeStamp,
+                Content = RagRequestPrependedInstructions
+                            + "\n\n"
+                            + originalRequest.Messages.Last().Content
+                            + "\n\n"
+                            + ragDataString
+            };
+        }
+
+        /// <summary>
+        /// Generates an intentful query based on the original request's messages and other context.
+        /// </summary>
+        /// <param name="originalRequest">The original Completion used to start this request.</param>
+        /// <param name="agiClient">The AGI client that will be used to generate a search intent.</param>
+        /// <returns>Returns an intentful query as a string that can be used to search a RAG database.</returns>
+        private async Task<string> GenerateIntentfulQuery(IAGIClient agiClient, CompletionRequest originalRequest)
+        {
+            var additionalContext = $"Provided below is a system message that the final LLM in this AI orchestration pipeline uses to answer the user's question, " +
+                $"after your intent is used to retrieve relevant documents. Please use this context, and any other existing message history in order to construct " +
+                $"a short search intent string similar to an internet search in order to retrieve these documents, providing keywords as the primary input " +
+                $"whenever possible." +
+                $"\n\n" +
+                $"Final LLM Name: {originalRequest.ProfileOptions.Name}" +
+                $"Final LLM System Message: {originalRequest.ProfileOptions.SystemMessage}";
+
+            var modifiedRequest = new CompletionRequest
+            {
+                ProfileOptions = new Profile { Model = originalRequest.ProfileOptions.Model, SystemMessage = RagIntentGenSystemMessage },
+                Messages = ShallowCloneAndModifyLast(originalRequest.Messages, additionalContext)
+            };
+
+            var completionResponse = await agiClient.PostCompletion(modifiedRequest);
+            var intentfulQuery = completionResponse.Messages.LastOrDefault()?.Content ?? string.Empty;
+            return intentfulQuery;
+        }
+
+        /// <summary>
+        /// Shallow-clones the given list of messages, but replaces the last message
+        /// with a new Message whose Content is prefix + original.Content.
+        /// </summary>
+        private List<Message> ShallowCloneAndModifyLast(IList<Message> originalMessages, string prefix)
+        {
+            var cloned = new List<Message>(originalMessages.Count);
+            if (originalMessages == null || originalMessages.Count == 0)
+                return cloned;
+
+            // Copy everything except the last message
+            for (int i = 0; i < originalMessages.Count - 1; i++)
+            {
+                var m = originalMessages[i];
+                cloned.Add(new Message
+                {
+                    Role = m.Role,
+                    Content = m.Content,
+                    TimeStamp = m.TimeStamp,
+                    User = m.User,
+                    Base64Image = m.Base64Image
+                });
+            }
+
+            // Create a brand-new last message with modified content
+            var last = originalMessages[^1];
+            cloned.Add(new Message
+            {
+                Role = last.Role,
+                Content = prefix + last.Content,
+                TimeStamp = last.TimeStamp,
+                User = last.User,
+                Base64Image = last.Base64Image
+            });
+
+            return cloned;
+        }
+
 
         /// <summary>
         /// Generates an image based on the prompt provided in the completion request.

@@ -203,7 +203,6 @@ With the profile created, you can now send a chat request using the Chat Complet
 
 **Example using curl:**
 `curl -X POST "https://yourapi.com/Completion/Chat/ChatProfile"\
-     -H "Authorization: Bearer {token}"\
      -H "Content-Type: application/json"\
      -d '{
            "ConversationId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
@@ -383,7 +382,6 @@ Finally, to leverage the RAG index during chat interactions, include the `RagDat
 
 **Example using curl:**
 `curl -X POST "https://yourapi.com/Completion/Chat/ChatProfile"\
-     -H "Authorization: Bearer {token}"\
      -H "Content-Type: application/json"\
      -d '{
            "ConversationId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
@@ -491,7 +489,7 @@ The `CompletionController` handles LLM chat requests (completions) via standar
     -   `500 Internal Server Error`: Unexpected server error.
     
 **Example Request**:
-`curl -X POST "https://yourapi.com/Completion/Chat/ChatProfile" \  -H "Authorization: Bearer {token}" \  -H "Content-Type: application/json" \  -d '{  "ConversationId": "d290f1ee-6c54-4b01-90e6-d701748f0851", "ProfileOptions": { "Name": "ChatProfile", "Model": "gpt-4o", "Host": "OpenAI", "Temperature": 0.7, "MaxTokens": 150 }, "Messages": [ { "Role": "User", "Content": "Hello, how are you?" } ] }'  `
+`curl -X POST "https://yourapi.com/Completion/Chat/ChatProfile" \  -H "Content-Type: application/json" \  -d '{  "ConversationId": "d290f1ee-6c54-4b01-90e6-d701748f0851", "ProfileOptions": { "Name": "ChatProfile", "Model": "gpt-4o", "Host": "OpenAI", "Temperature": 0.7, "MaxTokens": 150 }, "Messages": [ { "Role": "User", "Content": "Hello, how are you?" } ] }'  `
 
 **Example Response:**
 ```json
@@ -528,7 +526,7 @@ The `CompletionController` handles LLM chat requests (completions) via standar
     -   `500 Internal Server Error`: Unexpected server error.
 
 **Example Request**:
-`curl -X POST "https://yourapi.com/Completion/SSE/ChatProfile" \  -H "Authorization: Bearer {token}" \  -H "Content-Type: application/json" \  -N \ -d 
+`curl -X POST "https://yourapi.com/Completion/SSE/ChatProfile" \  -H "Content-Type: application/json" \  -N \ -d 
 '{ "ProfileOptions": { "Name": "ChatProfile", "Model": "gpt-4o", "Host": "OpenAI", "Temperature": 0.7, "MaxTokens": 150 }, "Messages": [ { "Role": "User", "Content": "Hello, stream my response!" } ] }'  `\
 
 **Example SSE Response**:
@@ -1815,7 +1813,6 @@ The project relies on the following third-party packages and libraries:
 - **DotNetEnv**: [MIT License](https://github.com/tonerdo/dotnet-env/blob/master/LICENSE)
 - **Microsoft.ApplicationInsights.AspNetCore**: [MIT License](https://github.com/microsoft/ApplicationInsights-dotnet/blob/develop/LICENSE)
 - **Microsoft.AspNet.Mvc**: [Apache License 2.0](https://github.com/aspnet/AspNetWebStack/blob/main/LICENSE.txt)
-- **Microsoft.AspNetCore.Authentication.JwtBearer**: [MIT License](https://github.com/dotnet/aspnetcore/blob/main/LICENSE.txt)
 - **Microsoft.AspNetCore.Mvc.Core**: [MIT License](https://github.com/dotnet/aspnetcore/blob/main/LICENSE.txt)
 - **Microsoft.AspNetCore.SignalR.Common**: [MIT License](https://github.com/dotnet/aspnetcore/blob/main/LICENSE.txt)
 - **Microsoft.AspNetCore.SignalR.Core**: [MIT License](https://github.com/dotnet/aspnetcore/blob/main/LICENSE.txt)

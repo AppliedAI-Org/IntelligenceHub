@@ -14,30 +14,36 @@ namespace IntelligenceHub.Tests.Unit.Business
     {
         private readonly Mock<IAGIClientFactory> _mockAgiClientFactory;
         private readonly Mock<IAGIClient> _mockAIClient;
+        private readonly Mock<IAISearchServiceClient> _mockSearchClient;
         private readonly Mock<IToolClient> _mockToolClient;
         private readonly Mock<IProfileRepository> _mockProfileRepository;
         private readonly Mock<IToolRepository> _mockToolRepository;
         private readonly Mock<IMessageHistoryRepository> _mockMessageHistoryRepository;
+        private readonly Mock<IIndexMetaRepository> _mockRagMetaRepository;
         private readonly CompletionLogic _completionLogic;
 
         public CompletionLogicTests()
         {
             _mockAgiClientFactory = new Mock<IAGIClientFactory>();
             _mockAIClient = new Mock<IAGIClient>();
+            _mockSearchClient = new Mock<IAISearchServiceClient>();
             _mockToolClient = new Mock<IToolClient>();
             _mockProfileRepository = new Mock<IProfileRepository>();
             _mockToolRepository = new Mock<IToolRepository>();
             _mockMessageHistoryRepository = new Mock<IMessageHistoryRepository>();
+            _mockRagMetaRepository = new Mock<IIndexMetaRepository>();
             _mockAIClient = new Mock<IAGIClient>();
 
             _mockAgiClientFactory.Setup(factory => factory.GetClient(It.IsAny<AGIServiceHosts>())).Returns(_mockAIClient.Object);
             
             _completionLogic = new CompletionLogic(
                 _mockAgiClientFactory.Object,
+                _mockSearchClient.Object,
                 _mockToolClient.Object,
                 _mockToolRepository.Object,
                 _mockProfileRepository.Object,
-                _mockMessageHistoryRepository.Object
+                _mockMessageHistoryRepository.Object,
+                _mockRagMetaRepository.Object
             );
         }
 
@@ -63,10 +69,12 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             var completionLogic = new CompletionLogic(
                 _mockAgiClientFactory.Object,
+                _mockSearchClient.Object,
                 _mockToolClient.Object,
                 _mockToolRepository.Object,
                 _mockProfileRepository.Object,
-                _mockMessageHistoryRepository.Object
+                _mockMessageHistoryRepository.Object,
+                _mockRagMetaRepository.Object
             );
 
             // Act

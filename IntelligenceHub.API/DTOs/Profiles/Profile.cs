@@ -12,6 +12,7 @@ namespace IntelligenceHub.API.DTOs
         public string Model { get; set; } = string.Empty;
         public AGIServiceHosts Host { get; set; }
         public AGIServiceHosts? ImageHost { get; set; }
+        public string? RagDatabase { get; set; }
         public float? FrequencyPenalty { get; set; }
         public float? PresencePenalty { get; set; }
         public float? Temperature { get; set; }
