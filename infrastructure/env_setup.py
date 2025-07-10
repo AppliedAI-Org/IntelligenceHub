@@ -56,6 +56,14 @@ required_env_vars = [
     "AllowedHosts",
     "Azure_SignalR_Enabled",
     "Settings_DbConnectionString",
+    "AuthSettings_Domain",
+    "AuthSettings_Audience",
+    "AuthSettings_BasicUsername"
+    "AuthSettings_BasicPassword"
+    "AuthSettings_DefaultClientId",
+    "AuthSettings_DefaultClientSecret",
+    "AuthSettings_AdminClientId",
+    "AuthSettings_AdminClientSecret",
     "AppInsightSettings_ConnectionString",
     "AGIClientSettings_AzureOpenAIServices_0_Endpoint",
     "AGIClientSettings_AzureOpenAIServices_0_Key",
@@ -65,9 +73,11 @@ required_env_vars = [
     "AGIClientSettings_AnthropicServices_0_Key",
     "AGIClientSettings_SearchServiceCompletionServiceEndpoint",
     "AGIClientSettings_SearchServiceCompletionServiceKey",
-    "SearchServiceClientSettings_Endpoint",
-    "SearchServiceClientSettings_Key",
-    "Settings_DefaultImageHost"  # token for DefaultImageGenHost
+    "AzureSearchServiceClientSettings_Endpoint",
+    "AzureSearchServiceClientSettings_Key",
+    "Settings_DefaultImageHost",  # token for DefaultImageGenHost
+    "WeaviateSearchServiceClientSettings_Endpoint",
+    "WeaviateSearchServiceClientSettings_ApiKey"
 ]
 
 # Check the current environment
