@@ -1,9 +1,9 @@
 ﻿namespace IntelligenceHub.Common.Config
 {
     /// <summary>
-    /// Contains endpoint and authentication information for an AGI service.
+    /// Settings for configuring the Azure Cognitive Search client.
     /// </summary>
-    public class AGIServiceDetails
+    public class AzureSearchServiceClientSettings
     {
         /// <summary>
         /// Gets or sets the service endpoint URL.
@@ -11,7 +11,7 @@
         public string Endpoint { get; set; }
 
         /// <summary>
-        /// Gets or sets the API key used to authenticate.
+        /// Gets or sets the API key used to authenticate with the service.
         /// </summary>
         public string Key { get; set; }
     }

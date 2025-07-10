@@ -43,14 +43,14 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             var id = Guid.NewGuid();
             var count = 1;
             var page = 1;
-            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, page, count)).ReturnsAsync(APIResponseWrapper<List<Message>>.Success(new List<Message>()));
+            _mockMessageHistoryLogic.Setup(x => x.GetConversationHistory(id, page, count)).ReturnsAsync(APIResponseWrapper<List<Message>>.Failure($"A conversation with the id '{id}' was not found.", APIResponseStatusCodes.NotFound));
 
             // Act
             var result = await _controller.GetConversation(id, count, page);
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            Assert.Equal($"The conversation '{id}' does not exist or is empty.", notFoundResult.Value);
+            Assert.Equal($"A conversation with the id '{id}' was not found.", notFoundResult.Value);
         }
 
         [Fact]

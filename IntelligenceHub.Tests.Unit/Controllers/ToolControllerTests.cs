@@ -155,7 +155,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
         public async Task AddOrUpdateTool_ReturnsBadRequest_WhenErrorMessageIsNotNull()
         {
             // Arrange
-            var toolList = new List<Tool> { new Tool { Function = new Function() { Name = "tool1" }  } };
+            var toolList = new List<Tool> { new Tool { Function = new Function() { Name = "tool1" } } };
             _profileLogicMock.Setup(p => p.CreateOrUpdateTools(toolList)).ReturnsAsync(APIResponseWrapper<string>.Failure("Error adding/updating tool", IntelligenceHub.Common.GlobalVariables.APIResponseStatusCodes.BadRequest));
 
             // Act

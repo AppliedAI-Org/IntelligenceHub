@@ -9,6 +9,7 @@ using System.Drawing.Imaging;
 using Message = IntelligenceHub.API.DTOs.Message;
 using Tool = IntelligenceHub.API.DTOs.Tools.Tool;
 using Property = IntelligenceHub.API.DTOs.Tools.Property;
+using Microsoft.IdentityModel.Tokens;
 
 namespace IntelligenceHub.Business.Handlers
 {
@@ -33,6 +34,10 @@ namespace IntelligenceHub.Business.Handlers
             "float",
             "date",
             "enum",
+
+            // Don't think these would work currently, but can test. May work as string:
+            //"array",
+            //"object"
         };
 
         /// <summary>
@@ -88,14 +93,14 @@ namespace IntelligenceHub.Business.Handlers
         public string? ValidateProfileOptions(Profile profile, List<Message>? messages = null)
         {
             if (profile.Model == null) return "The model parameter is required.";
-            if (string.IsNullOrEmpty(profile.Host.ToString()) || profile.Host == AGIServiceHosts.None) return "The host parameter is required.";
+            if (string.IsNullOrEmpty(profile.Host.ToString()) || profile.Host == AGIServiceHost.None) return "The host parameter is required.";
 
             // Validate model names for each host.
             if (!string.IsNullOrEmpty(profile.Model))
             {
-                if (profile.Host == AGIServiceHosts.Azure && !_validModels.Contains(profile.Model.ToLower())) return $"The provided model name is not supported by Azure. Supported model names include: {_validModels.ToCommaSeparatedString()}.";
-                if (profile.Host == AGIServiceHosts.OpenAI && !ValidOpenAIModelsAndContextLimits.Keys.Contains(profile.Model.ToLower())) return $"The provided model name is not supported by OpenAI. Supported model names include: {ValidOpenAIModelsAndContextLimits.Keys.ToCommaSeparatedString()}.";
-                if (profile.Host == AGIServiceHosts.Anthropic && !ValidAnthropicModels.Contains(profile.Model.ToLower())) return $"The provided model name is not supported by Anthropic. Supported model names include: {ValidAnthropicModels.ToCommaSeparatedString()}.";
+                if (profile.Host == AGIServiceHost.Azure && !_validModels.Contains(profile.Model.ToLower())) return $"The provided model name is not supported by Azure. Supported model names include: {_validModels.ToCommaSeparatedString()}.";
+                if (profile.Host == AGIServiceHost.OpenAI && !ValidOpenAIModelsAndContextLimits.Keys.Contains(profile.Model.ToLower())) return $"The provided model name is not supported by OpenAI. Supported model names include: {ValidOpenAIModelsAndContextLimits.Keys.ToCommaSeparatedString()}.";
+                if (profile.Host == AGIServiceHost.Anthropic && !ValidAnthropicModels.Contains(profile.Model.ToLower())) return $"The provided model name is not supported by Anthropic. Supported model names include: {ValidAnthropicModels.ToCommaSeparatedString()}.";
             }
 
             // Validate common parameters.
@@ -108,7 +113,7 @@ namespace IntelligenceHub.Business.Handlers
             if (profile.ReferenceProfiles != null && profile.ReferenceProfiles.Length > 0) foreach (var reference in profile.ReferenceProfiles) if (reference.Length > 40) return "The 'ReferenceProfiles' field exceeds the maximum allowed length of 40 characters.";
 
             // Validate model-specific parameters.
-            if (profile.Host == AGIServiceHosts.OpenAI)
+            if (profile.Host == AGIServiceHost.OpenAI)
             {
                 // Look up the context limit for the specified model.
                 if (!ValidOpenAIModelsAndContextLimits.TryGetValue(profile.Model.ToLower(), out int contextLimit)) contextLimit = 4096;
@@ -121,7 +126,7 @@ namespace IntelligenceHub.Business.Handlers
                     if (promptTokens + profile.MaxTokens > contextLimit) return $"The combined token count of the prompt ({promptTokens}) and the requested max tokens ({profile.MaxTokens}) exceeds the model's capacity of {contextLimit} tokens.";
                 }
             }
-            else if (profile.Host == AGIServiceHosts.Anthropic)
+            else if (profile.Host == AGIServiceHost.Anthropic)
             {
                 // For Anthropic, use a fixed context limit.
                 int contextLimit = 4000; // Recommended limit; update if newer models allow more.
@@ -136,7 +141,7 @@ namespace IntelligenceHub.Business.Handlers
                     if (promptTokens + profile.MaxTokens > contextLimit) return $"The combined token count of the prompt ({promptTokens}) and the requested max tokens ({profile.MaxTokens}) exceeds the Anthropic model's capacity of {contextLimit} tokens.";
                 }
             }
-            else if (profile.Host == AGIServiceHosts.Azure)
+            else if (profile.Host == AGIServiceHost.Azure)
             {
                 // Azure endpoints typically do not support returning token-level log probabilities.
                 if (profile.TopLogprobs.HasValue && profile.TopLogprobs.Value != 0) return "The Azure endpoint does not support TopLogprobs. Please set TopLogprobs to 0 or leave it unset.";
@@ -307,7 +312,7 @@ namespace IntelligenceHub.Business.Handlers
             {
                 using (MemoryStream ms = new MemoryStream(imageBytes))
                 {
-                    using (System.Drawing.Image img = System.Drawing.Image.FromStream(ms, useEmbeddedColorManagement: false, validateImageData: false)) 
+                    using (System.Drawing.Image img = System.Drawing.Image.FromStream(ms, useEmbeddedColorManagement: false, validateImageData: false))
                     {
                         return img.RawFormat.Equals(ImageFormat.Jpeg) || img.RawFormat.Equals(ImageFormat.Png) || img.RawFormat.Equals(ImageFormat.Gif) || img.RawFormat.Equals(ImageFormat.Bmp);
                     }
@@ -335,15 +340,40 @@ namespace IntelligenceHub.Business.Handlers
             if (string.IsNullOrWhiteSpace(index.Name)) return "The provided index name is invalid.";
 
             var includesContentSummarization = index.GenerateKeywords ?? index.GenerateTopic ?? false;
+            if (index.RagHost == null || index.RagHost == RagServiceHost.None) return "A RagHost must be provided.";
             if (index.GenerationHost == null && includesContentSummarization) return "The GenerationProfile is required if 'GenerateKeywords' or 'GenerateTopic' are set to true.";
             if (index.Name.Length > 128) return "The index name exceeds the maximum allowed length of 128 characters.";
-            if (index.IndexingInterval <= TimeSpan.Zero) return "IndexingInterval must be a positive value.";
-            if (index.IndexingInterval >= TimeSpan.FromDays(1)) return "The indexing interval must be less than 1 day.";
+
+            if (index.RagHost == RagServiceHost.Weaviate)
+            {
+                if (index.IndexingInterval != null && index.IndexingInterval != TimeSpan.Zero) return "IndexingInterval is not supported when using the Weaviate RagHost.";
+                if (index.ChunkOverlap != null && index.ChunkOverlap > 0) return "ChunkOverlap is not supported when using the Weaviate RagHost.";
+                if (index.ScoringProfile != null &&
+                    (!string.IsNullOrWhiteSpace(index.ScoringProfile.Name) ||
+                     index.ScoringProfile.SearchAggregation != null ||
+                     index.ScoringProfile.SearchInterpolation != null ||
+                     index.ScoringProfile.FreshnessBoost != 0 ||
+                     index.ScoringProfile.BoostDurationDays != 0 ||
+                     index.ScoringProfile.TagBoost != 0 ||
+                     (index.ScoringProfile.Weights != null && index.ScoringProfile.Weights.Count > 0)))
+                    return "Scoring profiles are not supported when using the Weaviate RagHost.";
+            }
+            else
+            {
+                if (index.IndexingInterval <= TimeSpan.Zero) return "IndexingInterval must be a positive value.";
+                if (index.IndexingInterval >= TimeSpan.FromDays(1)) return "The indexing interval must be less than 1 day.";
+                if (index.ChunkOverlap < 0 || index.ChunkOverlap > 1) return "ChunkOverlap must be between 0 and 1 (inclusive).";
+            }
             if (!string.IsNullOrWhiteSpace(index.EmbeddingModel) && index.EmbeddingModel.Length > 255) return "The EmbeddingModel exceeds the maximum allowed length of 255 characters.";
+            if (!string.IsNullOrWhiteSpace(index.EmbeddingModel))
+            {
+                var lowerModel = index.EmbeddingModel.ToLower();
+                if (index.RagHost == RagServiceHost.Weaviate && index.EmbeddingModel != null && index.EmbeddingModel.ToLower() != DefaultWeaviateEmbeddingModel.ToLower()) return $"EmbeddingModel must correspond with the Weaviate RagHost ({DefaultWeaviateEmbeddingModel}).";
+                if (index.RagHost == RagServiceHost.Azure && index.EmbeddingModel != null && index.EmbeddingModel.ToLower() == DefaultWeaviateEmbeddingModel.ToLower()) return $"EmbeddingModel {DefaultWeaviateEmbeddingModel} is reserved for the Weaviate RagHost.";
+            }
             if (index.MaxRagAttachments < 0) return "MaxRagAttachments must be a non-negative integer greater than 0.";
             if (index.MaxRagAttachments > 20) return "MaxRagAttachments cannot exceed 20.";
-            if (index.ChunkOverlap < 0 || index.ChunkOverlap > 1) return "ChunkOverlap must be between 0 and 1 (inclusive).";
-            if (index.EmbeddingModel?.ToLower() != "text-embedding-ada-002" && index.EmbeddingModel?.ToLower() != "text-embedding-3-small" && index.EmbeddingModel?.ToLower() != "text-embedding-3-large") return $"The provided embedding model '{index.EmbeddingModel}' is not supported. Currently, the supported embedding models are limited to text-embedding-3-large, text-embedding-3-small, and text-embedding-ada-002";
+            if (index.QueryType == QueryType.VectorSemanticHybrid && index.RagHost == RagServiceHost.Weaviate) return "The Weaviate client does not support the VectorSemanticHybrid query type at this time.";
 
             if (!string.IsNullOrEmpty(index.ScoringProfile?.Name))
             {

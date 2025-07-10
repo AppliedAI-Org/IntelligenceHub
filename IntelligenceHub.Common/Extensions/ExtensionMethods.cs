@@ -46,11 +46,11 @@ namespace IntelligenceHub.Common.Extensions
         public static QueryType? ConvertStringToQueryType(this string queryType)
         {
             if (queryType.ToLower() == QueryType.Simple.ToString().ToLower()) return QueryType.Simple;
-            if (queryType.ToLower() == QueryType.Semantic.ToString().ToLower()) return QueryType.Semantic;
-            if (queryType.ToLower() == QueryType.Full.ToString().ToLower()) return QueryType.Full;
-            if (queryType.ToLower() == QueryType.VectorSimpleHybrid.ToString().ToLower()) return QueryType.VectorSimpleHybrid;
-            if (queryType.ToLower() == QueryType.VectorSemanticHybrid.ToString().ToLower()) return QueryType.VectorSemanticHybrid;
-            if (queryType.ToLower() == QueryType.Vector.ToString().ToLower()) return QueryType.Vector;
+            else if (queryType.ToLower() == QueryType.Semantic.ToString().ToLower()) return QueryType.Semantic;
+            else if (queryType.ToLower() == QueryType.Full.ToString().ToLower()) return QueryType.Full;
+            else if (queryType.ToLower() == QueryType.VectorSimpleHybrid.ToString().ToLower()) return QueryType.VectorSimpleHybrid;
+            else if (queryType.ToLower() == QueryType.VectorSemanticHybrid.ToString().ToLower()) return QueryType.VectorSemanticHybrid;
+            else if (queryType.ToLower() == QueryType.Vector.ToString().ToLower()) return QueryType.Vector;
             return null;
         }
 
@@ -84,7 +84,7 @@ namespace IntelligenceHub.Common.Extensions
         }
 
         /// <summary>
-        /// Converts a string to a AGIServiceHosts enum value.
+        /// Converts a string to a AGIServiceHost enum value.
         /// </summary>
         /// <param name="strings">The list of strings to convert.</param>
         /// <returns>A comma delimited string.</returns>
@@ -115,20 +115,33 @@ namespace IntelligenceHub.Common.Extensions
         }
 
         /// <summary>
-        /// Converts a string to a AGIServiceHosts enum value.
+        /// Converts a string to a AGIServiceHost enum value.
         /// </summary>
         /// <param name="hostString">The host name to convert.</param>
         /// <returns>The converted AGIServicesHosts enum.</returns>
         /// <exception cref="ArgumentException">Thrown if the provided string is null.</exception>
-        public static AGIServiceHosts ConvertToServiceHost(this string hostString)
+        public static AGIServiceHost ConvertToServiceHost(this string hostString)
         {
             if (hostString == null) throw new ArgumentException(nameof(hostString));
 
             hostString = hostString.ToLower();
-            if (hostString == AGIServiceHosts.OpenAI.ToString().ToLower()) return AGIServiceHosts.OpenAI;
-            else if (hostString == AGIServiceHosts.Azure.ToString().ToLower()) return AGIServiceHosts.Azure;
-            else if (hostString == AGIServiceHosts.Anthropic.ToString().ToLower()) return AGIServiceHosts.Anthropic;
-            return AGIServiceHosts.None;
+            if (hostString == AGIServiceHost.OpenAI.ToString().ToLower()) return AGIServiceHost.OpenAI;
+            else if (hostString == AGIServiceHost.Azure.ToString().ToLower()) return AGIServiceHost.Azure;
+            else if (hostString == AGIServiceHost.Anthropic.ToString().ToLower()) return AGIServiceHost.Anthropic;
+            return AGIServiceHost.None;
+        }
+
+        /// <summary>
+        /// Converts a string to a RagServiceHost enum value.
+        /// </summary>
+        /// <param name="provider">The provider string.</param>
+        /// <returns>The converted provider.</returns>
+        public static RagServiceHost ConvertToRagHost(this string provider)
+        {
+            provider = provider?.ToLower();
+            if (provider == RagServiceHost.Weaviate.ToString().ToLower()) return RagServiceHost.Weaviate;
+            if (provider == RagServiceHost.Azure.ToString().ToLower()) return RagServiceHost.Azure;
+            return RagServiceHost.None;
         }
     }
 }

@@ -19,5 +19,6 @@
     ScoringFreshnessBoost FLOAT,
     ScoringBoostDurationDays INT,
     ScoringTagBoost FLOAT,
-    ScoringWeights NVARCHAR(MAX)
+    ScoringWeights NVARCHAR(MAX),
+    RagHost NVARCHAR(128)
 );

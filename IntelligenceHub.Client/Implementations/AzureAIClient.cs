@@ -256,7 +256,7 @@ namespace IntelligenceHub.Client.Implementations
             }
 
             // set tools
-            if (completion.ProfileOptions.Tools != null) 
+            if (completion.ProfileOptions.Tools != null)
                 foreach (var tool in completion.ProfileOptions.Tools)
                 {
                     var serializedParameters = JsonSerializer.Serialize(tool.Function.Parameters);

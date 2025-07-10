@@ -25,7 +25,7 @@ namespace IntelligenceHub.Business.Implementations
         private const string _defaultUser = "User";
 
         private readonly IAGIClientFactory _agiClientFactory;
-        private readonly IAISearchServiceClient _searchClient;
+        private readonly IRagClientFactory _ragClientFactory;
         private readonly IToolClient _ToolClient;
         private readonly IProfileRepository _profileDb;
         private readonly IToolRepository _toolDb;
@@ -44,7 +44,7 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="indexMetaRepository">DAL repository to retrieve information about existing RAG tables.</param>
         public CompletionLogic(
             IAGIClientFactory agiClientFactory,
-            IAISearchServiceClient searchClient,
+            IRagClientFactory ragClientFactory,
             IToolClient toolClient,
             IToolRepository toolRepository,
             IProfileRepository profileRepository,
@@ -56,7 +56,7 @@ namespace IntelligenceHub.Business.Implementations
             _profileDb = profileRepository;
             _messageHistoryRepository = messageHistoryRepository;
             _ragMetaRepository = indexMetaRepository;
-            _searchClient = searchClient;
+            _ragClientFactory = ragClientFactory;
             _agiClientFactory = agiClientFactory;
         }
 
@@ -289,7 +289,7 @@ namespace IntelligenceHub.Business.Implementations
 
             // add image gen system tool if appropriate - Anthropic does not support image gen currently
             var host = string.IsNullOrEmpty(profileOptions?.ImageHost.ToString()) ? profile.ImageHost : profileOptions?.ImageHost ?? profileOptions?.Host ?? profile.Host;
-            if (host != AGIServiceHosts.Anthropic && host != AGIServiceHosts.None) profile.Tools.Add(new ImageGenSystemTool());
+            if (host != AGIServiceHost.Anthropic && host != AGIServiceHost.None) profile.Tools.Add(new ImageGenSystemTool());
 
             // add recursive chat system tool if appropriate
             if (profileReferences != null && profileReferences.Any())
@@ -427,7 +427,7 @@ namespace IntelligenceHub.Business.Implementations
             var messages = completionRequest.Messages;
 
             // copy the list, creating a seperate ref
-            var originalMessageDistribution = new List<Message>(completionRequest.Messages.Select(m => new Message 
+            var originalMessageDistribution = new List<Message>(completionRequest.Messages.Select(m => new Message
             {
                 Role = m.Role,
                 User = m.User,
@@ -435,7 +435,7 @@ namespace IntelligenceHub.Business.Implementations
                 Base64Image = m.Base64Image,
                 TimeStamp = m.TimeStamp
             }));
-            
+
             for (var i = 0; i < messages.Count; i++)
             {
                 // Determine the role of the current message
@@ -482,7 +482,7 @@ namespace IntelligenceHub.Business.Implementations
             originalMessageDistribution.Add(completion.Messages.Last(m => m.Role == Role.Assistant || m.Role == Role.Tool));
             completion.Messages = originalMessageDistribution;
             completion.Messages.Last().User = completionRequest.ProfileOptions.Name;
-            
+
             if (completion.FinishReason == FinishReasons.ToolCalls)
             {
                 var wrappedResponse = await ExecuteTools(completion.ToolCalls, completion.Messages, completionRequest.ProfileOptions, completionRequest.ConversationId, currentRecursionDepth: currentRecursionDepth);
@@ -510,7 +510,8 @@ namespace IntelligenceHub.Business.Implementations
             if (string.IsNullOrWhiteSpace(intentfulQuery)) return null;
 
             var indexData = DbMappingHandler.MapFromDbIndexMetadata(dbIndex);
-            var ragData = await _searchClient.SearchIndex(indexData, intentfulQuery);
+            var ragClient = _ragClientFactory.GetClient(indexData.RagHost);
+            var ragData = await ragClient.SearchIndex(indexData, intentfulQuery);
 
             var sb = new StringBuilder();
             await foreach (var item in ragData.GetResultsAsync())
@@ -618,10 +619,10 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="messages">A list of messages representing the current conversation context.</param>
         /// <returns>A <see cref="List{Message}"> representing the current conversation context with the generated 
         /// image attached.</returns>
-        private async Task<List<Message>> GenerateImage(string imageGenArgs, AGIServiceHosts? host, List<Message> messages)
+        private async Task<List<Message>> GenerateImage(string imageGenArgs, AGIServiceHost? host, List<Message> messages)
         {
             // anthropic does not support image gen currently
-            if (host == AGIServiceHosts.Anthropic) return messages;
+            if (host == AGIServiceHost.Anthropic) return messages;
 
             var imageGenArgsJson = JsonSerializer.Deserialize<Dictionary<string, string>>(imageGenArgs);
             if (imageGenArgsJson == null || !imageGenArgsJson.ContainsKey("prompt")) return messages;

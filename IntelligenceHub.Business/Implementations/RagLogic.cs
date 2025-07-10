@@ -3,6 +3,7 @@ using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Factories;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Client.Interfaces;
+using IntelligenceHub.Client.Implementations;
 using IntelligenceHub.Common.Config;
 using IntelligenceHub.DAL.Interfaces;
 using IntelligenceHub.DAL.Models;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Options;
 using static IntelligenceHub.Common.GlobalVariables;
 using IntelligenceHub.Common.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using IntelligenceHub.Business.Handlers;
 
 namespace IntelligenceHub.Business.Implementations
@@ -21,12 +23,14 @@ namespace IntelligenceHub.Business.Implementations
     public class RagLogic : IRagLogic
     {
         private readonly IAGIClientFactory _agiClientFactory;
-        private readonly IAISearchServiceClient _searchClient;
+        private readonly IRagClientFactory _ragClientFactory;
         private readonly IIndexMetaRepository _metaRepository;
         private readonly IIndexRepository _ragRepository;
         private readonly IValidationHandler _validationHandler;
         private readonly IBackgroundTaskQueueHandler _backgroundTaskQueue;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IntelligenceHubDbContext _dbContext;
+        private readonly WeaviateSearchServiceClient _weaviateClient;
 
         private readonly string _defaultAzureModel;
 
@@ -42,16 +46,18 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="validationHandler">A class that can be used to validate DTO bodies passed to the API.</param>
         /// <param name="backgroundTaskQueue">A background task handler useful for performing operations without tying up resources.</param>
         /// <param name="context">DAL context from EFCore used for some more specialized scenarios.</param>
-        public RagLogic(IOptionsMonitor<Settings> settings, IAGIClientFactory agiFactory, IProfileRepository profileRepository, IAISearchServiceClient aISearchServiceClient, IIndexMetaRepository metaRepository, IIndexRepository indexRepository, IValidationHandler validationHandler, IBackgroundTaskQueueHandler backgroundTaskQueue, IntelligenceHubDbContext context)
+        public RagLogic(IOptionsMonitor<Settings> settings, IAGIClientFactory agiFactory, IProfileRepository profileRepository, IRagClientFactory ragClientFactory, IIndexMetaRepository metaRepository, IIndexRepository indexRepository, IValidationHandler validationHandler, IBackgroundTaskQueueHandler backgroundTaskQueue, IntelligenceHubDbContext context, WeaviateSearchServiceClient weaviateClient, IServiceScopeFactory serviceScopeFactory)
         {
             _defaultAzureModel = settings.CurrentValue.ValidAGIModels.FirstOrDefault() ?? string.Empty;
             _agiClientFactory = agiFactory;
-            _searchClient = aISearchServiceClient;
+            _ragClientFactory = ragClientFactory;
             _metaRepository = metaRepository;
             _ragRepository = indexRepository;
             _validationHandler = validationHandler;
             _backgroundTaskQueue = backgroundTaskQueue;
             _dbContext = context;
+            _weaviateClient = weaviateClient;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         /// <summary>
@@ -104,16 +110,17 @@ namespace IntelligenceHub.Business.Implementations
             success = await _ragRepository.EnableChangeTrackingAsync(indexDefinition.Name);
             if (!success) return APIResponseWrapper<bool>.Failure($"Partially failed to add index '{indexDefinition.Name}' to the database.", APIResponseStatusCodes.InternalError);
 
-            // create the index in Azure AI Search
-            success = await _searchClient.UpsertIndex(indexDefinition);
+            // create the index in the selected RAG service
+            var ragClient = _ragClientFactory.GetClient(indexDefinition.RagHost);
+            success = await ragClient.UpsertIndex(indexDefinition);
             if (!success) return APIResponseWrapper<bool>.Failure("Failed to add the index to the corresponding search service resource.", APIResponseStatusCodes.InternalError);
 
             // Create a datasource for the SQL DB in Azure AI Search
-            success = await _searchClient.CreateDatasource(indexDefinition.Name);
+            success = await ragClient.CreateDatasource(indexDefinition.Name);
             if (!success) return APIResponseWrapper<bool>.Failure("Failed to connect the index to the Azure AI search service resource.", APIResponseStatusCodes.InternalError);
 
             // create the indexer to run scheduled ingestions of the datasource
-            success = await _searchClient.UpsertIndexer(indexDefinition);
+            success = await ragClient.UpsertIndexer(indexDefinition);
             if (!success) return APIResponseWrapper<bool>.Failure("Failed to create the indexer used to ingest documents within the search service.", APIResponseStatusCodes.InternalError);
             return APIResponseWrapper<bool>.Success(true);
         }
@@ -129,6 +136,7 @@ namespace IntelligenceHub.Business.Implementations
             if (!string.IsNullOrEmpty(errorMessage)) return APIResponseWrapper<bool>.Failure(errorMessage, APIResponseStatusCodes.BadRequest);
             var existingDefinition = await _metaRepository.GetByNameAsync(indexDefinition.Name);
             if (existingDefinition == null) return APIResponseWrapper<bool>.Failure($"An index with the name '{indexDefinition.Name}' was not found.", APIResponseStatusCodes.NotFound);
+            if (indexDefinition.RagHost != null && existingDefinition.RagHost.ConvertToRagHost() != indexDefinition.RagHost) return APIResponseWrapper<bool>.Failure("The index RagHost cannot be modified after the index is created.", APIResponseStatusCodes.BadRequest);
 
             //var success = await _searchClient.UpsertIndex(indexDefinition);
             //if (!success) return APIResponseWrapper<bool>.Failure("Failed to update the index against the search service.", APIResponseStatusCodes.InternalError);
@@ -178,7 +186,8 @@ namespace IntelligenceHub.Business.Implementations
             {
                 if (generateMissingFields) _ = GenerateMissingRagFields(indexDefinition);
                 await _ragRepository.MarkIndexForUpdateAsync(newDefinition.Name);
-                var indexerRepsonse = await _searchClient.RunIndexer(newDefinition.Name);
+                var ragClient = _ragClientFactory.GetClient(indexDefinition.RagHost);
+                var indexerRepsonse = await ragClient.RunIndexer(newDefinition.Name);
                 if (!indexerRepsonse) return APIResponseWrapper<bool>.Failure("Failed to update the indexer against the search service.", APIResponseStatusCodes.InternalError);
             }
             return APIResponseWrapper<bool>.Success(true);
@@ -229,8 +238,8 @@ namespace IntelligenceHub.Business.Implementations
         private async Task RunBackgroundDocumentUpdate(IndexMetadata index, DbIndexDocument document)
         {
             var documentDto = DbMappingHandler.MapFromDbIndexDocument(document);
-            if (index.GenerateTopic ?? false && string.IsNullOrEmpty(document.Topic)) document.Topic = await GenerateDocumentMetadata("a topic", documentDto, index.GenerationHost ?? AGIServiceHosts.None);
-            if (index.GenerateKeywords ?? false && string.IsNullOrEmpty(document.Keywords)) document.Keywords = await GenerateDocumentMetadata("a comma separated list of keywords", documentDto, index.GenerationHost ?? AGIServiceHosts.None);
+            if (index.GenerateTopic ?? false && string.IsNullOrEmpty(document.Topic)) document.Topic = await GenerateDocumentMetadata("a topic", documentDto, index.GenerationHost ?? AGIServiceHost.None);
+            if (index.GenerateKeywords ?? false && string.IsNullOrEmpty(document.Keywords)) document.Keywords = await GenerateDocumentMetadata("a comma separated list of keywords", documentDto, index.GenerationHost ?? AGIServiceHost.None);
 
             // Use EF Core execution strategy
             var strategy = _dbContext.Database.CreateExecutionStrategy();
@@ -268,13 +277,15 @@ namespace IntelligenceHub.Business.Implementations
             if (indexMetadata == null) return APIResponseWrapper<bool>.Failure($"The index '{index}' was not found.", APIResponseStatusCodes.NotFound);
             if (await _ragRepository.DeleteIndexAsync(indexMetadata.Name))
             {
-                success = await _searchClient.DeleteIndexer(indexMetadata.Name);
+                if (indexMetadata.RagHost.ConvertToRagHost() == RagServiceHost.None) return APIResponseWrapper<bool>.Failure($"Failed to convert the RagHost to a valid enum.", APIResponseStatusCodes.InternalError);
+                var ragClient = _ragClientFactory.GetClient(indexMetadata.RagHost.ConvertToRagHost());
+                success = await ragClient.DeleteIndexer(indexMetadata.Name);
                 if (!success) return APIResponseWrapper<bool>.Failure("Failed to delete the indexer within the search service.", APIResponseStatusCodes.InternalError);
 
-                success = await _searchClient.DeleteDatasource(indexMetadata.Name);
+                success = await ragClient.DeleteDatasource(indexMetadata.Name);
                 if (!success) return APIResponseWrapper<bool>.Failure("Failed to delete the datasource connection within the search service.", APIResponseStatusCodes.InternalError);
 
-                success = await _searchClient.DeleteIndex(index);
+                success = await ragClient.DeleteIndex(index);
                 if (!success) return APIResponseWrapper<bool>.Failure("Failed to delete the index within the search service.", APIResponseStatusCodes.InternalError);
 
                 success = await _metaRepository.DeleteAsync(indexMetadata);
@@ -299,7 +310,8 @@ namespace IntelligenceHub.Business.Implementations
 
             var docList = new List<IndexDocument>();
             var indexDefinition = DbMappingHandler.MapFromDbIndexMetadata(indexData);
-            var response = await _searchClient.SearchIndex(indexDefinition, query);
+            var ragClient = _ragClientFactory.GetClient(indexDefinition.RagHost);
+            var response = await ragClient.SearchIndex(indexDefinition, query);
             var results = response.GetResultsAsync();
             await foreach (var res in results)
             {
@@ -329,7 +341,21 @@ namespace IntelligenceHub.Business.Implementations
             if (!_validationHandler.IsValidIndexName(index) || string.IsNullOrEmpty(index)) return APIResponseWrapper<bool>.Failure($"The supplied index name, '{index}' is invalid. Please avoid reserved SQL words.", APIResponseStatusCodes.BadRequest);
             var indexMetadata = await _metaRepository.GetByNameAsync(index);
             if (indexMetadata == null) return APIResponseWrapper<bool>.Failure($"No index with the name '{index}' was found.", APIResponseStatusCodes.NotFound);
-            var success = await _searchClient.RunIndexer(index);
+            if (indexMetadata.RagHost.ConvertToRagHost() == RagServiceHost.None) return APIResponseWrapper<bool>.Failure($"Failed to convert the RagHost to a valid enum.", APIResponseStatusCodes.InternalError);
+            if (indexMetadata.RagHost.ConvertToRagHost() == RagServiceHost.Weaviate)
+            {
+                _backgroundTaskQueue.QueueBackgroundWorkItem(async token =>
+                {
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var repo = scope.ServiceProvider.GetRequiredService<IIndexRepository>();
+                    var client = scope.ServiceProvider.GetRequiredService<WeaviateSearchServiceClient>();
+                    await SyncWeaviateIndex(index, repo, client, token);
+                });
+                return APIResponseWrapper<bool>.Success(true);
+            }
+
+            var ragClient = _ragClientFactory.GetClient(indexMetadata.RagHost.ConvertToRagHost());
+            var success = await ragClient.RunIndexer(index);
             if (success) return APIResponseWrapper<bool>.Success(true);
             return APIResponseWrapper<bool>.Failure($"Failed to mark the SQL index for updating.", APIResponseStatusCodes.InternalError);
         }
@@ -428,6 +454,37 @@ namespace IntelligenceHub.Business.Implementations
             return APIResponseWrapper<int>.Success(deletedDocuments);
         }
 
+        private async Task SyncWeaviateIndex(string index, IIndexRepository repository, WeaviateSearchServiceClient weaviateClient, CancellationToken token)
+        {
+            const int batch = 100;
+            int page = 1;
+            var sqlDocs = new List<DbIndexDocument>();
+            IEnumerable<DbIndexDocument> pageDocs;
+            do
+            {
+                pageDocs = await repository.GetAllAsync(index, batch, page);
+                sqlDocs.AddRange(pageDocs);
+                page++;
+            } while (pageDocs.Any());
+
+            var weavDocs = await weaviateClient.GetAllDocuments(index);
+            var sqlLookup = sqlDocs.ToDictionary(d => d.Id);
+
+            foreach (var wdoc in weavDocs)
+            {
+                if (!sqlLookup.ContainsKey(wdoc.Id))
+                {
+                    await weaviateClient.DeleteDocument(index, wdoc.Id);
+                }
+            }
+
+            foreach (var sdoc in sqlDocs)
+            {
+                var dto = DbMappingHandler.MapFromDbIndexDocument(sdoc);
+                await weaviateClient.UpsertDocument(index, dto);
+            }
+        }
+
         #region Private Methods
 
         /// <summary>
@@ -437,9 +494,9 @@ namespace IntelligenceHub.Business.Implementations
         /// <param name="document">The document to generate the data for.</param>
         /// <param name="host">The host that will be used to generate the data.</param>
         /// <returns>The string generated by the AGI client based on the provided document.</returns>
-        private async Task<string> GenerateDocumentMetadata(string dataFormat, IndexDocument document, AGIServiceHosts host)
+        private async Task<string> GenerateDocumentMetadata(string dataFormat, IndexDocument document, AGIServiceHost host)
         {
-            if (host == AGIServiceHosts.None) return string.Empty;
+            if (host == AGIServiceHost.None) return string.Empty;
 
             var completion = $"Please create {dataFormat} summarizing the below data delimited by triple " +
                 $"backticks. Your response should only contain {dataFormat} and absolutely no other textual " +
@@ -452,12 +509,12 @@ namespace IntelligenceHub.Business.Implementations
             completion += $"\n```";
 
             var model = DefaultOpenAIModel;
-            if (host == AGIServiceHosts.Azure) model = _defaultAzureModel;
-            else if (host == AGIServiceHosts.Anthropic) model = DefaultAnthropicModel;
+            if (host == AGIServiceHost.Azure) model = _defaultAzureModel;
+            else if (host == AGIServiceHost.Anthropic) model = DefaultAnthropicModel;
 
             var completionRequest = new CompletionRequest()
             {
-                ProfileOptions = new Profile() { Model = model, ImageHost = AGIServiceHosts.None },
+                ProfileOptions = new Profile() { Model = model, ImageHost = AGIServiceHost.None },
                 Messages = new List<Message>() { new Message() { Role = Role.User, Content = completion } }
             };
 

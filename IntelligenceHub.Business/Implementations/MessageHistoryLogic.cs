@@ -36,6 +36,10 @@ namespace IntelligenceHub.Business.Implementations
         /// <returns>An <see cref="APIResponseWrapper{List{Message}}"/> containing a list of messages associated with the conversation.</returns>
         public async Task<APIResponseWrapper<List<Message>>> GetConversationHistory(Guid id, int count, int page)
         {
+            // check if the conversation exists at all in order to return the appropriate error message
+            var conversationData = await _messageHistoryRepository.GetConversationAsync(id, 1, 1);
+            if (conversationData == null || conversationData.Count < 1) return APIResponseWrapper<List<Message>>.Failure($"A conversation with the id '{id}' was not found.", APIResponseStatusCodes.NotFound);
+
             var messages = new List<Message>();
             var dbMessages = await _messageHistoryRepository.GetConversationAsync(id, count, page);
             foreach (var dbMessage in dbMessages) messages.Add(DbMappingHandler.MapFromDbMessage(dbMessage));

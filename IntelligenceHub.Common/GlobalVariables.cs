@@ -60,11 +60,21 @@
         /// <summary>
         /// Specifies the hosts for AGI services.
         /// </summary>
-        public enum AGIServiceHosts
+        public enum AGIServiceHost
         {
             Azure,
             OpenAI,
             Anthropic,
+            None
+        }
+
+        /// <summary>
+        /// Specifies the vector database provider.
+        /// </summary>
+        public enum RagServiceHost
+        {
+            Azure,
+            Weaviate,
             None
         }
 
@@ -227,7 +237,12 @@
         /// <summary>
         /// The default model for embeddings.
         /// </summary>
-        public const string DefaultEmbeddingModel = "text-embedding-3-large";
+        public const string DefaultAzureSearchEmbeddingModel = "text-embedding-3-large";
+
+        /// <summary>
+        /// The default embedding model used when indexing with Weaviate.
+        /// </summary>
+        public const string DefaultWeaviateEmbeddingModel = "Snowflake/snowflake-arctic-embed-l-v2.0"; // currently this value is only used in Validation and saving database defaults. The Weaviate client defaults to this value automatically, and therefore doesn't require it
 
         /// <summary>
         /// The default model for image generation.

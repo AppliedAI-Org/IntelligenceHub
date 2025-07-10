@@ -65,6 +65,7 @@ namespace IntelligenceHub.DAL
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
                 entity.HasIndex(e => e.Name).IsUnique();
                 entity.Property(e => e.GenerationHost).HasMaxLength(255).IsRequired();
+                entity.Property(e => e.RagHost).HasMaxLength(255).IsRequired();
                 entity.Property(e => e.QueryType).HasMaxLength(255);
                 entity.Property(e => e.IndexingInterval).IsRequired().HasConversion(
                     v => (long)v.TotalMilliseconds,  // Convert TimeSpan to BigInt (milliseconds)

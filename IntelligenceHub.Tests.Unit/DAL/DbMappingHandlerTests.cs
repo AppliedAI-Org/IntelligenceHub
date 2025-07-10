@@ -66,7 +66,7 @@ namespace IntelligenceHub.Tests.Unit.DAL
             // Arrange
             var profileUpdate = new Profile
             {
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 Model = "Test Model",
                 ResponseFormat = "Test Format",
                 User = "Test User",
@@ -87,7 +87,7 @@ namespace IntelligenceHub.Tests.Unit.DAL
             // Assert
             Assert.Equal("Test Profile", result.Name);
             Assert.Equal("Test Model", result.Model);
-            Assert.Equal(AGIServiceHosts.Azure.ToString(), result.Host);
+            Assert.Equal(AGIServiceHost.Azure.ToString(), result.Host);
             Assert.Equal("Test Format", result.ResponseFormat);
             Assert.Equal("Test User", result.User);
             Assert.Equal("Test Message", result.SystemMessage);
@@ -310,7 +310,7 @@ namespace IntelligenceHub.Tests.Unit.DAL
             {
                 Name = "Test Name",
                 QueryType = "Simple",
-                GenerationHost = AGIServiceHosts.Azure.ToString(),
+                GenerationHost = AGIServiceHost.Azure.ToString(),
                 ChunkOverlap = 0.5,
                 IndexingInterval = TimeSpan.FromHours(24),
                 MaxRagAttachments = 5,
@@ -364,7 +364,7 @@ namespace IntelligenceHub.Tests.Unit.DAL
             {
                 Name = "Test Name",
                 QueryType = QueryType.Simple,
-                GenerationHost = AGIServiceHosts.OpenAI,
+                GenerationHost = AGIServiceHost.OpenAI,
                 ChunkOverlap = 0.5,
                 IndexingInterval = TimeSpan.FromHours(24),
                 MaxRagAttachments = 5,

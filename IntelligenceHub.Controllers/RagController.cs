@@ -1,4 +1,5 @@
-﻿using IntelligenceHub.API.DTOs.RAG;
+﻿using IntelligenceHub.API.DTOs;
+using IntelligenceHub.API.DTOs.RAG;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
 using IntelligenceHub.Common.Extensions;
@@ -26,7 +27,6 @@ namespace IntelligenceHub.Controllers
         {
             _ragLogic = ragLogic;
         }
-
         /// <summary>
         /// This endpoint is used to get a RAG index by name.
         /// </summary>
@@ -157,7 +157,7 @@ namespace IntelligenceHub.Controllers
                 else if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
                 return BadRequest(response.ErrorMessage);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, GlobalVariables.DefaultExceptionMessage);
             }

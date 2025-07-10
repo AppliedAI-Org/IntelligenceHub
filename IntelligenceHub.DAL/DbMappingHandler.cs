@@ -41,28 +41,28 @@ namespace IntelligenceHub.DAL
                 SystemMessage = dbProfile.SystemMessage,
                 Stop = dbProfile.Stop?.ToStringArray(),
                 ReferenceProfiles = dbProfile.ReferenceProfiles?.ToStringArray(),
-                Tools = dbProfile.ProfileTools.Select(pt => new Tool 
-                { 
-                    Id = pt.Tool.Id, 
-                    Function = new Function() 
-                    { 
-                        Name = pt.Tool.Name, 
-                        Description = pt.Tool.Description, 
-                        Parameters = new Parameters() 
-                        { 
-                            type = "object", 
-                            required = pt.Tool.Required.ToStringArray(),  
-                            properties = pt.Tool.Properties.ToDictionary(p => p.Name, p => new Property() 
-                            { 
-                                Id = p.Id, 
-                                type = p.Type, 
-                                description = p.Description 
-                            }) 
-                        } 
-                    }, 
-                    ExecutionUrl = pt.Tool.ExecutionUrl, 
-                    ExecutionBase64Key = pt.Tool.ExecutionBase64Key, 
-                    ExecutionMethod = pt.Tool.ExecutionMethod 
+                Tools = dbProfile.ProfileTools.Select(pt => new Tool
+                {
+                    Id = pt.Tool.Id,
+                    Function = new Function()
+                    {
+                        Name = pt.Tool.Name,
+                        Description = pt.Tool.Description,
+                        Parameters = new Parameters()
+                        {
+                            type = "object",
+                            required = pt.Tool.Required.ToStringArray(),
+                            properties = pt.Tool.Properties.ToDictionary(p => p.Name, p => new Property()
+                            {
+                                Id = p.Id,
+                                type = p.Type,
+                                description = p.Description
+                            })
+                        }
+                    },
+                    ExecutionUrl = pt.Tool.ExecutionUrl,
+                    ExecutionBase64Key = pt.Tool.ExecutionBase64Key,
+                    ExecutionMethod = pt.Tool.ExecutionMethod
                 }).ToList(),
                 MaxMessageHistory = dbProfile.MaxMessageHistory,
             };
@@ -84,14 +84,14 @@ namespace IntelligenceHub.DAL
             if (existingProfile == null) existingProfile = new DbProfile();
 
             var host = profileUpdate?.Host ?? existingProfile.Host.ConvertToServiceHost();
-            if (host == AGIServiceHosts.None) host = AGIServiceHosts.OpenAI;
+            if (host == AGIServiceHost.None) host = AGIServiceHost.OpenAI;
 
             var model = profileUpdate?.Model ?? existingProfile.Model ?? null;
             if (string.IsNullOrEmpty(model))
             {
-                if (host == AGIServiceHosts.Azure) model = defaultAzureModel;
-                if (host == AGIServiceHosts.Anthropic) model = DefaultAnthropicModel;
-                if (host == AGIServiceHosts.OpenAI) model = DefaultOpenAIModel;
+                if (host == AGIServiceHost.Azure) model = defaultAzureModel;
+                if (host == AGIServiceHost.Anthropic) model = DefaultAnthropicModel;
+                if (host == AGIServiceHost.OpenAI) model = DefaultOpenAIModel;
             }
 
             existingProfile.Name = profileName;
@@ -285,7 +285,8 @@ namespace IntelligenceHub.DAL
                 Name = dbIndexData.Name,
                 QueryType = dbIndexData.QueryType?.ConvertStringToQueryType() ?? QueryType.Simple,
                 GenerationHost = dbIndexData.GenerationHost.ConvertToServiceHost(),
-                ChunkOverlap = dbIndexData.ChunkOverlap ?? DefaultChunkOverlap, // make this a global variable
+                RagHost = dbIndexData.RagHost.ConvertToRagHost(),
+                ChunkOverlap = dbIndexData.ChunkOverlap ?? (dbIndexData.RagHost.ConvertToRagHost() == RagServiceHost.Weaviate ? 0 : DefaultChunkOverlap),
                 IndexingInterval = dbIndexData.IndexingInterval,
                 MaxRagAttachments = dbIndexData.MaxRagAttachments ?? DefaultRagAttachmentNumber, // make this a global variable
                 EmbeddingModel = dbIndexData.EmbeddingModel,
@@ -315,17 +316,21 @@ namespace IntelligenceHub.DAL
         /// <returns>A database index metadata entity.</returns>
         public static DbIndexMetadata MapToDbIndexMetadata(IndexMetadata indexData)
         {
-            if (indexData.ScoringProfile == null) indexData.ScoringProfile = new IndexScoringProfile();
-            var chunkOverlap = indexData.ChunkOverlap;
+            var defaultEmbeddingModel = indexData.RagHost == RagServiceHost.Azure ? DefaultAzureSearchEmbeddingModel : DefaultWeaviateEmbeddingModel;
+            if (indexData.ScoringProfile == null || indexData.RagHost == RagServiceHost.Weaviate) indexData.ScoringProfile = new IndexScoringProfile();
+            var defaultChunkOverlap = indexData.RagHost == RagServiceHost.Weaviate ? 0 : DefaultChunkOverlap;
+            var defaultIndexingInterval = indexData.RagHost == RagServiceHost.Weaviate ? TimeSpan.Zero : TimeSpan.FromHours(23.99);
+            var chunkOverlap = indexData.ChunkOverlap ?? defaultChunkOverlap;
             return new DbIndexMetadata()
             {
                 Name = indexData.Name,
                 QueryType = indexData.QueryType.ToString(),
-                GenerationHost = indexData.GenerationHost.ToString() ?? AGIServiceHosts.None.ToString(),
-                ChunkOverlap = chunkOverlap ?? DefaultChunkOverlap,
-                IndexingInterval = indexData.IndexingInterval ?? TimeSpan.FromHours(23.99), // only slightly under 1 day is supported
+                GenerationHost = indexData.GenerationHost.ToString() ?? AGIServiceHost.None.ToString(),
+                RagHost = indexData.RagHost.ToString() ?? RagServiceHost.None.ToString(),
+                ChunkOverlap = chunkOverlap,
+                IndexingInterval = indexData.IndexingInterval ?? defaultIndexingInterval,
                 MaxRagAttachments = indexData.MaxRagAttachments ?? DefaultRagAttachmentNumber, // make this a global variable,
-                EmbeddingModel = indexData.EmbeddingModel ?? DefaultEmbeddingModel,
+                EmbeddingModel = indexData.EmbeddingModel ?? defaultEmbeddingModel,
                 GenerateTopic = indexData.GenerateTopic ?? false,
                 GenerateKeywords = indexData.GenerateKeywords ?? false,
                 GenerateTitleVector = indexData.GenerateTitleVector ?? true,

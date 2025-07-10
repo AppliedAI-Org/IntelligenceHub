@@ -16,7 +16,7 @@ namespace IntelligenceHub.Client.Implementations
     /// <summary>
     /// A Azure AI Search Services client oriented around RAG construction and consumption.
     /// </summary>
-    public class AISearchServiceClient : IAISearchServiceClient
+    public class AzureAISearchServiceClient : IAISearchServiceClient
     {
         private readonly SearchIndexClient _indexClient;
         private readonly SearchIndexerClient _indexerClient;
@@ -31,8 +31,8 @@ namespace IntelligenceHub.Client.Implementations
         private readonly string _defaultKnnConfig = "ExhaustiveKnn";
         private readonly string _defaultVectorizer = "Vectorizer";
 
-        private readonly string _indexerSuffix  = "-indexer";
-        private readonly string _skillsetSuffix  = "-skillset";
+        private readonly string _indexerSuffix = "-indexer";
+        private readonly string _skillsetSuffix = "-skillset";
 
         // Rag indexes are created with lower case values
         private enum RagField
@@ -66,7 +66,7 @@ namespace IntelligenceHub.Client.Implementations
         /// <param name="searchClientSettings">The search service client resolved from DI.</param>
         /// <param name="agiClientSettings">The settings for the client resolved from DI.</param>
         /// <param name="settings">The application settings passed in from DI. Only required for the DB connection string.</param>
-        public AISearchServiceClient(IOptionsMonitor<SearchServiceClientSettings> searchClientSettings, IOptionsMonitor<AGIClientSettings> agiClientSettings, IOptionsMonitor<Settings> settings)
+        public AzureAISearchServiceClient(IOptionsMonitor<AzureSearchServiceClientSettings> searchClientSettings, IOptionsMonitor<AGIClientSettings> agiClientSettings, IOptionsMonitor<Settings> settings)
         {
             var credential = new AzureKeyCredential(searchClientSettings.CurrentValue.Key);
 
@@ -224,10 +224,10 @@ namespace IntelligenceHub.Client.Implementations
         /// <returns>A boolean indicating success or failure of the operation.</returns>
         public async Task<bool> DeleteIndexer(string indexName)
         {
-            var skillsetDeletionResponse = await _indexerClient.DeleteSkillsetAsync(indexName.ToLower() + _skillsetSuffix );
+            var skillsetDeletionResponse = await _indexerClient.DeleteSkillsetAsync(indexName.ToLower() + _skillsetSuffix);
             if (skillsetDeletionResponse == null || skillsetDeletionResponse.IsError && skillsetDeletionResponse.Status != 404) return false;
 
-            var response = await _indexerClient.DeleteIndexerAsync(indexName + _indexerSuffix );
+            var response = await _indexerClient.DeleteIndexerAsync(indexName + _indexerSuffix);
             return response.Status > 199 && response.Status < 300;
         }
 
@@ -293,7 +293,7 @@ namespace IntelligenceHub.Client.Implementations
         /// <returns>A boolean indicating success or failure of the operation.</returns>
         public async Task<bool> RunIndexer(string indexName)
         {
-            var response = await _indexerClient.RunIndexerAsync(indexName + _indexerSuffix );
+            var response = await _indexerClient.RunIndexerAsync(indexName + _indexerSuffix);
             return response.Status > 199 && response.Status < 300;
         }
 
@@ -307,7 +307,7 @@ namespace IntelligenceHub.Client.Implementations
             // Define the indexer
             var interval = TimeSpan.FromDays(1);
             if (index.IndexingInterval.HasValue) interval = index.IndexingInterval.Value;
-            var indexer = new SearchIndexer($"{index.Name}{_indexerSuffix }", index.Name, index.Name) { Schedule = new IndexingSchedule(interval) };
+            var indexer = new SearchIndexer($"{index.Name}{_indexerSuffix}", index.Name, index.Name) { Schedule = new IndexingSchedule(interval) };
 
             // Map the existing "Id" column to the parent_id and chunk_id fields
             indexer.FieldMappings.Add(new FieldMapping("Id") { TargetFieldName = RagField.parent_id.ToString() });
@@ -328,16 +328,16 @@ namespace IntelligenceHub.Client.Implementations
         {
             var chunkingLengthInChars = 1312; // (avg chars per token = 3.5) * (average recommended chunk size = 375) = 1312.5
             var ragDimensions = 3072;
-            if (string.IsNullOrEmpty(index.EmbeddingModel)) index.EmbeddingModel = DefaultEmbeddingModel;
-            if (index.EmbeddingModel?.ToLower() != DefaultEmbeddingModel.ToLower()) ragDimensions = 1536; // only text-embedding-3-large supports 3072 dimensions
+            if (string.IsNullOrEmpty(index.EmbeddingModel)) index.EmbeddingModel = DefaultAzureSearchEmbeddingModel;
+            if (index.EmbeddingModel?.ToLower() != DefaultAzureSearchEmbeddingModel.ToLower()) ragDimensions = 1536; // only text-embedding-3-large supports 3072 dimensions
 
-            var skillsetName = index.Name.ToLower() + _indexerSuffix ;
+            var skillsetName = index.Name.ToLower() + _indexerSuffix;
             var skills = new List<SearchIndexerSkill>();
             var projectionInputMappings = new List<InputFieldMappingEntry>();
 
             // Add default skills and associated projections
             projectionInputMappings.Add(new InputFieldMappingEntry(RagField.chunk.ToString()) { Source = "/document/pages/*" });
-            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.title.ToString()) {  Source = "/document/title" });
+            projectionInputMappings.Add(new InputFieldMappingEntry(RagField.title.ToString()) { Source = "/document/title" });
             projectionInputMappings.Add(new InputFieldMappingEntry(RagField.topic.ToString()) { Source = "/document/topic" });
             projectionInputMappings.Add(new InputFieldMappingEntry(RagField.keywords.ToString()) { Source = "/document/keywords" });
             projectionInputMappings.Add(new InputFieldMappingEntry(RagField.source.ToString()) { Source = "/document/source" });
@@ -453,8 +453,8 @@ namespace IntelligenceHub.Client.Implementations
         {
             // Choose the appropriate rag dimensions for the given embedding model
             var ragDimensions = _defaultRagDimensions;
-            if (string.IsNullOrEmpty(index.EmbeddingModel)) index.EmbeddingModel = DefaultEmbeddingModel;
-            if (index.EmbeddingModel?.ToLower() != DefaultEmbeddingModel.ToLower()) ragDimensions = 1536; // only text-embedding-3-large supports 3072 dimensions
+            if (string.IsNullOrEmpty(index.EmbeddingModel)) index.EmbeddingModel = DefaultAzureSearchEmbeddingModel;
+            if (index.EmbeddingModel?.ToLower() != DefaultAzureSearchEmbeddingModel.ToLower()) ragDimensions = 1536; // only text-embedding-3-large supports 3072 dimensions
 
             var searchIndex = new SearchIndex(index.Name)
             {

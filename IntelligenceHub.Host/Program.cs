@@ -23,8 +23,15 @@ using IntelligenceHub.Business.Handlers;
 
 namespace IntelligenceHub.Host
 {
+    /// <summary>
+    /// Entry point for the IntelligenceHub web host.
+    /// </summary>
     public class Program
     {
+        /// <summary>
+        /// Bootstraps and runs the web application.
+        /// </summary>
+        /// <param name="args">Command line arguments.</param>
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -43,7 +50,8 @@ namespace IntelligenceHub.Host
             builder.Services.Configure<Settings>(settingsSection);
             builder.Services.Configure<AppInsightSettings>(insightSettingsSection);
             builder.Services.Configure<AGIClientSettings>(agiClientSettingsSection);
-            builder.Services.Configure<SearchServiceClientSettings>(builder.Configuration.GetRequiredSection(nameof(SearchServiceClientSettings)));
+            builder.Services.Configure<AzureSearchServiceClientSettings>(builder.Configuration.GetRequiredSection(nameof(AzureSearchServiceClientSettings)));
+            builder.Services.Configure<WeaviateSearchServiceClientSettings>(builder.Configuration.GetSection(nameof(WeaviateSearchServiceClientSettings)));
 
             // Add Services
 
@@ -67,12 +75,14 @@ namespace IntelligenceHub.Host
 
             // Clients and Client Factory
             builder.Services.AddSingleton<IAGIClientFactory, AGIClientFactory>();
+            builder.Services.AddSingleton<IRagClientFactory, RagClientFactory>();
             builder.Services.AddSingleton<IAGIClient, AzureAIClient>();
             builder.Services.AddSingleton<OpenAIClient>();
             builder.Services.AddSingleton<AzureAIClient>();
             builder.Services.AddSingleton<AnthropicAIClient>();
             builder.Services.AddSingleton<IToolClient, ToolClient>();
-            builder.Services.AddSingleton<IAISearchServiceClient, AISearchServiceClient>();
+            builder.Services.AddSingleton<AzureAISearchServiceClient>();
+            builder.Services.AddSingleton<WeaviateSearchServiceClient>();
 
             // Repositories
             builder.Services.AddScoped<IProfileRepository, ProfileRepository>();

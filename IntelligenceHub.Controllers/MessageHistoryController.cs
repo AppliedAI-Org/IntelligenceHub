@@ -1,10 +1,10 @@
 ﻿using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
+using static IntelligenceHub.Common.GlobalVariables;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.Controllers
 {
@@ -47,11 +47,14 @@ namespace IntelligenceHub.Controllers
                 if (count < 1) return BadRequest("Count must be greater than 0.");
                 if (page < 1) return BadRequest("Page must be greater than 0.");
                 var response = await _messageHistoryLogic.GetConversationHistory(id, count, page);
-                if (!response.IsSuccess) return BadRequest(response.ErrorMessage);
+                if (!response.IsSuccess)
+                {
+                    if (response.StatusCode == APIResponseStatusCodes.NotFound) return NotFound(response.ErrorMessage);
+                    return BadRequest(response.ErrorMessage);
+                }
 
                 var conversation = response.Data;
-                if (conversation is null || conversation.Count < 1) return NotFound($"The conversation '{id}' does not exist or is empty.");
-                else return Ok(conversation);
+                return Ok(conversation ?? new List<Message>());
             }
             catch (Exception)
             {

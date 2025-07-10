@@ -38,7 +38,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "TestProfile",
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -80,7 +80,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = null,
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -118,7 +118,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "TestProfile",
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -153,7 +153,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "ValidProfile",
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -178,7 +178,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "all",
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -207,7 +207,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "Profile1",
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -232,7 +232,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "Profile1",
                 Model = null,
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -401,7 +401,8 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "ValidIndex",
                 IndexingInterval = TimeSpan.FromHours(1),
-                EmbeddingModel = "text-embedding-3-large",
+                EmbeddingModel = "embedding-model",
+                RagHost = RagServiceHost.Azure,
                 MaxRagAttachments = 20,
                 ChunkOverlap = 0.5,
                 GenerateKeywords = false,
@@ -442,6 +443,56 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             // Assert
             Assert.Equal("The provided index name is invalid.", result);
+        }
+
+        [Fact]
+        public void ValidateIndexDefinition_WithWeaviateAndChunkOverlap_ReturnsError()
+        {
+            var index = new IndexMetadata
+            {
+                Name = "TestIndex",
+                RagHost = RagServiceHost.Weaviate,
+                GenerationHost = AGIServiceHost.OpenAI,
+                IndexingInterval = TimeSpan.Zero,
+                ChunkOverlap = 0.1
+            };
+
+            var result = _handler.ValidateIndexDefinition(index);
+
+            Assert.Equal("ChunkOverlap is not supported when using the Weaviate RagHost.", result);
+        }
+
+        [Fact]
+        public void ValidateIndexDefinition_WithWeaviateAndIndexingInterval_ReturnsError()
+        {
+            var index = new IndexMetadata
+            {
+                Name = "TestIndex",
+                RagHost = RagServiceHost.Weaviate,
+                GenerationHost = AGIServiceHost.OpenAI,
+                IndexingInterval = TimeSpan.FromMinutes(5)
+            };
+
+            var result = _handler.ValidateIndexDefinition(index);
+
+            Assert.Equal("IndexingInterval is not supported when using the Weaviate RagHost.", result);
+        }
+
+        [Fact]
+        public void ValidateIndexDefinition_WithWeaviateAndScoringProfile_ReturnsError()
+        {
+            var index = new IndexMetadata
+            {
+                Name = "TestIndex",
+                RagHost = RagServiceHost.Weaviate,
+                GenerationHost = AGIServiceHost.OpenAI,
+                IndexingInterval = TimeSpan.Zero,
+                ScoringProfile = new IndexScoringProfile { Name = "Test" }
+            };
+
+            var result = _handler.ValidateIndexDefinition(index);
+
+            Assert.Equal("Scoring profiles are not supported when using the Weaviate RagHost.", result);
         }
 
         #endregion

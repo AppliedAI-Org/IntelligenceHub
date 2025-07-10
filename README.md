@@ -42,7 +42,7 @@ For more information, please refer to the [Features](#features) section below.
 ## Features
 1. **Saving agentic chat 'profiles'** to simplify client requests, and create preset configurations related to prompting and AI model configs.
 2. **Chat completions** including streaming via a SignalR web socket or via server side events, and support for custom models deployed in Azure AI Studio.
-3. **RAG database support**, including database creation, document ingestion, and the ability to perform RAG operations across AGI service providers. (Currently, only Azure AI is supported, but an interface is provided for easy extensibility.)
+3. **RAG database support**, including database creation, document ingestion, and the ability to perform RAG operations across AGI service providers. Support now includes Azure AI Search and Weaviate.
 4. **Multimodality and image generation** including the ability to mix and match image generation models accross AGI service providers.
 5. **Tool execution** via returning the tool arguments to the client, or executing them against an external API, and returning the resulting http response data.
 6. **Conversation history** saving and loading from the database.
@@ -60,7 +60,7 @@ For more information, please refer to the [Features](#features) section below.
 
 This section outlines the steps required to set up the IntelligenceHub repository for local development. IntelligenceHub is a .NET API wrapper for AI services that relies on several external resources including AI service providers, search functionalities, and additional infrastructure.
 
-Optional infrastructure can be treated modularly unless otherwise noted, but you should be able to find a free tier available for every piece of infrastructure as well, excluding the LLM hosts, although the Azure OpenAI option is at least a 'pay as you go' model, keeping things exceptionally cheap. An Azure subscription is only required for RAG operations, or if you wish to use Azure OpenAI as your LLM host. 
+Optional infrastructure can be treated modularly unless otherwise noted, but you should be able to find a free tier available for every piece of infrastructure as well, excluding the LLM hosts, although the Azure OpenAI option is at least a 'pay as you go' model, keeping things exceptionally cheap. A cloud account is needed if you plan to use Azure AI Search or Weaviate Cloud for RAG operations, or if you wish to use Azure OpenAI as your LLM host. 
 
 **NOTE:** The application requires several sensative keys and values to populate the configuration. If you intend to use an associated feature, please be sure to have the relevant keys and endpoint data ready when running the `env_setup.py` script at IntelligenceHub\IntelligenceHub\infrastructure\ `env_setup.py`. The only required features are an SQL Server connection string, and the API key for at least one LLM host.
 
@@ -84,20 +84,18 @@ Optional infrastructure can be treated modularly unless otherwise noted, but you
 **Note:** The repository includes a Python script, `IntelligenceHub\infrastructure\env_setup.py`, that generates a development configuration file by populating `appsettings.Development.json` from a template. You may find it worthwhile to save the API keys and URLs associated with these resources so that you can easily enter them into the Python script later. 
 
 - **Essential Resources for Basic Completions**:
-The below resources are the bare minimum requirements to run the API and get a `200` response from the `\Completion\Chat\{profileName}` endpoint. If your application requires RAG database operations, app insight telemetry collection, or 
-  - An SQL Server instance running locally. For setup instructions, follow the [SQL Server Installation Guide](https://docs.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server?view=sql-server-ver15). 
-    - **NOTE:** If you intend to perform RAG operations, **consider following the documentation for Azure SQL databases** provided below instead. Otherwise, you should be comfortable configuring your development server to be accessible to Azure AI Search services.
-    - Free versions and more can be [found here](https://www.microsoft.com/en-us/sql-server/sql-server-downloads).
-    - Please be sure to run the SQL scripts found in the repo at `\IntelligenceHub\IntelligenceHub.DAL\Scripts` against the database after it is created.
+The below resources are the bare minimum requirements to run the API and get a `200` response from the `\Completion\Chat\{profileName}` endpoint. If your application requires RAG database operations or app insight telemetry collection, please ensure you follow the associated steps in the optional "Additional Cloud Resources" section.
+  - **SQL Database (required)** – The application relies on SQL to store conversation history, completion profiles, and RAG metadata. You can use a local SQL Server instance following the [SQL Server Installation Guide](https://docs.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server?view=sql-server-ver15) (free versions are [available here](https://www.microsoft.com/en-us/sql-server/sql-server-downloads)). Run the scripts in `\IntelligenceHub\IntelligenceHub.DAL\Scripts` after creating the database. If you plan to use Azure AI Search, your SQL database must be reachable from Azure (for example, by deploying an [Azure SQL Database](https://learn.microsoft.com/en-us/azure/azure-sql/database/single-database-create-quickstart?view=azuresql&tabs=azure-portal#prerequisites) or exposing your local server).
   - An API key from one of the supported LLM providers (e.g., OpenAI, Azure OpenAI, or Anthropic). NOTE: Technically only one of the below is required, provided you only use that host.  
     - **OpenAI**: Retrieve your API key from [OpenAI's platform](https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key).  
     - **Anthropic**: Sign in and create a [new API key here](https://console.anthropic.com/settings/keys). Make sure to save its details.
     - **Azure OpenAI**: Create an Azure OpenAI resource, and be sure to deploy at least one LLM in your Azure OpenAI deployment. You can name this model deployment whatever you want, but be sure to add this name to the ValidAGIModels array when running the `env_setup.py` script. Instructions on deploying this resource can be [found here](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal).
 
-- **Azure Resources (Optional)**:  
+- **Additional Cloud Resources (Optional)**:
   You only need to set up these additional resources if you plan to use advanced features such as RAG operations. For basic completions, local configuration with a single LLM provider's API key is sufficient.
-  - **Azure SQL Database** – In order to support RAG requests powered by Azure AI Search Services, the database must either be created in Azure, or otherwise be accessible to the Azure AI Search instance. This is required to create the datasource connection used to index the database via automatic change tracking. For set up instructions, follow the [Azure SQL database quickstart guide](https://learn.microsoft.com/en-us/azure/azure-sql/database/single-database-create-quickstart?view=azuresql&tabs=azure-portal#prerequisites).
-  - **Azure AI Search Services** – Required only if you intend to use RAG operations. Follow [these instructions](https://learn.microsoft.com/en-us/azure/search/search-create-service-portal) until an AI Search Service resource is created, but feel free to skip any sections after you get the API key. The API is fully capable of setting up and managing AI Search Service indexes with just a couple of API requests.
+  - **Azure SQL Database** – Required when using Azure AI Search for RAG operations. Follow the [Azure SQL database quickstart guide](https://learn.microsoft.com/en-us/azure/azure-sql/database/single-database-create-quickstart?view=azuresql&tabs=azure-portal#prerequisites) if you need to deploy one in Azure.
+  - **Azure AI Search Services** – Required for RAG operations that use Azure Search. Follow [Azure's setup guide](https://learn.microsoft.com/en-us/azure/search/search-create-service-portal) to create a service.
+  - **Weaviate Cloud** – Alternatively, you can host indexes in Weaviate's managed cloud. See [Weaviate's documentation](https://weaviate.io/developers/weaviate/installation/weaviate-cloud) for instructions.
   - **Application Insights** – Only required for telemetry and performance monitoring. For setup, follow [these instructions for setting up Application Insights for .NET Core](https://learn.microsoft.com/en-us/azure/azure-monitor/app/asp-net-core). The application is already set up to use the service, so skip any sections that aren't related to getting a connection string.
 
 ---
@@ -203,6 +201,7 @@ With the profile created, you can now send a chat request using the Chat Complet
 
 **Example using curl:**
 `curl -X POST "https://yourapi.com/Completion/Chat/ChatProfile"\
+     -H "Authorization: Bearer {token}"\
      -H "Content-Type: application/json"\
      -d '{
            "ConversationId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
@@ -252,6 +251,7 @@ Use the **Create RAG Index** endpoint to define a new RAG index. For example, to
 {
     "Name": "MyRagIndex",
     "GenerationHost": "AzureAI",
+    "RagHost": "Azure",
     "IndexingInterval": "00:05:00",
     "EmbeddingModel": "ada-text-embedding-002",
     "MaxRagAttachments": 10,
@@ -279,6 +279,7 @@ Use the **Create RAG Index** endpoint to define a new RAG index. For example, to
      -d '{
            "Name": "MyRagIndex",
            "GenerationHost": "AzureAI",
+           "RagHost": "Azure",
            "IndexingInterval": "00:05:00",
            "EmbeddingModel": "ada-text-embedding-002",
            "MaxRagAttachments": 10,
@@ -382,6 +383,7 @@ Finally, to leverage the RAG index during chat interactions, include the `RagDat
 
 **Example using curl:**
 `curl -X POST "https://yourapi.com/Completion/Chat/ChatProfile"\
+     -H "Authorization: Bearer {token}"\
      -H "Content-Type: application/json"\
      -d '{
            "ConversationId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
@@ -489,7 +491,7 @@ The `CompletionController` handles LLM chat requests (completions) via standar
     -   `500 Internal Server Error`: Unexpected server error.
     
 **Example Request**:
-`curl -X POST "https://yourapi.com/Completion/Chat/ChatProfile" \  -H "Content-Type: application/json" \  -d '{  "ConversationId": "d290f1ee-6c54-4b01-90e6-d701748f0851", "ProfileOptions": { "Name": "ChatProfile", "Model": "gpt-4o", "Host": "OpenAI", "Temperature": 0.7, "MaxTokens": 150 }, "Messages": [ { "Role": "User", "Content": "Hello, how are you?" } ] }'  `
+`curl -X POST "https://yourapi.com/Completion/Chat/ChatProfile" \  -H "Authorization: Bearer {token}" \  -H "Content-Type: application/json" \  -d '{  "ConversationId": "d290f1ee-6c54-4b01-90e6-d701748f0851", "ProfileOptions": { "Name": "ChatProfile", "Model": "gpt-4o", "Host": "OpenAI", "Temperature": 0.7, "MaxTokens": 150 }, "Messages": [ { "Role": "User", "Content": "Hello, how are you?" } ] }'  `
 
 **Example Response:**
 ```json
@@ -526,7 +528,7 @@ The `CompletionController` handles LLM chat requests (completions) via standar
     -   `500 Internal Server Error`: Unexpected server error.
 
 **Example Request**:
-`curl -X POST "https://yourapi.com/Completion/SSE/ChatProfile" \  -H "Content-Type: application/json" \  -N \ -d 
+`curl -X POST "https://yourapi.com/Completion/SSE/ChatProfile" \  -H "Authorization: Bearer {token}" \  -H "Content-Type: application/json" \  -N \ -d 
 '{ "ProfileOptions": { "Name": "ChatProfile", "Model": "gpt-4o", "Host": "OpenAI", "Temperature": 0.7, "MaxTokens": 150 }, "Messages": [ { "Role": "User", "Content": "Hello, stream my response!" } ] }'  `\
 
 **Example SSE Response**:
@@ -1351,7 +1353,12 @@ The Message History API provides endpoints to manage message histories. You can 
 ### RAG Index API Reference
 ###### Base URL `/Rag`
 &nbsp;
-The `RagController` manages RAG indexes for Azure AI Search Services. This API allows you to create, configure, query, and manage RAG indexes and their documents. It enforces strict validation rules to ensure that index definitions and document contents conform to both internal requirements and Azure AI Search limits.
+The `RagController` manages RAG indexes for Azure AI Search Services and Weaviate Cloud. This API allows you to create, configure, query, and manage RAG indexes and their documents. It enforces strict validation rules to ensure that index definitions and document contents conform to both internal requirements and service-specific limits for Azure AI Search or Weaviate.
+
+> **Weaviate Limitations**
+> - When `RagHost` is set to `Weaviate`, **ScoringProfile**, **ChunkOverlap**, and **IndexingInterval** settings are ignored. Support for Weaviate specific options is planned for a future release.
+> - Weaviate indexes do **not** automatically refresh when new documents are added. Use the `/Rag/Index/{index}/Run` route whenever you need to update the documents.
+> - Azure indexes update automatically on the schedule defined by `IndexingInterval`, but you can still trigger an immediate update with the `/Run` route.
 
 > **Note:**  
 > When creating or configuring an index, the API validates the provided definition using rules such as:  
@@ -1467,13 +1474,14 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 #### 3\. Create RAG Index
 
 -   **HTTP Request**: `POST /Rag/Index`
--   **Description**: Creates a new RAG index in Azure AI Search Services using the provided index definition. The definition is validated to ensure compliance with naming rules, indexing intervals, scoring profiles, and other constraints.
+-   **Description**: Creates a new RAG index in Azure AI Search Services or Weaviate Cloud using the provided index definition. The definition is validated to ensure compliance with naming rules, indexing intervals, scoring profiles, and other constraints. If `RagHost` is `Weaviate`, omit `ScoringProfile`, `ChunkOverlap`, and `IndexingInterval`—these settings are not yet supported.
 -   **Request Body**:
     -   **Content-Type**: `application/json`
     -   **Payload**: An `IndexMetadata` object.\
         **Validation highlights:**
         -   **Name**: Must be non-empty, ≤ 128 characters, and conform to naming conventions (alphanumeric and underscores only, excluding SQL/API keywords).
         -   **GenerationHost**: Required if `GenerateKeywords` or `GenerateTopic` is set to true.
+        -   **RagHost**: Specifies Azure or Weaviate as the backing search provider.
         -   **IndexingInterval**: Must be positive and less than 1 day.
         -   **EmbeddingModel**: Maximum length is 255 characters.
         -   **MaxRagAttachments**: Must be non-negative and no greater than 20.
@@ -1489,6 +1497,7 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 {
     "Name": "MyRagIndex",
     "GenerationHost": "AzureAI",
+    "RagHost": "Azure",
     "IndexingInterval": "00:05:00",
     "EmbeddingModel": "ada-text-embedding-002",
     "MaxRagAttachments": 10,
@@ -1514,6 +1523,7 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 ```json
 {
     "Name": "MyRagIndex",
+    "RagHost": "Azure",
     "GenerationHost": "AzureAI",
     "IndexingInterval": "00:05:00",
     "EmbeddingModel": "ada-text-embedding-002",
@@ -1539,7 +1549,7 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 #### 4\. Configure RAG Index
 
 -   **HTTP Request**: `POST /Rag/Index/Configure/{index}`
--   **Description**: Configures an existing RAG index with a new definition. The updated configuration is validated using the same rules as index creation.
+-   **Description**: Configures an existing RAG index with a new definition. The updated configuration is validated using the same rules as index creation. Changing `RagHost` from Azure to Weaviate (or vice versa) is not supported—create a new index instead.
 -   **Route Parameters**:
     -   `index` (string): The name of the index to configure.
 -   **Request Body**:
@@ -1556,6 +1566,7 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 {
     "Name": "MyRagIndex",
     "GenerationHost": "AzureAI",
+    "RagHost": "Azure",
     "IndexingInterval": "00:05:00",
     "EmbeddingModel": "text-embedding-3-large | ada-text-embedding-002",
     "MaxRagAttachments": 10,
@@ -1581,6 +1592,7 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
 ```json
 {
     "Name": "MyRagIndex",
+    "RagHost": "Azure",
     "GenerationHost": "AzureAI",
     "IndexingInterval": "00:05:00",
     "EmbeddingModel": "text-embedding-3-large",
@@ -1632,12 +1644,10 @@ The `RagController` manages RAG indexes for Azure AI Search Services. This API a
     }
 ]
 ```
-
 #### 6\. Run RAG Index Update
 
 -   **HTTP Request**: `POST /Rag/Index/{index}/Run`
--   **Description**: Initiates an update run for the specified RAG index to refresh its data.
--   **Route Parameters**:
+-   **Description**: Initiates an update run for the specified RAG index to refresh its data. Azure indexes run automatically on the configured `IndexingInterval`, while Weaviate indexes require calling this route whenever documents change.
     -   `index` (string): The name of the RAG index.
 -   **Responses**:
     -   `204 No Content`: Index update run initiated successfully.

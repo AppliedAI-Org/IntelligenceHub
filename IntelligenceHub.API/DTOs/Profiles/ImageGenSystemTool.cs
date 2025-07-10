@@ -3,10 +3,16 @@ using static IntelligenceHub.Common.GlobalVariables;
 
 namespace IntelligenceHub.API.DTOs.Tools
 {
+    /// <summary>
+    /// System tool used by the model to generate images.
+    /// </summary>
     public class ImageGenSystemTool : Tool
     {
         private readonly string _promptPropertyName = "prompt";
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ImageGenSystemTool"/> class.
+        /// </summary>
         public ImageGenSystemTool()
         {
             var promptProperty = new Property()
