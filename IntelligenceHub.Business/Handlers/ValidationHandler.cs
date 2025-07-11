@@ -9,7 +9,6 @@ using System.Drawing.Imaging;
 using Message = IntelligenceHub.API.DTOs.Message;
 using Tool = IntelligenceHub.API.DTOs.Tools.Tool;
 using Property = IntelligenceHub.API.DTOs.Tools.Property;
-using Microsoft.IdentityModel.Tokens;
 
 namespace IntelligenceHub.Business.Handlers
 {
@@ -34,10 +33,6 @@ namespace IntelligenceHub.Business.Handlers
             "float",
             "date",
             "enum",
-
-            // Don't think these would work currently, but can test. May work as string:
-            //"array",
-            //"object"
         };
 
         /// <summary>
