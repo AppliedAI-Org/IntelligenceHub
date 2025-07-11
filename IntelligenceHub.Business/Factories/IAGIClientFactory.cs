@@ -13,6 +13,6 @@ namespace IntelligenceHub.Business.Factories
         /// </summary>
         /// <param name="host">The name of the host to retrieve a client for.</param>
         /// <returns>An AGI client that can be used to perform completions, and generate images.</returns>
-        IAGIClient GetClient(AGIServiceHosts? host);
+        IAGIClient GetClient(AGIServiceHost? host);
     }
 }

@@ -31,7 +31,7 @@ namespace IntelligenceHub.Tests.Unit.Controllers
             _mockHttpContext = new Mock<HttpContext>();
 
             // Initialize the controller with mocked dependencies
-            _controller = new CompletionController(_mockCompletionLogic.Object, _mockProfileLogic.Object,  _mockValidationLogic.Object);
+            _controller = new CompletionController(_mockCompletionLogic.Object, _mockProfileLogic.Object, _mockValidationLogic.Object);
         }
 
         #region Standard Completion

@@ -16,7 +16,7 @@ namespace IntelligenceHub.Client.Implementations
     /// </summary>
     public class AnthropicAIClient : IAGIClient
     {
-        private enum AnthropicSpecificStrings 
+        private enum AnthropicSpecificStrings
         {
             user_id,
             stop_sequence,
@@ -204,7 +204,7 @@ namespace IntelligenceHub.Client.Implementations
         private List<ContentBase> ConvertToAnthropicMessage(API.DTOs.Message message)
         {
             var content = new List<ContentBase>();
-            if (!string.IsNullOrEmpty(message.Content)) content.Add(new TextContent { Text = message.Content });  
+            if (!string.IsNullOrEmpty(message.Content)) content.Add(new TextContent { Text = message.Content });
             if (!string.IsNullOrEmpty(message.Base64Image)) content.Add(new ImageContent { Source = new ImageSource() { Data = message.Base64Image } });
             return content;
         }

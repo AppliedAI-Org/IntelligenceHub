@@ -1,4 +1,5 @@
-﻿using IntelligenceHub.API.DTOs;
+﻿using IntelligenceHub.API.DTOs.RAG;
+using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Handlers;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -37,7 +38,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "TestProfile",
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -79,7 +80,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = null,
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -117,7 +118,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "TestProfile",
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -152,7 +153,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "ValidProfile",
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -177,7 +178,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "all",
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -206,7 +207,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "Profile1",
                 Model = "gpt-4o",
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -231,7 +232,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             {
                 Name = "Profile1",
                 Model = null,
-                Host = AGIServiceHosts.Azure,
+                Host = AGIServiceHost.Azure,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0,
                 Temperature = 1,
@@ -386,6 +387,187 @@ namespace IntelligenceHub.Tests.Unit.Business
 
             // Assert
             Assert.Null(result);
+        }
+
+        #endregion
+
+        #region ValidateIndexDefinition Tests
+
+        [Fact]
+        public void ValidateIndexDefinition_WithValidIndex_ReturnsNull()
+        {
+            // Arrange: Create a valid index metadata DTO.
+            var index = new IndexMetadata
+            {
+                Name = "ValidIndex",
+                IndexingInterval = TimeSpan.FromHours(1),
+                EmbeddingModel = "embedding-model",
+                RagHost = RagServiceHost.Azure,
+                MaxRagAttachments = 20,
+                ChunkOverlap = 0.5,
+                GenerateKeywords = false,
+                GenerateTopic = false,
+                ScoringProfile = new IndexScoringProfile
+                {
+                    Name = "ScoreProfile",
+                    SearchAggregation = SearchAggregation.Sum,
+                    SearchInterpolation = SearchInterpolation.Linear,
+                    FreshnessBoost = 0,
+                    BoostDurationDays = 0,
+                    TagBoost = 0,
+                    Weights = new Dictionary<string, double> { { "key1", 1.0 } }
+                }
+            };
+
+            // Act
+            var result = _handler.ValidateIndexDefinition(index);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void ValidateIndexDefinition_WithInvalidName_ReturnsError()
+        {
+            // Arrange: Index with an invalid (whitespace) name.
+            var index = new IndexMetadata
+            {
+                Name = "   ",
+                IndexingInterval = TimeSpan.FromHours(1),
+                MaxRagAttachments = 20,
+                ChunkOverlap = 0.5
+            };
+
+            // Act
+            var result = _handler.ValidateIndexDefinition(index);
+
+            // Assert
+            Assert.Equal("The provided index name is invalid.", result);
+        }
+
+        [Fact]
+        public void ValidateIndexDefinition_WithWeaviateAndChunkOverlap_ReturnsError()
+        {
+            var index = new IndexMetadata
+            {
+                Name = "TestIndex",
+                RagHost = RagServiceHost.Weaviate,
+                GenerationHost = AGIServiceHost.OpenAI,
+                IndexingInterval = TimeSpan.Zero,
+                ChunkOverlap = 0.1
+            };
+
+            var result = _handler.ValidateIndexDefinition(index);
+
+            Assert.Equal("ChunkOverlap is not supported when using the Weaviate RagHost.", result);
+        }
+
+        [Fact]
+        public void ValidateIndexDefinition_WithWeaviateAndIndexingInterval_ReturnsError()
+        {
+            var index = new IndexMetadata
+            {
+                Name = "TestIndex",
+                RagHost = RagServiceHost.Weaviate,
+                GenerationHost = AGIServiceHost.OpenAI,
+                IndexingInterval = TimeSpan.FromMinutes(5)
+            };
+
+            var result = _handler.ValidateIndexDefinition(index);
+
+            Assert.Equal("IndexingInterval is not supported when using the Weaviate RagHost.", result);
+        }
+
+        [Fact]
+        public void ValidateIndexDefinition_WithWeaviateAndScoringProfile_ReturnsError()
+        {
+            var index = new IndexMetadata
+            {
+                Name = "TestIndex",
+                RagHost = RagServiceHost.Weaviate,
+                GenerationHost = AGIServiceHost.OpenAI,
+                IndexingInterval = TimeSpan.Zero,
+                ScoringProfile = new IndexScoringProfile { Name = "Test" }
+            };
+
+            var result = _handler.ValidateIndexDefinition(index);
+
+            Assert.Equal("Scoring profiles are not supported when using the Weaviate RagHost.", result);
+        }
+
+        #endregion
+
+        #region IsValidIndexName Tests
+
+        [Fact]
+        public void IsValidIndexName_WithValidName_ReturnsTrue()
+        {
+            // Arrange
+            string validName = "Valid_TableName1";
+
+            // Act
+            var result = _handler.IsValidIndexName(validName);
+
+            // Assert
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void IsValidIndexName_WithSqlKeyword_ReturnsFalse()
+        {
+            // Arrange: Using a SQL keyword should be rejected.
+            string invalidName = "SELECT";
+
+            // Act
+            var result = _handler.IsValidIndexName(invalidName);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        #endregion
+
+        #region IsValidRagUpsertRequest Tests
+
+        [Fact]
+        public void IsValidRagUpsertRequest_WithValidDocuments_ReturnsNull()
+        {
+            // Arrange: Create a valid index document.
+            var document = new IndexDocument
+            {
+                Title = "Doc title",
+                Content = "Some content",
+                Topic = "topic",
+                Keywords = "keyword",
+                Source = "http://source.com"
+            };
+
+            var request = new RagUpsertRequest
+            {
+                Documents = new List<IndexDocument> { document }
+            };
+
+            // Act
+            var result = _handler.IsValidRagUpsertRequest(request);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void IsValidRagUpsertRequest_WithNoDocuments_ReturnsError()
+        {
+            // Arrange: Create a request with no documents.
+            var request = new RagUpsertRequest
+            {
+                Documents = new List<IndexDocument>()
+            };
+
+            // Act
+            var result = _handler.IsValidRagUpsertRequest(request);
+
+            // Assert
+            Assert.Equal("The request must contain at least one document.", result);
         }
 
         #endregion

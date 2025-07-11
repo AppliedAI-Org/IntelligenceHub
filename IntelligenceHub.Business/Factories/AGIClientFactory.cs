@@ -27,11 +27,11 @@ namespace IntelligenceHub.Business.Factories
         /// <param name="host">The name of the host to retrieve a client for.</param>
         /// <returns>An AGI client that can be used to perform completions, and generate images.</returns>
         /// <exception cref="ArgumentException">Thrown if the host does not match any existing client.</exception>
-        public IAGIClient GetClient(AGIServiceHosts? host)
+        public IAGIClient GetClient(AGIServiceHost? host)
         {
-            if (host == AGIServiceHosts.OpenAI) return _serviceProvider.GetRequiredService<OpenAIClient>();
-            else if (host == AGIServiceHosts.Azure) return _serviceProvider.GetRequiredService<AzureAIClient>();
-            else if (host == AGIServiceHosts.Anthropic) return _serviceProvider.GetRequiredService<AnthropicAIClient>();
+            if (host == AGIServiceHost.OpenAI) return _serviceProvider.GetRequiredService<OpenAIClient>();
+            else if (host == AGIServiceHost.Azure) return _serviceProvider.GetRequiredService<AzureAIClient>();
+            else if (host == AGIServiceHost.Anthropic) return _serviceProvider.GetRequiredService<AnthropicAIClient>();
             else throw new ArgumentException($"Invalid service name: {host}");
         }
     }

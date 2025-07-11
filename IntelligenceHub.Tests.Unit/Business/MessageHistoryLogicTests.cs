@@ -29,6 +29,7 @@ namespace IntelligenceHub.Tests.Unit.Business
             var timeStamp = DateTime.UtcNow;
             var messages = new List<Message> { new Message { Content = "Test message", TimeStamp = timeStamp } };
             var dbMessages = new List<DbMessage> { new DbMessage { Content = "Test message", TimeStamp = timeStamp } };
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1, 1)).ReturnsAsync(dbMessages);
             _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10, 1)).ReturnsAsync(dbMessages);
 
             // Act
@@ -45,14 +46,16 @@ namespace IntelligenceHub.Tests.Unit.Business
         }
 
         [Fact]
-        public async Task GetConversationHistory_ShouldReturnEmptyList_WhenNoMessagesFound()
+        public async Task GetConversationHistory_ShouldReturnEmptyList_WhenNoMessagesFoundButEarlierMessagesExist()
         {
             // Arrange
             var conversationId = Guid.NewGuid();
-            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10, 1)).ReturnsAsync(new List<DbMessage>());
+            var dbMessages = new List<DbMessage> { new DbMessage { Content = "Test message", TimeStamp = DateTime.UtcNow } };
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 1, 1)).ReturnsAsync(dbMessages);
+            _messageHistoryRepositoryMock.Setup(repo => repo.GetConversationAsync(conversationId, 10, 2)).ReturnsAsync(new List<DbMessage>());
 
             // Act
-            var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10, 1);
+            var result = await _messageHistoryLogic.GetConversationHistory(conversationId, 10, 2);
 
             // Assert
             Assert.Empty(result.Data);

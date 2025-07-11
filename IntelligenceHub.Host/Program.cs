@@ -23,8 +23,15 @@ using IntelligenceHub.Business.Handlers;
 
 namespace IntelligenceHub.Host
 {
+    /// <summary>
+    /// Entry point for the IntelligenceHub web host.
+    /// </summary>
     public class Program
     {
+        /// <summary>
+        /// Bootstraps and runs the web application.
+        /// </summary>
+        /// <param name="args">Command line arguments.</param>
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -43,7 +50,8 @@ namespace IntelligenceHub.Host
             builder.Services.Configure<Settings>(settingsSection);
             builder.Services.Configure<AppInsightSettings>(insightSettingsSection);
             builder.Services.Configure<AGIClientSettings>(agiClientSettingsSection);
-            builder.Services.Configure<SearchServiceClientSettings>(builder.Configuration.GetRequiredSection(nameof(SearchServiceClientSettings)));
+            builder.Services.Configure<AzureSearchServiceClientSettings>(builder.Configuration.GetRequiredSection(nameof(AzureSearchServiceClientSettings)));
+            builder.Services.Configure<WeaviateSearchServiceClientSettings>(builder.Configuration.GetSection(nameof(WeaviateSearchServiceClientSettings)));
 
             // Add Services
 
@@ -63,14 +71,18 @@ namespace IntelligenceHub.Host
             builder.Services.AddScoped<ICompletionLogic, CompletionLogic>();
             builder.Services.AddScoped<IMessageHistoryLogic, MessageHistoryLogic>();
             builder.Services.AddScoped<IProfileLogic, ProfileLogic>();
+            builder.Services.AddScoped<IRagLogic, RagLogic>();
 
             // Clients and Client Factory
             builder.Services.AddSingleton<IAGIClientFactory, AGIClientFactory>();
+            builder.Services.AddSingleton<IRagClientFactory, RagClientFactory>();
             builder.Services.AddSingleton<IAGIClient, AzureAIClient>();
             builder.Services.AddSingleton<OpenAIClient>();
             builder.Services.AddSingleton<AzureAIClient>();
             builder.Services.AddSingleton<AnthropicAIClient>();
             builder.Services.AddSingleton<IToolClient, ToolClient>();
+            builder.Services.AddSingleton<AzureAISearchServiceClient>();
+            builder.Services.AddSingleton<WeaviateSearchServiceClient>();
 
             // Repositories
             builder.Services.AddScoped<IProfileRepository, ProfileRepository>();
@@ -78,6 +90,8 @@ namespace IntelligenceHub.Host
             builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
             builder.Services.AddScoped<IProfileToolsAssociativeRepository, ProfileToolsAssociativeRepository>();
             builder.Services.AddScoped<IMessageHistoryRepository, MessageHistoryRepository>();
+            builder.Services.AddScoped<IIndexRepository, IndexRepository>();
+            builder.Services.AddScoped<IIndexMetaRepository, IndexMetaRepository>();
 
             // Handlers
             var serviceUrls = new Dictionary<string, string[]>();
@@ -106,7 +120,7 @@ namespace IntelligenceHub.Host
                 .OrResult(r => r.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                 .WaitAndRetryAsync(settings.AGIClientMaxRetries, _ =>
                 {
-                    // Add random jitter up to 5 seconds.
+                    // Add random jitter
                     var maxJitter = settings.AGIClientMaxJitter * 1000; // convert to milliseconds
                     var jitter = TimeSpan.FromMilliseconds(new Random().Next(0, maxJitter));
                     return TimeSpan.FromSeconds(settings.AGIClientInitialRetryDelay) + jitter;
@@ -160,7 +174,7 @@ namespace IntelligenceHub.Host
                 options.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             }).AddHubOptions<ChatHub>(options =>
             {
-                if (builder.Environment.IsDevelopment()) options.EnableDetailedErrors = true;
+                if (builder.Environment.IsDevelopment()) options.EnableDetailedErrors = true; // enable detailed errors for dev environments
             });
             builder.Services.AddControllers().AddJsonOptions(options =>
             {
@@ -208,6 +222,8 @@ namespace IntelligenceHub.Host
 
             var app = builder.Build();
 
+            app.UseRouting();
+
             if (app.Environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -217,8 +233,8 @@ namespace IntelligenceHub.Host
                 app.UseCors(policy =>
                 {
                     policy.AllowAnyMethod()
-                          .AllowAnyOrigin()
-                          .SetIsOriginAllowed((host) => true);
+                          .AllowAnyHeader()
+                          .AllowAnyOrigin();
                 });
 
                 // Serve static files in development environment
@@ -232,22 +248,19 @@ namespace IntelligenceHub.Host
             {
                 app.UseCors(policy =>
                 {
-                    policy.WithMethods("GET", "POST", "DELETE")
-                          .AllowAnyOrigin();
+                    policy.AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials()
+                          .WithOrigins(settings.ValidOrigins);
                 });
             }
 
             app.UseHttpsRedirection();
 
-            app.UseRouting();
-
             app.UseMiddleware<LoggingMiddleware>();
 
-            app.UseAuthentication();
-            app.UseAuthorization();
-
             app.MapControllers();
-            app.MapHub<ChatHub>("/chatstream");
+            app.MapHub<ChatHub>("/chatstream").RequireCors();
 
             app.Run();
             #endregion

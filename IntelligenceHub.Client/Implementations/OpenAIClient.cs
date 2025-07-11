@@ -48,7 +48,7 @@ namespace IntelligenceHub.Client.Implementations
             var options = new OpenAIClientOptions()
             {
                 Transport = new HttpClientPipelineTransport(policyClient)
-            };  
+            };
             _gpt4oAIClient = new ChatClient(_gpt4o, credential, options);
             _gpt4ominiAIClient = new ChatClient(_gpt4oMini, credential, options);
 
@@ -178,7 +178,7 @@ namespace IntelligenceHub.Client.Implementations
                         currentToolArgs = update.FunctionArgumentsUpdate.ToString();
                     }
 
-                    if(toolCalls.ContainsKey(currentTool)) toolCalls[currentTool] = currentToolArgs;
+                    if (toolCalls.ContainsKey(currentTool)) toolCalls[currentTool] = currentToolArgs;
                     else
                     {
                         if (currentTool.ToLower() != SystemTools.Chat_Recursion.ToString().ToLower()) toolCalls.Add(currentTool, currentToolArgs);

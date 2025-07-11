@@ -77,7 +77,6 @@ namespace IntelligenceHub.Client.Implementations
         {
             try
             {
-                if (string.IsNullOrEmpty(completionRequest.ProfileOptions.Name) || completionRequest.Messages.Count < 1) return new CompletionResponse() { FinishReason = FinishReasons.Error };
                 var options = BuildCompletionOptions(completionRequest);
                 var messages = BuildCompletionMessages(completionRequest);
                 var chatClient = _azureOpenAIClient.GetChatClient(completionRequest.ProfileOptions.Model);
@@ -159,17 +158,12 @@ namespace IntelligenceHub.Client.Implementations
                 {
                     // capture current values
                     if (string.IsNullOrEmpty(currentTool)) currentTool = update.FunctionName;
-                    if (currentTool == update.FunctionName) currentToolArgs += update.FunctionArgumentsUpdate.ToString();
-                    else
-                    {
-                        currentTool = update.FunctionName;
-                        currentToolArgs = update.FunctionArgumentsUpdate.ToString();
-                    }
+                    if (currentTool == update.FunctionName && update.FunctionArgumentsUpdate != null && update.FunctionArgumentsUpdate.ToArray().Any()) currentToolArgs += update.FunctionArgumentsUpdate.ToString() ?? string.Empty;
 
-                    if (toolCalls.ContainsKey(currentTool)) toolCalls[currentTool] = currentToolArgs;
+                    if (toolCalls.ContainsKey(currentTool)) toolCalls[currentTool] = currentToolArgs ?? string.Empty;
                     else
                     {
-                        if (currentTool.ToLower() != SystemTools.Chat_Recursion.ToString().ToLower()) toolCalls.Add(currentTool, currentToolArgs);
+                        if (currentTool.ToLower() != SystemTools.Chat_Recursion.ToString().ToLower()) toolCalls.Add(currentTool, currentToolArgs ?? string.Empty);
                         else toolCalls.Add(SystemTools.Chat_Recursion.ToString().ToLower(), string.Empty);
                     }
                 }
@@ -262,7 +256,7 @@ namespace IntelligenceHub.Client.Implementations
             }
 
             // set tools
-            if (completion.ProfileOptions.Tools != null) 
+            if (completion.ProfileOptions.Tools != null)
                 foreach (var tool in completion.ProfileOptions.Tools)
                 {
                     var serializedParameters = JsonSerializer.Serialize(tool.Function.Parameters);

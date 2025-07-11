@@ -2,12 +2,10 @@ using IntelligenceHub.API.DTOs;
 using IntelligenceHub.Business.Handlers;
 using IntelligenceHub.Business.Interfaces;
 using IntelligenceHub.Common;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Swashbuckle.AspNetCore.Annotations;
-using System.Net;
 using System.Text;
 using static IntelligenceHub.Common.GlobalVariables;
 
@@ -56,7 +54,7 @@ namespace IntelligenceHub.Controllers
             try
             {
                 name = name?.Replace("{name}", string.Empty); // come up with a more long term fix for this
-                if (!string.IsNullOrEmpty(name)) completionRequest.ProfileOptions.Name = name; 
+                if (!string.IsNullOrEmpty(name)) completionRequest.ProfileOptions.Name = name;
                 var errorMessage = _validationLogic.ValidateChatRequest(completionRequest);
                 if (errorMessage is not null) return BadRequest(errorMessage);
                 var response = await _completionLogic.ProcessCompletion(completionRequest);

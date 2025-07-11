@@ -62,7 +62,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task GetProfile_ReturnsProfile_WhenProfileExists()
         {
             // Arrange
-            var profile = new DbProfile { Id = 1, Name = "ExistingProfile", Host = AGIServiceHosts.Azure.ToString() };
+            var profile = new DbProfile { Id = 1, Name = "ExistingProfile", Host = AGIServiceHost.Azure.ToString() };
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
             _mockProfileToolsRepository.Setup(repo => repo.GetToolAssociationsAsync(It.IsAny<int>())).ReturnsAsync(new List<DbProfileTool>());
 
@@ -128,7 +128,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         {
             // Arrange
             var profileTools = new List<DbProfileTool> { new DbProfileTool { ProfileID = 1, ToolID = 1, Tool = new DbTool { Name = "Tool1" } } };
-            var profile = new DbProfile { Id = 1, Name = "ExistingProfile", Host = AGIServiceHosts.Azure.ToString(), ProfileTools = profileTools };
+            var profile = new DbProfile { Id = 1, Name = "ExistingProfile", Host = AGIServiceHost.Azure.ToString(), ProfileTools = profileTools };
 
             _mockProfileRepository.Setup(repo => repo.GetByNameAsync(It.IsAny<string>())).ReturnsAsync(profile);
             _mockProfileToolsRepository.Setup(repo => repo.DeleteAllProfileAssociationsAsync(It.IsAny<int>())).ReturnsAsync(true);
@@ -161,7 +161,7 @@ namespace IntelligenceHub.Tests.Unit.Business
         public async Task GetAllProfiles_ReturnsProfiles_WhenProfilesExist()
         {
             // Arrange
-            var profiles = new List<DbProfile> { new DbProfile { Id = 1, Name = "Profile1", Host = AGIServiceHosts.Azure.ToString() } };
+            var profiles = new List<DbProfile> { new DbProfile { Id = 1, Name = "Profile1", Host = AGIServiceHost.Azure.ToString() } };
             var profileTools = new List<DbProfileTool> { new DbProfileTool { ProfileID = 1, Tool = new DbTool { Name = "Tool1" } } };
             var tool = new DbTool { Name = "Tool1" };
 

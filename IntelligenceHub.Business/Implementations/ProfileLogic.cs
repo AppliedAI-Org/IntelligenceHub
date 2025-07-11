@@ -58,16 +58,6 @@ namespace IntelligenceHub.Business.Implementations
             if (dbProfile != null)
             {
                 var profile = DbMappingHandler.MapFromDbProfile(dbProfile);
-                // package this into a separate method (same one as in GetAllProfiles())
-                var profileToolDTOs = await _profileToolsDb.GetToolAssociationsAsync(dbProfile.Id);
-                profile.Tools = new List<Tool>();
-                foreach (var association in profileToolDTOs)
-                {
-                    var dbTool = await _toolDb.GetByIdAsync(association.ToolID);
-                    if (dbTool == null) continue;
-                    var mappedTool = DbMappingHandler.MapFromDbTool(dbTool);
-                    profile.Tools.Add(mappedTool);
-                }
                 return APIResponseWrapper<Profile>.Success(profile);
             }
             else
@@ -100,7 +90,9 @@ namespace IntelligenceHub.Business.Implementations
                     {
                         var tool = await _toolDb.GetByIdAsync(association.ToolID);
                         if (tool == null) continue;
-                        var mappedTool = DbMappingHandler.MapFromDbTool(tool);
+
+                        var toolProperties = await _propertyDb.GetToolProperties(tool.Id);
+                        var mappedTool = DbMappingHandler.MapFromDbTool(tool, toolProperties?.ToList());
                         apiProfileDto.Tools.Add(mappedTool);
                     }
                     apiResponseList.Add(apiProfileDto);
@@ -114,16 +106,16 @@ namespace IntelligenceHub.Business.Implementations
         /// </summary>
         /// <param name="profileDto">The request body used to create or update the profile.</param>
         /// <returns>An <see cref="APIResponseWrapper{string}"/> containing an error message if the profile DTO fails to pass validation, otherwise null.</returns>
-        public async Task<APIResponseWrapper<string>> CreateOrUpdateProfile(Profile profileDto) // refactor this
+        public async Task<APIResponseWrapper<string>> CreateOrUpdateProfile(Profile profileDto)
         {
-            var errorMessage = _validationLogic.ValidateAPIProfile(profileDto); // move to controller
+            var errorMessage = _validationLogic.ValidateAPIProfile(profileDto);
             if (errorMessage != null) return APIResponseWrapper<string>.Failure(errorMessage, APIResponseStatusCodes.BadRequest);
             var existingProfile = await _profileDb.GetByNameAsync(profileDto.Name);
             var success = true;
             if (existingProfile != null)
             {
                 DbMappingHandler.MapToDbProfile(existingProfile.Name, _defaulAzureModel, existingProfile, profileDto);
-                var rows = await _profileDb.UpdateAsync(existingProfile); // Use the tracked entity
+                var rows = await _profileDb.UpdateAsync(existingProfile);
                 if (rows == null) success = false;
             }
             else
@@ -133,11 +125,22 @@ namespace IntelligenceHub.Business.Implementations
                 if (newTool == null) success = false;
             }
 
-            if (profileDto.Tools != null && profileDto.Tools.Count > 0)
+            if (profileDto?.Tools?.Count == 0)
+            {
+                if (existingProfile != null) await _profileToolsDb.DeleteAllProfileAssociationsAsync(existingProfile.Id);
+                else
+                {
+                    var newProfile = await _profileDb.GetByNameAsync(profileDto.Name);
+                    if (newProfile != null) await _profileToolsDb.DeleteAllProfileAssociationsAsync(newProfile.Id);
+                    else return APIResponseWrapper<string>.Failure("Failed to retrieve the profile.", APIResponseStatusCodes.InternalError);
+                }
+            }
+            else if (profileDto?.Tools != null && profileDto.Tools.Count > 0)
             {
                 if (existingProfile == null) success = await AddOrUpdateProfileTools(profileDto, null);
                 else success = await AddOrUpdateProfileTools(profileDto, DbMappingHandler.MapFromDbProfile(existingProfile));
             }
+
             if (!success) return APIResponseWrapper<string>.Failure(_unknownErroMessage, APIResponseStatusCodes.InternalError);
             return APIResponseWrapper<string>.Success(string.Empty);
         }
@@ -153,10 +156,8 @@ namespace IntelligenceHub.Business.Implementations
             bool success;
             if (dbProfile != null)
             {
-                var tools = new List<Tool>();
                 var dbTools = dbProfile.ProfileTools.Select(pt => pt.Tool).ToList();
-                foreach (var tool in dbTools) tools.Add(DbMappingHandler.MapFromDbTool(tool));
-                var profile = DbMappingHandler.MapFromDbProfile(dbProfile, tools);
+                var profile = DbMappingHandler.MapFromDbProfile(dbProfile);
 
                 if (profile.Tools != null && profile.Tools.Count > 0) await _profileToolsDb.DeleteAllProfileAssociationsAsync(dbProfile.Id);
 
@@ -213,7 +214,9 @@ namespace IntelligenceHub.Business.Implementations
         {
             var dbTool = await _toolDb.GetByNameAsync(name);
             if (dbTool == null) return APIResponseWrapper<Tool>.Failure($"Failed to find a tool with the name '{name}'.", APIResponseStatusCodes.NotFound);
-            return APIResponseWrapper<Tool>.Success(DbMappingHandler.MapFromDbTool(dbTool));
+            var properties = await _propertyDb.GetToolProperties(dbTool.Id);
+            var mappedTool = DbMappingHandler.MapFromDbTool(dbTool, properties.ToList());
+            return APIResponseWrapper<Tool>.Success(mappedTool);
         }
 
         /// <summary>
@@ -242,8 +245,11 @@ namespace IntelligenceHub.Business.Implementations
         /// <returns>An <see cref="APIResponseWrapper{List{string}}"/> containing a list of tool names.</returns>
         public async Task<APIResponseWrapper<List<string>>> GetProfileToolAssociations(string name)
         {
-            var profileNames = await _toolDb.GetProfileToolsAsync(name);
-            if (profileNames.Count > 0) return APIResponseWrapper<List<string>>.Success(profileNames);
+            var profile = await _profileDb.GetByNameAsync(name);
+            if (profile == null) return APIResponseWrapper<List<string>>.Failure($"No tool with the name '{name}' was found.", APIResponseStatusCodes.NotFound);
+
+            var toolNames = await _toolDb.GetProfileToolsAsync(name);
+            if (toolNames.Count > 0) return APIResponseWrapper<List<string>>.Success(toolNames);
             else return APIResponseWrapper<List<string>>.Success(new List<string>());
         }
 
@@ -254,6 +260,9 @@ namespace IntelligenceHub.Business.Implementations
         /// <returns>An <see cref="APIResponseWrapper{List{string}}"/> containing a list of profile names.</returns>
         public async Task<APIResponseWrapper<List<string>>> GetToolProfileAssociations(string name)
         {
+            var tool = await _toolDb.GetByNameAsync(name);
+            if (tool == null) return APIResponseWrapper<List<string>>.Failure($"No tool with the name '{name}' was found.", APIResponseStatusCodes.NotFound);
+
             var profileNames = await _toolDb.GetToolProfilesAsync(name);
             if (profileNames.Count > 0) return APIResponseWrapper<List<string>>.Success(profileNames);
             else return APIResponseWrapper<List<string>>.Success(new List<string>());
@@ -359,9 +368,15 @@ namespace IntelligenceHub.Business.Implementations
                 foreach (var profile in profiles)
                 {
                     var success = await _profileToolsDb.DeleteToolAssociationAsync(tool.Id, profile);
-                    if (success) responseList.Add(tool.Name);
                 }
-                return APIResponseWrapper<List<string>>.Success(responseList);
+                var associations = await _profileToolsDb.GetProfileAssociationsAsync(tool.Id);
+                var persistingProfiles = new List<string>();
+                foreach (var association in associations)
+                {
+                    var profileData = await _profileDb.GetAsync(association.ProfileID);
+                    if (profileData != null) persistingProfiles.Add(profileData.Name);
+                }
+                return APIResponseWrapper<List<string>>.Success(persistingProfiles);
             }
             return APIResponseWrapper<List<string>>.Failure(_missingToolMessage + $"'{name}'", APIResponseStatusCodes.NotFound);
         }
@@ -378,7 +393,10 @@ namespace IntelligenceHub.Business.Implementations
             if (profile != null)
             {
                 foreach (var tool in tools) await _profileToolsDb.DeleteProfileAssociationAsync(profile.Id, tool);
-                return APIResponseWrapper<List<string>>.Success(tools);
+                var existingAssociations = await _profileToolsDb.GetToolAssociationsAsync(profile.Id);
+                var toolNames = new List<string>();
+                foreach (var association in existingAssociations) toolNames.Add(association.Tool.Name);
+                return APIResponseWrapper<List<string>>.Success(toolNames);
             }
             return APIResponseWrapper<List<string>>.Failure(_missingToolMessage + $"'{name}'", APIResponseStatusCodes.NotFound);
         }
@@ -397,12 +415,7 @@ namespace IntelligenceHub.Business.Implementations
 
             // Delete related properties
             var dbProperites = await _propertyDb.GetToolProperties(existingDbTool.Id);
-            var existingTool = DbMappingHandler.MapFromDbTool(existingDbTool, dbProperites.ToList());
-            foreach (var property in existingTool.Function.Parameters.properties)
-            {
-                var propertyDTO = DbMappingHandler.MapToDbProperty(property.Key, property.Value);
-                await _propertyDb.DeleteAsync(propertyDTO);
-            }
+            foreach (var property in dbProperites) await _propertyDb.DeleteAsync(property);
 
             // Delete all associations related to the tool
             await _profileToolsDb.DeleteAllToolAssociationsAsync(existingDbTool.Id);
@@ -427,7 +440,9 @@ namespace IntelligenceHub.Business.Implementations
             foreach (var property in existingProperties) await _propertyDb.DeleteAsync(property);
             foreach (var property in newProperties)
             {
-                await _propertyDb.AddAsync(DbMappingHandler.MapToDbProperty(property.Key, property.Value));
+                var dbProperty = DbMappingHandler.MapToDbProperty(property.Key, property.Value);
+                dbProperty.ToolId = existingTool.Id; // Ensure ToolId is set
+                await _propertyDb.AddAsync(dbProperty);
             }
             return APIResponseWrapper<bool>.Success(true);
         }

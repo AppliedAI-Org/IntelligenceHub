@@ -37,4 +37,8 @@
     <ProjectReference Include="..\IntelligenceHub.Hubs\IntelligenceHub.Hubs.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Host\Wrappers\" />
+  </ItemGroup>
+
 </Project>
