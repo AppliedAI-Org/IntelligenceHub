@@ -370,5 +370,3 @@ FodyWeavers.xsd
 /IntelligenceHub.Tests.Stress/appsettings.json
 /IntelligenceHub.Host/.env
 /IntelligenceHub.Host/appsettings.Development.json
-/.github/workflows/master_intelligencehub.yml
-/.github/workflows/dev_intelligencehub-dev.yml
