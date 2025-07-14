@@ -38,7 +38,7 @@ namespace IntelligenceHub.Client.Implementations
         {
             _httpClient = factory.CreateClient();
             _endpoint = settings.CurrentValue.Endpoint.TrimEnd('/');
-            _apiKey = settings.CurrentValue.ApiKey;
+            _apiKey = settings.CurrentValue.Key;
         }
 
         /// <summary>

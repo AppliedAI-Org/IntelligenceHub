@@ -15,6 +15,6 @@ namespace IntelligenceHub.Common.Config
         /// <summary>
         /// Gets or sets the API key used for authentication.
         /// </summary>
-        public string ApiKey { get; set; }
+        public string Key { get; set; }
     }
 }
